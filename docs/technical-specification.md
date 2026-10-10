@@ -4,7 +4,7 @@
 
 * **Project Name**: `RailSignal` (TypeScript monorepo: `@railsignal/backend`, `@railsignal/client`, `@railsignal/shared`).
 * **Core Problem**: London commuters travel reliably during the working week, but face weekend travel ambushes from planned TfL track maintenance, station shutdowns, and rail replacement buses.
-* **Core Solution**: A subscription and early-warning closure radar that ingests TfL planned engineering data, projects a weekend line-health read model, and delivers consolidated Friday email alerts.
+* **Core Solution**: A subscription and early-warning closure radar that ingests TfL planned engineering data, projects a weekend line-health read model, and delivers consolidated Friday email alerts alongside a high-contrast web dashboard.
 * **Hosting Cost**: Strictly **£0 forever** (Upstash Serverless Redis free tier, Azure Container Apps free consumption tier, Neon PostgreSQL free tier, Resend free transactional email).
 * **Architecture Pattern**: Unified single-process Node.js host (`backend/src/index.ts`) combining Fastify HTTP route plugins and BullMQ queue workers to minimize compute overhead and maximize Azure Container Apps (ACA) free-tier allocation (`minReplicas = 0`).
 
@@ -29,7 +29,8 @@ RailSignal/
 │   │   ├── 0002-prisma-dual-persistence.md
 │   │   ├── 0003-bullmq-upstash-quota-and-scale-to-zero.md
 │   │   ├── 0004-cockatiel-resilience-and-react-email.md
-│   │   └── 0005-typebox-validation-and-shared-contracts.md
+│   │   ├── 0005-typebox-validation-and-shared-contracts.md
+│   │   └── 0006-frontend-design-system-and-ui-architecture.md
 │   └── technical-specification.md
 ├── infra/                              # Terraform (Zero-cost Azure resources)
 │   ├── main.tf
@@ -92,8 +93,11 @@ RailSignal/
     │   ├── hooks/
     │   │   └── useWeekendStatus.ts     # TanStack Query v5 hook (gated on isFetching)
     │   ├── components/
-    │   │   ├── NetworkStatusGrid.tsx   # Live weekend status cards for each line
-    │   │   ├── SubscriptionModal.tsx   # Radix UI dialog for subscription
+    │   │   ├── layout/
+    │   │   │   └── Header.tsx          # Branding, temporal window badge, dual CTAs
+    │   │   ├── NetworkStatusGrid.tsx   # Clean single-stream line status cards (sorted by disruption)
+    │   │   ├── LineCard.tsx            # Line status card with TfL color stripe & corridor text
+    │   │   ├── SubscriptionModal.tsx   # Radix UI dialog for email subscription
     │   │   └── TestAlertModal.tsx      # Radix UI dialog for instant test alert
     │   └── App.tsx
     └── tailwind.config.js
@@ -121,12 +125,12 @@ generator client {
 }
 
 model Subscription {
-  id                     String   @id @default(uuid())
-  email                  String   @unique
-  subscribedLineIds      String   // JSON stringified array of line IDs (e.g. '["northern","victoria"]')
-  unsubscribeToken       String   @default(uuid())
+  id                      String   @id @default(uuid())
+  email                   String   @unique
+  subscribedLineIds       String   // JSON stringified array of line IDs (e.g. '["northern","victoria"]')
+  unsubscribeToken        String   @default(uuid())
   lastNotifiedWeekendDate String?  // ISO Date string "YYYY-MM-DD" for alert deduplication/idempotency
-  createdAt              DateTime @default(now())
+  createdAt               DateTime @default(now())
 
   @@index([email])
 }
@@ -209,7 +213,34 @@ model WeekendDisruption {
 
 ---
 
-## 7. Cloud Hosting Strategy (£0 Forever)
+## 7. Frontend Visual Architecture & Design System (Clean Transit Radar)
+
+See [ADR 0006](file:///Users/foysalahmed/Code/RailSignal/docs/adr/0006-frontend-design-system-and-ui-architecture.md).
+
+### 7.1 Visual Palette & Design Tokens
+* **Theme**: Deep slate/navy dark mode (`#0B0F19` page background, `#111827` card background, `border-slate-800`).
+* **Line Color Accents**: Left accent border stripe (4px width) using official TfL hex colors.
+* **Northern Line Accessibility**: Black stripe (`#000000`) rendered with a 1px `border-neutral-500` outline to guarantee 4.5:1 contrast against dark card surfaces.
+* **Status Badges**:
+  * `Planned Closure`: Red (`bg-red-950/80 text-red-300 border border-red-800`).
+  * `Part Closure`: Amber (`bg-amber-950/80 text-amber-300 border border-amber-800`).
+  * `Good Service`: Emerald (`bg-emerald-950/80 text-emerald-300 border border-emerald-800`).
+
+### 7.2 Header & Dual Action Bar
+* **Branding**: `RailSignal` logo with subtitle *"Weekend Closure Radar"*.
+* **Temporal Indicator**: Badge displaying `"This Weekend: Friday 19:00 - Monday 04:30 London Time"`.
+* **Top-Right CTAs**:
+  * `[Send Test Alert]`: Solid blue accent button (`bg-blue-600 hover:bg-blue-500 text-white min-h-[44px]`). Opens `TestAlertModal`.
+  * `[Friday Alerts]`: Outline button (`border border-slate-700 hover:bg-slate-800 text-slate-200 min-h-[44px]`). Opens `SubscriptionModal`.
+
+### 7.3 Information Architecture & Priority Sorting
+* **Feed Layout**: Single-column vertical card list.
+* **Disruption Priority**: Lines with closures (`Planned Closure`, `Part Closure`, `Part Suspended`) automatically sort to the top with visible corridor disruption descriptions (*"No service between Victoria and Brixton during maintenance"*).
+* **Normal Service**: Lines with `Good Service` appear below with compact status pills, eliminating unnecessary scrolling for commuters.
+
+---
+
+## 8. Cloud Hosting Strategy (£0 Forever)
 
 * **Compute**: Azure Container Apps (ACA) consumption tier (180,000 vCPU-seconds free per month; scales to zero when idle).
 * **Scheduled Job**: ACA Scheduled Job (`azurerm_container_app_job`) runs `node dist/index.js --job sync-disruptions` every Friday at 09:00 UK time.
@@ -219,7 +250,7 @@ model WeekendDisruption {
 
 ---
 
-## 8. Test Strategy
+## 9. Test Strategy
 
 * **Runner**: Vitest across all workspaces.
 * **Backend Unit Tests**: Date window calculations (`date-fns`), cockatiel retry policies, and DTO validations.
@@ -232,7 +263,7 @@ model WeekendDisruption {
 
 ---
 
-## 9. Phased Implementation Roadmap
+## 10. Phased Implementation Roadmap
 
 * **Phase 1: Foundation, Shared Contracts & Persistence**
   * **Phase 1A: Monorepo Workspaces, Shared Contracts & Fastify Baseline**: Setup workspaces, `packages/shared` (`lines.ts`, `contracts.ts`), Fastify baseline, RFC 9457 handler, Vitest smoke test.
@@ -247,8 +278,8 @@ model WeekendDisruption {
   * **Phase 4A: Fastify Route Plugins with TypeBox Validation**: Endpoints (`/api/lines/weekend-status`, `/api/subscriptions`, `/api/demo/send-test-digest`, `/api/jobs/sync-weekend-disruptions`).
   * **Phase 4B: Standalone CLI Job Runner**: `src/jobs/syncDisruptionsRunner.ts` (`node dist/index.js --job sync-disruptions`).
 * **Phase 5: Frontend Web Client (React 19)**
-  * **Phase 5A: React 19 Frontend Shell & Weekend Status Board**: Status grid importing shared contracts, TanStack Query v5 with `isFetching`.
-  * **Phase 5B: Interactive Modals with Radix UI**: Subscription and demo alert dialogs using `@radix-ui/react-dialog`.
+  * **Phase 5A: React 19 Frontend Shell & Weekend Status Board**: Clean Transit Radar layout, header with temporal badge and dual CTAs, `NetworkStatusGrid` with disruption-first sorting, left TfL color border stripes, Northern line contrast outline, TanStack Query v5 with `isFetching`.
+  * **Phase 5B: Interactive Modals with Radix UI**: `TestAlertModal` (`POST /api/demo/send-test-digest`) and `SubscriptionModal` (`POST /api/subscriptions`) using `@radix-ui/react-dialog`.
 * **Phase 6: Integration Suite & CI/CD**
   * **Phase 6A: In-Memory Integration Test Suite**: Fastify `app.inject()` + local SQLite `test.db` + mocked queues.
   * **Phase 6B: Production Dockerfile & CI/CD Workflows**: Multi-stage `Dockerfile` and GitHub Actions workflows deploying to ACA.
