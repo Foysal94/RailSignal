@@ -1,0 +1,24 @@
+{
+  "name": "@railsignal/backend",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "RailSignal Fastify HTTP API and BullMQ worker host",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@railsignal/shared": "*",
+    "@sinclair/typebox": "^0.34.46",
+    "fastify": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "tsx": "^4.19.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}
