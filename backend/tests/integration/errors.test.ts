@@ -1,17 +1,23 @@
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
+import type { FastifyInstance } from 'fastify';
 import { Type } from '@sinclair/typebox';
 import { buildApp } from '../../src/app.js';
 
 describe('RFC 9457 Problem Details Error Handling', () => {
-  it('Should_return_rfc_9457_problem_details_when_route_is_not_found', async () => {
-    const app = buildApp();
-    afterAll(async () => {
+  let app: FastifyInstance;
+
+  afterEach(async () => {
+    if (app) {
       await app.close();
-    });
+    }
+  });
+
+  it('Should_return_rfc_9457_problem_details_when_route_is_not_found', async () => {
+    app = buildApp();
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/not-a-real-route',
+      url: '/api/not-a-real-route?token=secret123',
     });
 
     expect(response.statusCode).toBe(404);
@@ -24,13 +30,13 @@ describe('RFC 9457 Problem Details Error Handling', () => {
       instance: '/api/not-a-real-route',
     });
     expect(body.type).toBeDefined();
-    expect(body.detail).toBeDefined();
+    expect(body.detail).toBe('Route GET /api/not-a-real-route not found');
+    expect(response.payload).not.toContain('secret123');
   });
 
   it('Should_return_rfc_9457_problem_details_with_invalid_params_when_validation_fails', async () => {
-    const app = buildApp();
+    app = buildApp();
 
-    // Register a test route with TypeBox validation
     app.post(
       '/api/test-validation',
       {
@@ -64,7 +70,7 @@ describe('RFC 9457 Problem Details Error Handling', () => {
   });
 
   it('Should_return_sanitized_rfc_9457_problem_details_when_internal_error_occurs', async () => {
-    const app = buildApp();
+    app = buildApp();
 
     app.get('/api/test-internal-error', async () => {
       throw new Error('Database password failed: supersecret123');
@@ -84,7 +90,6 @@ describe('RFC 9457 Problem Details Error Handling', () => {
       status: 500,
       instance: '/api/test-internal-error',
     });
-    // Ensure sensitive message or stack traces are not leaked
     expect(response.payload).not.toContain('supersecret123');
   });
 });

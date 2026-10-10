@@ -1,5 +1,6 @@
 import { Type, FormatRegistry, type Static } from '@sinclair/typebox';
 
+// Register standard JSON Schema email format for TypeBox value checking
 if (!FormatRegistry.Has('email')) {
   FormatRegistry.Set('email', (value) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
@@ -36,7 +37,7 @@ export const LineModeSchema = Type.Union([
   Type.Literal('overground'),
   Type.Literal('dlr'),
 ]);
-export type LineModeDto = Static<typeof LineModeSchema>;
+export type LineMode = Static<typeof LineModeSchema>;
 
 export const TflLineSchema = Type.Object({
   id: Type.String(),
@@ -45,7 +46,7 @@ export const TflLineSchema = Type.Object({
   color: Type.String(),
   contrastBorder: Type.Optional(Type.Boolean()),
 });
-export type TflLineDto = Static<typeof TflLineSchema>;
+export type TflLine = Static<typeof TflLineSchema>;
 
 // --- Weekend Disruptions & Status Projections ---
 export const WeekendDisruptionSchema = Type.Object({

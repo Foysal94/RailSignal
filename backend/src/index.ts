@@ -7,6 +7,32 @@ const app = buildApp({
   },
 });
 
+let isShuttingDown = false;
+
+async function shutdown(signal: string): Promise<void> {
+  if (isShuttingDown) {
+    return;
+  }
+  isShuttingDown = true;
+  app.log.info(`Received ${signal}, closing server gracefully...`);
+
+  // Force termination fallback if cleanup hangs
+  const forceKillTimeout = setTimeout(() => {
+    app.log.error('Graceful shutdown timed out after 10s, forcing exit');
+    process.exit(1);
+  }, 10_000);
+  forceKillTimeout.unref();
+
+  try {
+    await app.close();
+    app.log.info('Server closed successfully');
+    process.exit(0);
+  } catch (error) {
+    app.log.error(error, 'Error during graceful shutdown');
+    process.exit(1);
+  }
+}
+
 async function start(): Promise<void> {
   try {
     const address = await app.listen({
@@ -15,7 +41,7 @@ async function start(): Promise<void> {
     });
     app.log.info(`RailSignal Fastify server listening on ${address}`);
   } catch (error) {
-    app.log.error(error);
+    app.log.error(error, 'Failed to start server');
     process.exit(1);
   }
 }
@@ -23,12 +49,17 @@ async function start(): Promise<void> {
 const signals: readonly NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
 for (const signal of signals) {
   process.on(signal, () => {
-    void (async () => {
-      app.log.info(`Received ${signal}, closing server gracefully...`);
-      await app.close();
-      process.exit(0);
-    })();
+    void shutdown(signal);
   });
 }
+
+process.on('unhandledRejection', (reason) => {
+  app.log.error(reason, 'Unhandled Promise Rejection');
+});
+
+process.on('uncaughtException', (error) => {
+  app.log.fatal(error, 'Uncaught Exception');
+  void shutdown('uncaughtException');
+});
 
 void start();

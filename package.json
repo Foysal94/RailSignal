@@ -4,7 +4,7 @@
   "private": true,
   "description": "RailSignal - London Weekend Closure Radar",
   "workspaces": [
-    "packages/*",
+    "packages/shared",
     "backend",
     "client"
   ],
@@ -13,7 +13,7 @@
     "build:backend": "npm run build --workspace=@railsignal/backend",
     "build:client": "npm run build --workspace=@railsignal/client --if-present",
     "build": "npm run build:shared && npm run build:backend && npm run build:client",
-    "dev": "npm run dev --workspace=@railsignal/backend",
+    "dev": "npm run build:shared && npm run dev --workspace=@railsignal/backend",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   }

@@ -1,12 +1,4 @@
-export type LineMode = 'tube' | 'elizabeth-line' | 'overground' | 'dlr';
-
-export interface TflLine {
-  readonly id: string;
-  readonly name: string;
-  readonly mode: LineMode;
-  readonly color: string;
-  readonly contrastBorder?: boolean;
-}
+import type { LineMode, TflLine } from './contracts.js';
 
 export const TFL_MODES: readonly LineMode[] = [
   'tube',
@@ -16,7 +8,7 @@ export const TFL_MODES: readonly LineMode[] = [
 ] as const;
 
 export const TFL_LINES: readonly TflLine[] = [
-  // Underground Lines
+  // Underground Lines (11)
   { id: 'bakerloo', name: 'Bakerloo', mode: 'tube', color: '#B36305' },
   { id: 'central', name: 'Central', mode: 'tube', color: '#E32017' },
   { id: 'circle', name: 'Circle', mode: 'tube', color: '#FFD300' },
@@ -29,11 +21,10 @@ export const TFL_LINES: readonly TflLine[] = [
   { id: 'victoria', name: 'Victoria', mode: 'tube', color: '#0098D4' },
   { id: 'waterloo-city', name: 'Waterloo & City', mode: 'tube', color: '#95CDBA' },
 
-  // Elizabeth line
+  // Elizabeth line (1)
   { id: 'elizabeth', name: 'Elizabeth line', mode: 'elizabeth-line', color: '#6950A1' },
 
-  // London Overground
-  { id: 'london-overground', name: 'London Overground', mode: 'overground', color: '#EE7C0E' },
+  // London Overground Named Lines (6)
   { id: 'lioness', name: 'Lioness line', mode: 'overground', color: '#EE7C0E' },
   { id: 'mildmay', name: 'Mildmay line', mode: 'overground', color: '#EE7C0E' },
   { id: 'windrush', name: 'Windrush line', mode: 'overground', color: '#EE7C0E' },
@@ -41,7 +32,7 @@ export const TFL_LINES: readonly TflLine[] = [
   { id: 'suffragette', name: 'Suffragette line', mode: 'overground', color: '#EE7C0E' },
   { id: 'liberty', name: 'Liberty line', mode: 'overground', color: '#EE7C0E' },
 
-  // Docklands Light Railway
+  // Docklands Light Railway (1)
   { id: 'dlr', name: 'DLR', mode: 'dlr', color: '#00A4A7' },
 ] as const;
 
@@ -65,3 +56,5 @@ export function isValidLineId(id: string): boolean {
 export function getLinesByMode(mode: LineMode): readonly TflLine[] {
   return TFL_LINES.filter((line) => line.mode === mode);
 }
+
+export type { LineMode, TflLine };

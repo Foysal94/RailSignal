@@ -8,15 +8,20 @@ import {
 } from '../src/lines.js';
 
 describe('TfL Line Definitions', () => {
-  it('Should_contain_all_core_london_transit_lines', () => {
-    expect(TFL_LINES.length).toBeGreaterThanOrEqual(14);
+  it('Should_contain_exactly_19_canonical_london_transit_lines', () => {
+    expect(TFL_LINES.length).toBe(19);
     expect(TFL_LINE_IDS).toContain('bakerloo');
     expect(TFL_LINE_IDS).toContain('central');
     expect(TFL_LINE_IDS).toContain('northern');
     expect(TFL_LINE_IDS).toContain('victoria');
     expect(TFL_LINE_IDS).toContain('elizabeth');
     expect(TFL_LINE_IDS).toContain('dlr');
-    expect(TFL_LINE_IDS).toContain('london-overground');
+    expect(TFL_LINE_IDS).toContain('lioness');
+    expect(TFL_LINE_IDS).toContain('mildmay');
+    expect(TFL_LINE_IDS).toContain('windrush');
+    expect(TFL_LINE_IDS).toContain('weaver');
+    expect(TFL_LINE_IDS).toContain('suffragette');
+    expect(TFL_LINE_IDS).toContain('liberty');
   });
 
   it('Should_flag_northern_line_for_contrast_border', () => {
@@ -37,7 +42,13 @@ describe('TfL Line Definitions', () => {
     expect(tubeLines.every((line) => line.mode === 'tube')).toBe(true);
 
     const overgroundLines = getLinesByMode('overground');
-    expect(overgroundLines.length).toBeGreaterThan(0);
+    expect(overgroundLines.length).toBe(6);
     expect(overgroundLines.every((line) => line.mode === 'overground')).toBe(true);
+
+    const elizabethLines = getLinesByMode('elizabeth-line');
+    expect(elizabethLines.length).toBe(1);
+
+    const dlrLines = getLinesByMode('dlr');
+    expect(dlrLines.length).toBe(1);
   });
 });

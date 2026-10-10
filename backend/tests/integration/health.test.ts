@@ -1,12 +1,18 @@
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
+import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../../src/app.js';
 
 describe('GET /api/health', () => {
-  it('Should_return_200_and_healthy_status_when_health_endpoint_is_called', async () => {
-    const app = buildApp();
-    afterAll(async () => {
+  let app: FastifyInstance;
+
+  afterEach(async () => {
+    if (app) {
       await app.close();
-    });
+    }
+  });
+
+  it('Should_return_200_and_healthy_status_when_health_endpoint_is_called', async () => {
+    app = buildApp();
 
     const response = await app.inject({
       method: 'GET',
