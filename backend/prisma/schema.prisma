@@ -14,8 +14,6 @@ model Subscription {
   unsubscribeToken        String   @default(uuid())
   lastNotifiedWeekendDate String?  // ISO Date string "YYYY-MM-DD" for alert deduplication/idempotency
   createdAt               DateTime @default(now())
-
-  @@index([email])
 }
 
 model WeekendDisruption {

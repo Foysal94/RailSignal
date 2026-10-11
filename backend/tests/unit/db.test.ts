@@ -1,15 +1,13 @@
 import { describe, it, expect, afterAll, beforeEach } from 'vitest';
 import { prisma } from '../../src/db.js';
 
-describe('Prisma Persistence Integration', () => {
+describe('Prisma Persistence Unit Tests', () => {
   beforeEach(async () => {
     await prisma.subscription.deleteMany();
     await prisma.weekendDisruption.deleteMany();
   });
 
   afterAll(async () => {
-    await prisma.subscription.deleteMany();
-    await prisma.weekendDisruption.deleteMany();
     await prisma.$disconnect();
   });
 

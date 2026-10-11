@@ -27,9 +27,6 @@ CREATE TABLE "WeekendDisruption" (
 CREATE UNIQUE INDEX "Subscription_email_key" ON "Subscription"("email");
 
 -- CreateIndex
-CREATE INDEX "Subscription_email_idx" ON "Subscription"("email");
-
--- CreateIndex
 CREATE INDEX "WeekendDisruption_lineId_idx" ON "WeekendDisruption"("lineId");
 
 -- CreateIndex
