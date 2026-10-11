@@ -1,2 +1,2 @@
 export * from './lines.js';
-export * from './contracts.js';
+export * from './contracts/index.js';

@@ -1,20 +1,6 @@
+import { STATUS_CODES } from 'node:http';
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import type { ProblemDetails } from '@railsignal/shared';
-
-const HTTP_STATUS_TITLES: Readonly<Record<number, string>> = {
-  400: 'Bad Request',
-  401: 'Unauthorized',
-  403: 'Forbidden',
-  404: 'Not Found',
-  405: 'Method Not Allowed',
-  409: 'Conflict',
-  422: 'Unprocessable Entity',
-  429: 'Too Many Requests',
-  500: 'Internal Server Error',
-  502: 'Bad Gateway',
-  503: 'Service Unavailable',
-  504: 'Gateway Timeout',
-};
 
 const RFC_9457_TYPE = 'https://datatracker.ietf.org/doc/html/rfc9457';
 
@@ -30,7 +16,8 @@ export function errorHandler(
       ? error.statusCode
       : 500;
 
-  const title = HTTP_STATUS_TITLES[status] || (status >= 500 ? 'Internal Server Error' : 'Error');
+  // Use Node's built-in STATUS_CODES dictionary for RFC 9457 title
+  const title = STATUS_CODES[status] || (status >= 500 ? 'Internal Server Error' : 'Error');
   const instance = request.url.split('?')[0] || request.url;
 
   let detail: string;
@@ -65,6 +52,7 @@ export function errorHandler(
     status,
     detail,
     instance,
+    // Only include invalidParams if present (omitted completely for non-validation errors)
     ...(invalidParams ? { invalidParams } : {}),
   };
 
@@ -81,7 +69,7 @@ export function notFoundHandler(
   const instance = request.url.split('?')[0] || request.url;
   const problem: ProblemDetails = {
     type: RFC_9457_TYPE,
-    title: 'Not Found',
+    title: STATUS_CODES[404] || 'Not Found',
     status: 404,
     detail: `Route ${request.method} ${instance} not found`,
     instance,
