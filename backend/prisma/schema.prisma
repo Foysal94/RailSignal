@@ -1,0 +1,36 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Subscription {
+  id                      String   @id @default(uuid())
+  email                   String   @unique
+  subscribedLineIds       String   // JSON stringified array of line IDs (e.g. '["northern","victoria"]')
+  unsubscribeToken        String   @default(uuid())
+  lastNotifiedWeekendDate String?  // ISO Date string "YYYY-MM-DD" for alert deduplication/idempotency
+  createdAt               DateTime @default(now())
+
+  @@index([email])
+}
+
+model WeekendDisruption {
+  id                        String   @id @default(uuid())
+  lineId                    String
+  lineName                  String
+  mode                      String   // "tube", "elizabeth-line", "overground", "dlr"
+  statusSeverityDescription String   // "Part Closure", "Planned Closure", etc.
+  corridorDescription       String   // E.g. "No service between Camden Town and High Barnet"
+  weekendDate               String   // ISO Date "YYYY-MM-DD"
+  validFrom                 DateTime
+  validTo                   DateTime
+  sourceLastUpdated         DateTime
+  projectedAt               DateTime @default(now())
+
+  @@index([lineId])
+  @@index([weekendDate])
+}

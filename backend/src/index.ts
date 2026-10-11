@@ -1,5 +1,6 @@
 import { buildApp } from './app.js';
 import { config } from './config.js';
+import { prisma } from './db.js';
 
 const app = buildApp({
   logger: {
@@ -25,6 +26,7 @@ async function shutdown(signal: string): Promise<void> {
 
   try {
     await app.close();
+    await prisma.$disconnect();
     app.log.info('Server closed successfully');
     process.exit(0);
   } catch (error) {
