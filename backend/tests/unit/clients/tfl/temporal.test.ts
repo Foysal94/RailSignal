@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   getUpcomingWeekendWindow,
   isDisruptionInWindow,
-} from '../../src/clients/tflTemporal.js';
+} from '../../../../src/clients/tfl/temporal.js';
 
 describe('TfL Temporal - Weekend Window & Filtering', () => {
   it('Should_calculate_upcoming_weekend_window_during_weekday_midweek', () => {

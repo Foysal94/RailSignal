@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseTflDisruptions } from '../../src/clients/tflParser.js';
+import { parseTflDisruptions } from '../../../../src/clients/tfl/parser.js';
 
 describe('TfL Parser - Disruption Payload Normalization', () => {
   const mockWeekendWindow = {
