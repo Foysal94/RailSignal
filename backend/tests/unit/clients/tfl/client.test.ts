@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { TflClient, createTflResiliencePolicy, TflHttpError } from '../../src/clients/tflClient.js';
+import {
+  TflClient,
+  createTflResiliencePolicy,
+  TflHttpError,
+} from '../../../../src/clients/tfl/index.js';
 
 describe('TfL Client - HTTP Transport Orchestration', () => {
   it('Should_fetch_and_return_raw_disruptions_passing_app_key_and_headers', async () => {

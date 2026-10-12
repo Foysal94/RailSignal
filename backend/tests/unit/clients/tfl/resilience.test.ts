@@ -1,11 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   createTflResiliencePolicy,
   TflHttpError,
   BrokenCircuitError,
   TaskCancelledError,
   isTransientError,
-} from '../../src/clients/tflResilience.js';
+} from '../../../../src/clients/tfl/resilience.js';
 
 describe('TfL Resilience - Cockatiel Policy & Error Handling', () => {
   it('Should_classify_429_and_5xx_and_network_drops_as_transient', () => {

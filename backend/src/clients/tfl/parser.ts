@@ -1,49 +1,20 @@
 import {
   TFL_LINES,
   TFL_LINES_BY_ID,
-  type LineMode,
   type TflLine,
 } from '@railsignal/shared';
-import { type WeekendWindow, isDisruptionInWindow } from './tflTemporal.js';
+import { isDisruptionInWindow } from './temporal.js';
+import {
+  type RawTflDisruption,
+  type ParsedDisruption,
+  type ParseTflDisruptionsOptions,
+} from './types.js';
 
-export interface RawTflAffectedRoute {
-  id?: string | undefined;
-  lineId?: string | undefined;
-  routeCode?: string | undefined;
-  name?: string | undefined;
-  direction?: string | undefined;
-  originationName?: string | undefined;
-  destinationName?: string | undefined;
-  validFrom?: string | undefined;
-  validTo?: string | undefined;
-}
-
-export interface RawTflDisruption {
-  $type?: string | undefined;
-  category?: string | undefined;
-  type?: string | undefined;
-  categoryDescription?: string | undefined;
-  description: string;
-  summary?: string | undefined;
-  additionalInfo?: string | undefined;
-  created?: string | undefined;
-  lastUpdate?: string | undefined;
-  affectedRoutes?: RawTflAffectedRoute[] | undefined;
-  affectedStops?: unknown[] | undefined;
-  closureText?: string | undefined;
-}
-
-export interface ParsedDisruption {
-  lineId: string;
-  lineName: string;
-  mode: LineMode;
-  statusSeverityDescription: string;
-  corridorDescription: string;
-  weekendDate: string;
-  validFrom: string;
-  validTo: string;
-  sourceLastUpdated: string;
-}
+export {
+  type RawTflDisruption,
+  type ParsedDisruption,
+  type ParseTflDisruptionsOptions,
+};
 
 const LINE_ID_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   'hammersmith-and-city': 'hammersmith-city',
@@ -131,11 +102,6 @@ export function cleanCorridorDescription(description: string, lineName?: string)
   if (!lineName) return description.trim();
   const prefixRegex = new RegExp(`^${lineName}(\\s+line)?\\s*:\\s*`, 'i');
   return description.replace(prefixRegex, '').trim() || description.trim();
-}
-
-export interface ParseTflDisruptionsOptions {
-  disruptions: RawTflDisruption[];
-  weekendWindow: WeekendWindow;
 }
 
 /**
