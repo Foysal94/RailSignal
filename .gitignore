@@ -154,4 +154,7 @@ vite.config.ts.timestamp-*
 # Turbo Repo
 .turbo
 
+# React Email preview cache
+.react-email/
+
 .DS_Store
