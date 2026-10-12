@@ -18,7 +18,7 @@
 - **Returns & Primitives:** Return typed interfaces/objects; never positional array tuples `[data, error]`. No artificial `Result<T>` wrappers.
 - **Parameters:** For methods with 3+ arguments, use a single typed options object instead of positional arguments.
 - **Comments (Why, Never What):** Zero tautological comments (`// fetch data`). Mandatory rationale comments for non-obvious logic: vendor quirks, framework traps, temporal edge cases, or domain heuristics.
-- **Testing Scope:** Unit test exported pure modules directly. "No Test Visibility Widening" strictly forbids exposing private class state or route handlers, not standalone helper modules.
+- **Encapsulation & Extraction:** Never expose private class members or route handlers purely for test access. If unexported helper logic requires dedicated unit testing, extract it into a focused pure module (e.g., date math, payload parsers) and test that module's public contract directly.
 
 ## Testing Standards
 - Runner: Vitest with Fastify `app.inject()` for in-memory integration testing.
