@@ -45,19 +45,40 @@ export interface ParsedDisruption {
   sourceLastUpdated: string;
 }
 
-// TfL route IDs often use non-standard slugs or alternate spellings
 const LINE_ID_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   'hammersmith-and-city': 'hammersmith-city',
   'waterloo-and-city': 'waterloo-city',
   'elizabeth-line': 'elizabeth',
 });
 
+// Declarative pattern table for lines frequently mentioned only in free-text descriptions
+const DESCRIPTION_LINE_PATTERNS: ReadonlyArray<{ pattern: RegExp; id: string }> = [
+  { pattern: /\b(docklands light railway|dlr)\b/i, id: 'dlr' },
+  { pattern: /\belizabeth(\s+line)?\b/i, id: 'elizabeth' },
+  { pattern: /\bhammersmith\s*(&|and)\s*city\b/i, id: 'hammersmith-city' },
+  { pattern: /\bwaterloo\s*(&|and)\s*city\b/i, id: 'waterloo-city' },
+];
+
+const CLOSURE_TEXT_MAP: Readonly<Record<string, string>> = Object.freeze({
+  partclosure: 'Part Closure',
+  partsuspended: 'Part Suspended',
+  plannedclosure: 'Planned Closure',
+  fullclosure: 'Planned Closure',
+  closure: 'Planned Closure',
+});
+
+const DESCRIPTION_SEVERITY_PATTERNS: ReadonlyArray<{ pattern: RegExp; severity: string }> = [
+  { pattern: /part[- ]closure/i, severity: 'Part Closure' },
+  { pattern: /part suspended/i, severity: 'Part Suspended' },
+  { pattern: /(planned closure|closed between)/i, severity: 'Planned Closure' },
+  { pattern: /reduced service/i, severity: 'Reduced Service' },
+  { pattern: /minor delays/i, severity: 'Minor Delays' },
+  { pattern: /severe delays/i, severity: 'Severe Delays' },
+];
+
 /**
  * Resolves a TfL line from either an affected route lineId or text heuristics in the description.
- * 
- * Rationale:
- * TfL Unified API disruption records frequently omit the route entity or provide empty lineId fields,
- * requiring fallback pattern matching on line names inside free-text descriptions.
+ * TfL API disruption records frequently omit the route entity or provide empty lineId fields.
  */
 export function resolveTflLine(rawLineId?: string, description?: string): TflLine | undefined {
   if (rawLineId) {
@@ -69,25 +90,13 @@ export function resolveTflLine(rawLineId?: string, description?: string): TflLin
   }
 
   if (description) {
-    const desc = description.toLowerCase();
-
-    // Specific multi-word or alias checks first to avoid ambiguous substring collisions
-    if (desc.includes('docklands light railway') || /\bdlr\b/.test(desc)) {
-      return TFL_LINES_BY_ID['dlr'];
-    }
-    if (desc.includes('elizabeth line') || /\belizabeth\b/.test(desc)) {
-      return TFL_LINES_BY_ID['elizabeth'];
-    }
-    if (desc.includes('hammersmith & city') || desc.includes('hammersmith and city')) {
-      return TFL_LINES_BY_ID['hammersmith-city'];
-    }
-    if (desc.includes('waterloo & city') || desc.includes('waterloo and city')) {
-      return TFL_LINES_BY_ID['waterloo-city'];
+    const matchedAlias = DESCRIPTION_LINE_PATTERNS.find(({ pattern }) => pattern.test(description));
+    if (matchedAlias && TFL_LINES_BY_ID[matchedAlias.id]) {
+      return TFL_LINES_BY_ID[matchedAlias.id];
     }
 
     for (const line of TFL_LINES) {
-      const lineNameLower = line.name.toLowerCase();
-      const regex = new RegExp(`\\b${lineNameLower}(\\s+line)?\\b`, 'i');
+      const regex = new RegExp(`\\b${line.name.toLowerCase()}(\\s+line)?\\b`, 'i');
       if (regex.test(description)) {
         return line;
       }
@@ -103,22 +112,13 @@ export function resolveTflLine(rawLineId?: string, description?: string): TflLin
  */
 export function resolveStatusSeverityDescription(closureText?: string, description?: string): string {
   if (closureText) {
-    const lower = closureText.toLowerCase();
-    if (lower === 'partclosure') return 'Part Closure';
-    if (lower === 'partsuspended') return 'Part Suspended';
-    if (lower === 'plannedclosure' || lower === 'fullclosure' || lower === 'closure') {
-      return 'Planned Closure';
-    }
+    const mapped = CLOSURE_TEXT_MAP[closureText.toLowerCase()];
+    if (mapped) return mapped;
   }
 
   if (description) {
-    const lower = description.toLowerCase();
-    if (lower.includes('part closure') || lower.includes('part-closure')) return 'Part Closure';
-    if (lower.includes('planned closure') || lower.includes('closed between')) return 'Planned Closure';
-    if (lower.includes('part suspended')) return 'Part Suspended';
-    if (lower.includes('reduced service')) return 'Reduced Service';
-    if (lower.includes('minor delays')) return 'Minor Delays';
-    if (lower.includes('severe delays')) return 'Severe Delays';
+    const matched = DESCRIPTION_SEVERITY_PATTERNS.find(({ pattern }) => pattern.test(description));
+    if (matched) return matched.severity;
   }
 
   return 'Planned Closure';
@@ -128,12 +128,9 @@ export function resolveStatusSeverityDescription(closureText?: string, descripti
  * Strips repetitive line name prefixes from description text (e.g. "Northern line: No service...").
  */
 export function cleanCorridorDescription(description: string, lineName?: string): string {
-  let cleaned = description.trim();
-  if (lineName) {
-    const prefixRegex = new RegExp(`^${lineName}(\\s+line)?\\s*:\\s*`, 'i');
-    cleaned = cleaned.replace(prefixRegex, '').trim();
-  }
-  return cleaned || description.trim();
+  if (!lineName) return description.trim();
+  const prefixRegex = new RegExp(`^${lineName}(\\s+line)?\\s*:\\s*`, 'i');
+  return description.replace(prefixRegex, '').trim() || description.trim();
 }
 
 export interface ParseTflDisruptionsOptions {
@@ -155,9 +152,7 @@ export function parseTflDisruptions(options: ParseTflDisruptionsOptions): Parsed
 
     for (const route of routes) {
       const line = resolveTflLine(route?.lineId, raw.description);
-      if (!line) {
-        continue;
-      }
+      if (!line) continue;
 
       const validFromStr = route?.validFrom || raw.created || weekendWindow.windowStart.toISOString();
       const validToStr = route?.validTo || weekendWindow.windowEnd.toISOString();
@@ -168,17 +163,13 @@ export function parseTflDisruptions(options: ParseTflDisruptionsOptions): Parsed
         window: weekendWindow,
       });
 
-      if (!overlaps) {
-        continue;
-      }
+      if (!overlaps) continue;
 
       const severity = resolveStatusSeverityDescription(raw.closureText, raw.description);
       const corridor = cleanCorridorDescription(raw.description, line.name);
       const dedupeKey = `${line.id}:${weekendWindow.weekendDate}:${corridor}`;
 
-      if (seenKeys.has(dedupeKey)) {
-        continue;
-      }
+      if (seenKeys.has(dedupeKey)) continue;
       seenKeys.add(dedupeKey);
 
       results.push({
