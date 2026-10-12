@@ -3,7 +3,7 @@ import React from 'react';
 import {
   ResendEmailClient,
   type Logger,
-} from '../../src/email/resendClient.js';
+} from '../../../src/email/resendClient.js';
 
 describe('ResendEmailClient', () => {
   it('Should_use_mock_fallback_and_log_html_when_resend_api_key_is_omitted_in_development', async () => {
@@ -45,6 +45,19 @@ describe('ResendEmailClient', () => {
         html: '<p>Production alert</p>',
       })
     ).rejects.toThrow(/RESEND_API_KEY is required in production/);
+  });
+
+  it('Should_throw_an_error_when_neither_react_element_nor_html_string_is_provided', async () => {
+    const client = new ResendEmailClient({
+      nodeEnv: 'development',
+    });
+
+    await expect(
+      client.sendEmail({
+        to: 'commuter@example.com',
+        subject: 'Empty email',
+      })
+    ).rejects.toThrow('Either react element or html string must be provided');
   });
 
   it('Should_compile_react_template_and_send_email_via_resend_sdk_when_api_key_is_provided', async () => {

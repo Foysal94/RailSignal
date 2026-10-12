@@ -83,8 +83,8 @@ export default function DisruptionDigest(props: DisruptionDigestProps = {}): Rea
                     key={`${item.lineId}-${index}`}
                     style={{
                       ...emailStyles.card,
-                      borderLeft: `6px solid ${lineColor}`,
                       border: hasContrastBorder ? '1px solid #94a3b8' : '1px solid #e2e8f0',
+                      borderLeft: `6px solid ${lineColor}`,
                     }}
                   >
                     <table style={emailStyles.fullWidthTable}>

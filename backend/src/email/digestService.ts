@@ -6,7 +6,7 @@ import type { SendDisruptionDigestOptions, SendEmailOptions } from './types.js';
 
 /**
  * Transforms disruption digest domain parameters into a fully configured email
- * dispatch payload, including RFC 8058 one-click list-unsubscribe headers.
+ * dispatch payload, including RFC 8058 one-click list-unsubscribe headers when available.
  */
 export function buildDigestEmailPayload(
   options: SendDisruptionDigestOptions
@@ -22,12 +22,18 @@ export function buildDigestEmailPayload(
 
   const unsubscribeUrl =
     options.digest.unsubscribeUrl ??
-    `https://railsignal.london/unsubscribe?token=${encodeURIComponent(options.digest.unsubscribeToken ?? '')}`;
+    (options.digest.unsubscribeToken
+      ? `https://railsignal.london/unsubscribe?token=${encodeURIComponent(options.digest.unsubscribeToken)}`
+      : undefined);
 
   // RFC 8058 one-click list-unsubscribe headers for inbox deliverability
   const headers: Record<string, string> = {
-    'List-Unsubscribe': `<${unsubscribeUrl}>`,
-    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    ...(unsubscribeUrl
+      ? {
+          'List-Unsubscribe': `<${unsubscribeUrl}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        }
+      : {}),
     ...options.headers,
   };
 

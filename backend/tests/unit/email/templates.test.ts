@@ -3,7 +3,7 @@ import { render } from '@react-email/render';
 import React from 'react';
 import DisruptionDigest, {
   type DisruptionDigestProps,
-} from '../../src/email/templates/DisruptionDigest.js';
+} from '../../../src/email/templates/DisruptionDigest.js';
 
 describe('DisruptionDigest email template', () => {
   it('Should_render_disruption_digest_with_line_status_cards_brand_colors_and_corridor_details', async () => {
@@ -48,9 +48,9 @@ describe('DisruptionDigest email template', () => {
     expect(html).toContain('Planned Closure');
     expect(html).toContain('No service between Camden Town and High Barnet.');
 
-    // Verifies inlined CSS property generation required by desktop and mobile email clients
-    expect(html).toMatch(/border-left:\s*6px solid #E32017/i);
-    expect(html).toMatch(/border-left:\s*6px solid #000000/i);
+    // Verifies border is declared before border-left so shorthand border does not overwrite brand color bar
+    expect(html).toMatch(/border:[^;]*;[^"]*border-left:\s*6px solid #E32017/i);
+    expect(html).toMatch(/border:[^;]*;[^"]*border-left:\s*6px solid #000000/i);
     expect(html).toMatch(/background-color:\s*#f8fafc/i);
   });
 
