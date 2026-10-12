@@ -1,5 +1,6 @@
 import { buildApp } from './app.js';
 import { config } from './config.js';
+import { prisma } from './db.js';
 
 const app = buildApp({
   logger: {
@@ -26,10 +27,12 @@ async function shutdown(signal: string): Promise<void> {
   try {
     await app.close();
     app.log.info('Server closed successfully');
-    process.exit(0);
   } catch (error) {
     app.log.error(error, 'Error during graceful shutdown');
-    process.exit(1);
+    process.exitCode = 1;
+  } finally {
+    await prisma.$disconnect();
+    process.exit(process.exitCode ?? 0);
   }
 }
 

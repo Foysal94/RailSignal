@@ -8,15 +8,19 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:prep-prod": "node -e \"const fs = require('fs'); const file = 'prisma/schema.prisma'; const content = fs.readFileSync(file, 'utf8'); fs.writeFileSync(file, content.replace(/provider\\s*=\\s*\\\"sqlite\\\"/, 'provider = \\\"postgresql\\\"'));\""
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "@railsignal/shared": "*",
     "@sinclair/typebox": "^0.34.46",
     "fastify": "^5.2.1"
   },
   "devDependencies": {
     "@types/node": "^22.13.9",
+    "prisma": "^6.19.3",
     "tsx": "^4.19.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.11"
