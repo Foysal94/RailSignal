@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import {
   ResendEmailClient,
-  type SendEmailOptions,
   type Logger,
 } from '../../src/email/resendClient.js';
 
@@ -81,6 +80,7 @@ describe('ResendEmailClient', () => {
     expect(callArgs.subject).toBe('Weekend Disruption Alert');
     expect(callArgs.from).toBe('RailSignal <test@railsignal.london>');
     expect(callArgs.html).toContain('Live test email');
+    expect(callArgs.text).toContain('Live test email');
   });
 
   it('Should_throw_an_error_when_resend_sdk_returns_an_api_error', async () => {
@@ -111,17 +111,50 @@ describe('ResendEmailClient', () => {
     ).rejects.toThrow('Invalid email recipient address');
   });
 
-  it('Should_send_disruption_digest_convenience_method_successfully', async () => {
-    const loggedMessages: string[] = [];
-    const mockLogger: Logger = {
-      info: (msg: string) => loggedMessages.push(msg),
-      warn: (msg: string) => loggedMessages.push(msg),
-      error: (msg: string) => loggedMessages.push(msg),
-    };
+  it('Should_retry_on_transient_rate_limit_and_succeed_when_subsequent_request_passes', async () => {
+    const mockSend = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Rate limit exceeded: 429 too many requests'))
+      .mockResolvedValueOnce({
+        data: { id: 'email_after_retry_456' },
+        error: null,
+      });
 
     const client = new ResendEmailClient({
-      nodeEnv: 'development',
-      logger: mockLogger,
+      nodeEnv: 'production',
+      resendApiKey: 're_live_key',
+      resendInstance: {
+        emails: {
+          send: mockSend,
+        },
+      } as any,
+    });
+
+    const result = await client.sendEmail({
+      to: 'commuter@example.com',
+      subject: 'Alert with retry',
+      html: '<p>Content</p>',
+    });
+
+    expect(result.delivered).toBe(true);
+    expect(result.id).toBe('email_after_retry_456');
+    expect(mockSend).toHaveBeenCalledTimes(2);
+  });
+
+  it('Should_send_disruption_digest_with_rfc_8058_unsubscribe_headers', async () => {
+    const mockSend = vi.fn().mockResolvedValue({
+      data: { id: 'email_digest_789' },
+      error: null,
+    });
+
+    const client = new ResendEmailClient({
+      nodeEnv: 'production',
+      resendApiKey: 're_live_key',
+      resendInstance: {
+        emails: {
+          send: mockSend,
+        },
+      } as any,
     });
 
     const result = await client.sendDisruptionDigest({
@@ -140,13 +173,15 @@ describe('ResendEmailClient', () => {
           },
         ],
         unsubscribeToken: 'token_123',
+        unsubscribeUrl: 'https://railsignal.london/unsubscribe?token=token_123',
       },
     });
 
-    expect(result.delivered).toBe(false);
-    expect(result.mocked).toBe(true);
-    expect(loggedMessages.some((msg) => msg.includes('Central') && msg.includes('Part Closure'))).toBe(
-      true
-    );
+    expect(result.delivered).toBe(true);
+    const callArgs = mockSend.mock.calls[0]![0];
+    expect(callArgs.headers['List-Unsubscribe']).toBe('<https://railsignal.london/unsubscribe?token=token_123>');
+    expect(callArgs.headers['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click');
+    expect(callArgs.html).toContain('Central');
+    expect(callArgs.text).toContain('Central');
   });
 });

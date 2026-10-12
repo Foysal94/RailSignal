@@ -36,26 +36,22 @@ describe('DisruptionDigest email template', () => {
 
     const html = await render(React.createElement(DisruptionDigest, props));
 
-    // Verify header branding
     expect(html).toContain('RailSignal');
     expect(html).toContain('Weekend Disruption Digest');
     expect(html).toContain('Friday 16 Oct, 19:00 – Monday 19 Oct, 04:30 UK Local Time');
 
-    // Verify Central line card details
     expect(html).toContain('Central');
     expect(html).toContain('Part Closure');
     expect(html).toContain('No service between White City and West Ruislip.');
-    expect(html).toContain('#E32017');
 
-    // Verify Northern line card details
     expect(html).toContain('Northern');
     expect(html).toContain('Planned Closure');
     expect(html).toContain('No service between Camden Town and High Barnet.');
-    expect(html).toContain('#000000');
 
-    // Verify CSS inlining
-    expect(html).toContain('style="');
-    expect(html).toContain('border-left:');
+    // Verifies inlined CSS property generation required by desktop and mobile email clients
+    expect(html).toMatch(/border-left:\s*6px solid #E32017/i);
+    expect(html).toMatch(/border-left:\s*6px solid #000000/i);
+    expect(html).toMatch(/background-color:\s*#f8fafc/i);
   });
 
   it('Should_render_good_service_notice_when_no_disruptions_are_present', async () => {
@@ -86,6 +82,7 @@ describe('DisruptionDigest email template', () => {
 
     expect(html).toContain('https://railsignal.london/unsubscribe?token=token_abc_xyz_789');
     expect(html).toContain('Unsubscribe');
+    expect(html).toContain('token_abc_xyz_789');
   });
 
   it('Should_render_default_preview_content_when_props_are_omitted', async () => {
