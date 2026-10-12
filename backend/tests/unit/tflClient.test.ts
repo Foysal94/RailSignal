@@ -1,7 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   getUpcomingWeekendWindow,
   isDisruptionInWindow,
+  parseTflDisruptions,
+  TflClient,
+  createTflResiliencePolicy,
+  TflHttpError,
+  BrokenCircuitError,
+  TaskCancelledError,
 } from '../../src/clients/tflClient.js';
 
 describe('TfL Client - Weekend Window & Temporal Filtering', () => {
@@ -317,9 +323,20 @@ describe('TfL Client - Disruption Payload Parsing', () => {
 });
 
 describe('TfL Client - Cockatiel HTTP Resilience & Transport', () => {
-  it('Should_retry_3_times_with_exponential_backoff_on_simulated_503_Service_Unavailable_and_succeed', async () => {
-    const { TflClient, createTflResiliencePolicy } = await import('../../src/clients/tflClient.js');
+  function createTestClient(mockFetch: typeof fetch, policyOptions?: Record<string, unknown>) {
+    const fastPolicy = createTflResiliencePolicy({
+      maxRetries: 3,
+      initialDelayMs: 1,
+      maxDelayMs: 10,
+      ...policyOptions,
+    });
+    return new TflClient({
+      fetchFn: mockFetch,
+      policy: fastPolicy,
+    });
+  }
 
+  it('Should_retry_3_times_with_exponential_backoff_on_simulated_503_Service_Unavailable_and_succeed', async () => {
     let callCount = 0;
     const mockFetch = vi.fn().mockImplementation(async () => {
       callCount++;
@@ -337,25 +354,13 @@ describe('TfL Client - Cockatiel HTTP Resilience & Transport', () => {
       });
     });
 
-    const fastPolicy = createTflResiliencePolicy({
-      maxRetries: 3,
-      initialDelayMs: 1,
-      maxDelayMs: 10,
-    });
-
-    const client = new TflClient({
-      fetchFn: mockFetch as unknown as typeof fetch,
-      policy: fastPolicy,
-    });
-
+    const client = createTestClient(mockFetch as unknown as typeof fetch);
     const result = await client.fetchRawDisruptions();
     expect(result).toEqual([]);
     expect(callCount).toBe(3);
   });
 
   it('Should_retry_on_simulated_429_Too_Many_Requests_and_succeed', async () => {
-    const { TflClient, createTflResiliencePolicy } = await import('../../src/clients/tflClient.js');
-
     let callCount = 0;
     const mockFetch = vi.fn().mockImplementation(async () => {
       callCount++;
@@ -371,81 +376,39 @@ describe('TfL Client - Cockatiel HTTP Resilience & Transport', () => {
       });
     });
 
-    const fastPolicy = createTflResiliencePolicy({
-      maxRetries: 3,
-      initialDelayMs: 1,
-      maxDelayMs: 10,
-    });
-
-    const client = new TflClient({
-      fetchFn: mockFetch as unknown as typeof fetch,
-      policy: fastPolicy,
-    });
-
+    const client = createTestClient(mockFetch as unknown as typeof fetch);
     const result = await client.fetchRawDisruptions();
     expect(result).toHaveLength(1);
     expect(callCount).toBe(2);
   });
 
   it('Should_exhaust_all_3_retries_and_throw_TflHttpError_when_503_persists', async () => {
-    const { TflClient, createTflResiliencePolicy, TflHttpError } = await import(
-      '../../src/clients/tflClient.js'
-    );
-
     let callCount = 0;
     const mockFetch = vi.fn().mockImplementation(async () => {
       callCount++;
       return new Response('Down', { status: 503, statusText: 'Service Unavailable' });
     });
 
-    const fastPolicy = createTflResiliencePolicy({
-      maxRetries: 3,
-      initialDelayMs: 1,
-      maxDelayMs: 10,
-    });
-
-    const client = new TflClient({
-      fetchFn: mockFetch as unknown as typeof fetch,
-      policy: fastPolicy,
-    });
-
+    const client = createTestClient(mockFetch as unknown as typeof fetch);
     await expect(client.fetchRawDisruptions()).rejects.toThrow(TflHttpError);
     // 1 initial try + 3 retries = 4 total calls
     expect(callCount).toBe(4);
   });
 
   it('Should_not_retry_non_transient_client_errors_such_as_400_Bad_Request', async () => {
-    const { TflClient, createTflResiliencePolicy, TflHttpError } = await import(
-      '../../src/clients/tflClient.js'
-    );
-
     let callCount = 0;
     const mockFetch = vi.fn().mockImplementation(async () => {
       callCount++;
       return new Response('Bad request', { status: 400, statusText: 'Bad Request' });
     });
 
-    const fastPolicy = createTflResiliencePolicy({
-      maxRetries: 3,
-      initialDelayMs: 1,
-      maxDelayMs: 10,
-    });
-
-    const client = new TflClient({
-      fetchFn: mockFetch as unknown as typeof fetch,
-      policy: fastPolicy,
-    });
-
+    const client = createTestClient(mockFetch as unknown as typeof fetch);
     await expect(client.fetchRawDisruptions()).rejects.toThrow(TflHttpError);
     // Non-transient errors must fail immediately without retrying
     expect(callCount).toBe(1);
   });
 
   it('Should_open_circuit_breaker_after_5_consecutive_failed_requests_and_fast_fail_further_calls', async () => {
-    const { TflClient, createTflResiliencePolicy, BrokenCircuitError } = await import(
-      '../../src/clients/tflClient.js'
-    );
-
     let fetchCalls = 0;
     const mockFetch = vi.fn().mockImplementation(async () => {
       fetchCalls++;
@@ -453,21 +416,15 @@ describe('TfL Client - Cockatiel HTTP Resilience & Transport', () => {
     });
 
     // Policy configured with breaker tripping after 5 consecutive failures
-    const breakerPolicy = createTflResiliencePolicy({
-      maxRetries: 0, // 0 retries so each client call = 1 failure to breaker
+    const client = createTestClient(mockFetch as unknown as typeof fetch, {
+      maxRetries: 0,
       circuitBreakerConsecutiveFailures: 5,
       circuitBreakerHalfOpenMs: 30000,
-      initialDelayMs: 1,
-    });
-
-    const client = new TflClient({
-      fetchFn: mockFetch as unknown as typeof fetch,
-      policy: breakerPolicy,
     });
 
     // Execute 5 consecutive failing requests
     for (let i = 0; i < 5; i++) {
-      await expect(client.fetchRawDisruptions()).rejects.toThrow();
+      await expect(client.fetchRawDisruptions()).rejects.toThrow(TflHttpError);
     }
     expect(fetchCalls).toBe(5);
 
@@ -477,32 +434,23 @@ describe('TfL Client - Cockatiel HTTP Resilience & Transport', () => {
   });
 
   it('Should_abort_request_via_timeout_policy_signal_when_request_stalls', async () => {
-    const { TflClient, createTflResiliencePolicy } = await import('../../src/clients/tflClient.js');
-
     const mockFetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
       return new Promise((resolve, reject) => {
         init?.signal?.addEventListener('abort', () => {
-          reject(new Error('Request aborted by signal'));
+          reject(new TaskCancelledError('Cancelled by policy timeout'));
         });
       });
     });
 
-    const fastTimeoutPolicy = createTflResiliencePolicy({
+    const client = createTestClient(mockFetch as unknown as typeof fetch, {
       maxRetries: 0,
       timeoutMs: 30, // 30ms timeout
     });
 
-    const client = new TflClient({
-      fetchFn: mockFetch as unknown as typeof fetch,
-      policy: fastTimeoutPolicy,
-    });
-
-    await expect(client.fetchRawDisruptions()).rejects.toThrow();
+    await expect(client.fetchRawDisruptions()).rejects.toThrow(TaskCancelledError);
   });
 
   it('Should_fetch_and_return_parsed_weekend_disruptions_end_to_end', async () => {
-    const { TflClient } = await import('../../src/clients/tflClient.js');
-
     const sampleDisruptions = [
       {
         description: 'Jubilee Line: No service between Waterloo and Stanmore.',

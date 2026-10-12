@@ -8,6 +8,7 @@ import {
   decorrelatedJitterGenerator,
   ConsecutiveBreaker,
   BrokenCircuitError,
+  TaskCancelledError,
   TimeoutStrategy,
   type IPolicy,
 } from 'cockatiel';
@@ -20,19 +21,25 @@ import {
   type TflLine,
 } from '@railsignal/shared';
 
-export { BrokenCircuitError };
+export { BrokenCircuitError, TaskCancelledError };
+
+export interface TflHttpErrorOptions {
+  status: number;
+  statusText: string;
+  body?: string | undefined;
+}
 
 export class TflHttpError extends Error {
   public readonly status: number;
   public readonly isTransient: boolean;
 
-  constructor(status: number, statusText: string, body?: string) {
-    const detail = body ? `: ${body}` : '';
-    super(`TfL Unified API request failed with status ${status} (${statusText})${detail}`);
+  constructor(options: TflHttpErrorOptions) {
+    const detail = options.body ? `: ${options.body}` : '';
+    super(`TfL Unified API request failed with status ${options.status} (${options.statusText})${detail}`);
     this.name = 'TflHttpError';
-    this.status = status;
-    // 429 Too Many Requests and 5xx Server Errors are transient network/server conditions
-    this.isTransient = status === 429 || (status >= 500 && status <= 599);
+    this.status = options.status;
+    // 429 Too Many Requests and 5xx Server Errors represent transient downstream capacity issues
+    this.isTransient = options.status === 429 || (options.status >= 500 && options.status <= 599);
   }
 }
 
@@ -43,22 +50,43 @@ export function isTransientError(error: unknown): boolean {
   if (error instanceof BrokenCircuitError) {
     return false;
   }
-  // Abort errors, timeouts (TaskCancelledError), and socket drops are transient
-  return true;
+  if (error instanceof TaskCancelledError) {
+    return true;
+  }
+  if (error instanceof Error) {
+    if (error.name === 'AbortError') {
+      return true;
+    }
+    // Network drops, socket timeouts, and connection aborts from Undici/Node fetch
+    if (
+      error.message.includes('fetch failed') ||
+      error.message.includes('network') ||
+      error.message.includes('ECONN') ||
+      error.message.includes('ETIMEDOUT')
+    ) {
+      return true;
+    }
+    // Deterministic programming errors must never be retried
+    if (error instanceof TypeError || error instanceof SyntaxError || error instanceof RangeError) {
+      return false;
+    }
+  }
+  return false;
 }
 
 export interface ResiliencePolicyOptions {
-  maxRetries?: number;
-  timeoutMs?: number;
-  circuitBreakerConsecutiveFailures?: number;
-  circuitBreakerHalfOpenMs?: number;
-  initialDelayMs?: number;
-  maxDelayMs?: number;
+  maxRetries?: number | undefined;
+  timeoutMs?: number | undefined;
+  circuitBreakerConsecutiveFailures?: number | undefined;
+  circuitBreakerHalfOpenMs?: number | undefined;
+  initialDelayMs?: number | undefined;
+  maxDelayMs?: number | undefined;
 }
 
 /**
- * Creates a composite Cockatiel resilience policy for TfL API calls mirroring .NET Polly architecture (ADR 0004).
- * Order of composition: CircuitBreaker (outer) -> Retry (middle) -> Timeout (inner).
+ * Creates a composite Cockatiel resilience policy for TfL API calls mirroring .NET Polly v8 pipeline.
+ * Order of composition: Retry (outer) -> CircuitBreaker (middle) -> Timeout (inner).
+ * This ensures the circuit breaker observes every individual network attempt and fast-fails downstream calls when tripped.
  */
 export function createTflResiliencePolicy(options?: ResiliencePolicyOptions): IPolicy {
   const maxRetries = options?.maxRetries ?? 3;
@@ -84,7 +112,7 @@ export function createTflResiliencePolicy(options?: ResiliencePolicyOptions): IP
 
   const timeoutPolicy = timeout(timeoutMs, TimeoutStrategy.Aggressive);
 
-  return wrap(breakerPolicy, retryPolicy, timeoutPolicy);
+  return wrap(retryPolicy, breakerPolicy, timeoutPolicy);
 }
 
 export interface WeekendWindow {
@@ -94,34 +122,34 @@ export interface WeekendWindow {
 }
 
 export interface WeekendWindowOptions {
-  referenceDate?: Date;
+  referenceDate?: Date | undefined;
 }
 
 export interface RawTflAffectedRoute {
-  id?: string;
-  lineId?: string;
-  routeCode?: string;
-  name?: string;
-  direction?: string;
-  originationName?: string;
-  destinationName?: string;
-  validFrom?: string;
-  validTo?: string;
+  id?: string | undefined;
+  lineId?: string | undefined;
+  routeCode?: string | undefined;
+  name?: string | undefined;
+  direction?: string | undefined;
+  originationName?: string | undefined;
+  destinationName?: string | undefined;
+  validFrom?: string | undefined;
+  validTo?: string | undefined;
 }
 
 export interface RawTflDisruption {
-  $type?: string;
-  category?: string;
-  type?: string;
-  categoryDescription?: string;
+  $type?: string | undefined;
+  category?: string | undefined;
+  type?: string | undefined;
+  categoryDescription?: string | undefined;
   description: string;
-  summary?: string;
-  additionalInfo?: string;
-  created?: string;
-  lastUpdate?: string;
-  affectedRoutes?: RawTflAffectedRoute[];
-  affectedStops?: unknown[];
-  closureText?: string;
+  summary?: string | undefined;
+  additionalInfo?: string | undefined;
+  created?: string | undefined;
+  lastUpdate?: string | undefined;
+  affectedRoutes?: RawTflAffectedRoute[] | undefined;
+  affectedStops?: unknown[] | undefined;
+  closureText?: string | undefined;
 }
 
 export interface ParsedDisruption {
@@ -136,10 +164,6 @@ export interface ParsedDisruption {
   sourceLastUpdated: string;
 }
 
-/**
- * Calculates the Friday 19:00 to Monday 04:30 London local time weekend window,
- * taking UK Daylight Saving Time (BST/GMT) and transition boundaries into account.
- */
 export function getUpcomingWeekendWindow(options?: WeekendWindowOptions): WeekendWindow {
   const ref = options?.referenceDate ?? new Date();
   const londonDate = new TZDate(ref, 'Europe/London');
@@ -147,40 +171,46 @@ export function getUpcomingWeekendWindow(options?: WeekendWindowOptions): Weeken
   const hours = londonDate.getHours();
   const minutes = londonDate.getMinutes();
 
-  let daysToFriday = 0;
-  if (day === 5) {
-    // Friday: current/incoming weekend starts today at 19:00 London time
-    daysToFriday = 0;
-  } else if (day === 6) {
-    // Saturday: active weekend started yesterday (Friday)
-    daysToFriday = -1;
-  } else if (day === 0) {
-    // Sunday: active weekend started 2 days ago (Friday)
-    daysToFriday = -2;
-  } else if (day === 1) {
-    // Monday: prior to 04:30 London time, the weekend window is still actively ongoing.
-    // At or after 04:30 London time, the past weekend has closed; advance to coming Friday.
-    if (hours < 4 || (hours === 4 && minutes < 30)) {
-      daysToFriday = -3;
-    } else {
-      daysToFriday = 4;
-    }
-  } else if (day === 2) {
-    daysToFriday = 3;
-  } else if (day === 3) {
-    daysToFriday = 2;
-  } else if (day === 4) {
-    daysToFriday = 1;
+  // Days offset to upcoming/current Friday
+  const weekdayOffsets: Record<number, number> = {
+    5: 0,  // Friday
+    6: -1, // Saturday
+    0: -2, // Sunday
+    2: 3,  // Tuesday
+    3: 2,  // Wednesday
+    4: 1,  // Thursday
+  };
+
+  let daysToFriday: number;
+  if (day === 1) {
+    // Monday prior to 04:30 London time is still active weekend; after 04:30 advance to next Friday
+    daysToFriday = (hours < 4 || (hours === 4 && minutes < 30)) ? -3 : 4;
+  } else {
+    daysToFriday = weekdayOffsets[day] ?? 0;
   }
 
   const targetFriday = addDays(londonDate, daysToFriday);
-  const y = targetFriday.getFullYear();
-  const m = targetFriday.getMonth();
-  const d = targetFriday.getDate();
+  const targetMonday = addDays(targetFriday, 3);
 
   // Friday 19:00 to Monday 04:30 UK local time
-  const windowStart = new TZDate(y, m, d, 19, 0, 0, 'Europe/London');
-  const windowEnd = new TZDate(y, m, d + 3, 4, 30, 0, 'Europe/London');
+  const windowStart = new TZDate(
+    targetFriday.getFullYear(),
+    targetFriday.getMonth(),
+    targetFriday.getDate(),
+    19,
+    0,
+    0,
+    'Europe/London'
+  );
+  const windowEnd = new TZDate(
+    targetMonday.getFullYear(),
+    targetMonday.getMonth(),
+    targetMonday.getDate(),
+    4,
+    30,
+    0,
+    'Europe/London'
+  );
   const weekendDate = format(windowStart, 'yyyy-MM-dd');
 
   return {
@@ -191,14 +221,11 @@ export function getUpcomingWeekendWindow(options?: WeekendWindowOptions): Weeken
 }
 
 export interface IsDisruptionInWindowOptions {
-  validFrom?: string | Date;
-  validTo?: string | Date;
+  validFrom?: string | Date | undefined;
+  validTo?: string | Date | undefined;
   window: WeekendWindow;
 }
 
-/**
- * Checks whether a disruption interval overlaps with the designated weekend window.
- */
 export function isDisruptionInWindow(options: IsDisruptionInWindowOptions): boolean {
   const { validFrom, validTo, window } = options;
   const startMs = window.windowStart.getTime();
@@ -218,7 +245,6 @@ const LINE_ID_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   'hammersmith-and-city': 'hammersmith-city',
   'waterloo-and-city': 'waterloo-city',
   'elizabeth-line': 'elizabeth',
-  'london-overground': 'overground',
 });
 
 function resolveTflLine(rawLineId?: string, description?: string): TflLine | undefined {
@@ -297,10 +323,6 @@ export interface ParseTflDisruptionsOptions {
   weekendWindow: WeekendWindow;
 }
 
-/**
- * Parses raw TfL disruption items into normalized domain models strictly filtered
- * to the upcoming weekend window, deduplicating records on (lineId, weekendDate, corridorDescription).
- */
 export function parseTflDisruptions(options: ParseTflDisruptionsOptions): ParsedDisruption[] {
   const { disruptions, weekendWindow } = options;
   const results: ParsedDisruption[] = [];
@@ -355,16 +377,13 @@ export function parseTflDisruptions(options: ParseTflDisruptionsOptions): Parsed
 }
 
 export interface TflClientOptions {
-  baseUrl?: string;
-  appKey?: string;
-  fetchFn?: typeof fetch;
-  policy?: IPolicy;
-  policyOptions?: ResiliencePolicyOptions;
+  baseUrl?: string | undefined;
+  appKey?: string | undefined;
+  fetchFn?: typeof fetch | undefined;
+  policy?: IPolicy | undefined;
+  policyOptions?: ResiliencePolicyOptions | undefined;
 }
 
-/**
- * Resilient HTTP client calling the TfL Unified API wrapped in Cockatiel resilience policies.
- */
 export class TflClient {
   private readonly baseUrl: string;
   private readonly appKey: string | undefined;
@@ -397,7 +416,11 @@ export class TflClient {
 
       if (!response.ok) {
         const bodyText = await response.text().catch(() => '');
-        throw new TflHttpError(response.status, response.statusText, bodyText);
+        throw new TflHttpError({
+          status: response.status,
+          statusText: response.statusText,
+          body: bodyText,
+        });
       }
 
       return (await response.json()) as RawTflDisruption[];
