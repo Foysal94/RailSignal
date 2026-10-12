@@ -125,14 +125,22 @@ generator client {
 }
 
 model Subscription {
-  id                      String   @id @default(uuid())
-  email                   String   @unique
-  subscribedLineIds       String   // JSON stringified array of line IDs (e.g. '["northern","victoria"]')
-  unsubscribeToken        String   @default(uuid())
-  lastNotifiedWeekendDate String?  // ISO Date string "YYYY-MM-DD" for alert deduplication/idempotency
-  createdAt               DateTime @default(now())
+  id                      String             @id @default(uuid())
+  email                   String             @unique
+  unsubscribeToken        String             @unique @default(uuid())
+  lastNotifiedWeekendDate String?            // ISO Date string "YYYY-MM-DD" for alert deduplication/idempotency
+  createdAt               DateTime           @default(now())
+  lines                   SubscriptionLine[]
+}
 
-  @@index([email])
+model SubscriptionLine {
+  id             String       @id @default(uuid())
+  subscriptionId String
+  lineId         String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, lineId])
+  @@index([lineId])
 }
 
 model WeekendDisruption {
@@ -150,6 +158,7 @@ model WeekendDisruption {
 
   @@index([lineId])
   @@index([weekendDate])
+  @@unique([lineId, weekendDate, corridorDescription])
 }
 ```
 

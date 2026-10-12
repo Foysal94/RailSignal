@@ -10,7 +10,7 @@ Unlike EF Core in .NET which allows runtime provider swapping (`options.UseSqlit
 
 ## Decision
 1. Maintain a single canonical `backend/prisma/schema.prisma` targeting `provider = "sqlite"` for local development.
-2. Structure all models and data types to be strictly SQLite-compatible (e.g. serialize arrays such as `subscribedLineIds` as JSON strings).
+2. Structure all models and data types to be normalized and strictly compatible across both SQLite and PostgreSQL dialects. Model multi-value associations using relational junction tables (`SubscriptionLine` with cascade delete and compound unique constraints) rather than dialect-dependent array types or denormalized JSON strings, maintaining First Normal Form (1NF) and enabling high-performance indexed B-tree lookups during digest dispatch across both engines.
 3. Introduce an automated pre-build script (`prisma:prep-prod`) in `backend/package.json` that replaces `provider = "sqlite"` with `provider = "postgresql"` during cloud Docker builds and CI pipelines prior to executing `prisma generate` and `prisma migrate deploy`.
 
 ## Consequences
