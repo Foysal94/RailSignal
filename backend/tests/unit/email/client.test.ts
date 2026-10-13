@@ -272,6 +272,10 @@ describe('EmailClient', () => {
   });
 
   it('Should_delegate_calls_via_lazy_emailClient_proxy_singleton', async () => {
+    expect('sendEmail' in emailClient).toBe(true);
+    expect('sendDisruptionDigest' in emailClient).toBe(true);
+    expect(emailClient).toBeInstanceOf(EmailClient);
+
     const result = await emailClient.sendEmail({
       to: 'lazy@example.com',
       subject: 'Lazy proxy test',

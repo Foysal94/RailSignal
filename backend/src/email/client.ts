@@ -102,7 +102,8 @@ export class EmailClient {
       });
 
       if (res.error) {
-        throw new Error(res.error.message);
+        const prefix = res.error.name ? `${res.error.name}: ` : '';
+        throw new Error(`${prefix}${res.error.message}`);
       }
 
       return res;
@@ -154,14 +155,21 @@ export function getEmailClient(): EmailClient {
   return _defaultClient;
 }
 
+export function resetEmailClient(): void {
+  _defaultClient = null;
+}
+
 /**
  * Lazy singleton proxy. Defers initialization until first method call so configuration
- * and environment variables are guaranteed to be populated, while preserving method `this` context.
+ * and environment variables are guaranteed to be populated, preserving prototypes and method binding.
  */
-export const emailClient = new Proxy({} as EmailClient, {
+export const emailClient = new Proxy(Object.create(EmailClient.prototype) as EmailClient, {
   get(_target, prop, receiver) {
     const instance = getEmailClient();
     const value = Reflect.get(instance, prop, receiver);
     return typeof value === 'function' ? value.bind(instance) : value;
+  },
+  has(_target, prop) {
+    return prop in getEmailClient();
   },
 });

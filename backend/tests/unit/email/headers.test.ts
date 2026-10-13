@@ -78,6 +78,33 @@ describe('buildUnsubscribeHeaders', () => {
     });
   });
 
+  it('Should_override_case_insensitive_colliding_custom_headers', () => {
+    const headers = buildUnsubscribeHeaders(
+      { unsubscribeUrl: 'https://railsignal.london/unsubscribe?id=123' },
+      {
+        'list-unsubscribe': 'lowercase-override-attempt',
+        'list-unsubscribe-post': 'lowercase-post-attempt',
+        'X-Keep-Me': 'valid',
+      },
+    );
+
+    expect(headers).toEqual({
+      'X-Keep-Me': 'valid',
+      'List-Unsubscribe': '<https://railsignal.london/unsubscribe?id=123>',
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    });
+  });
+
+  it('Should_normalize_pre_bracketed_unsubscribe_urls_to_prevent_double_brackets', () => {
+    const headers = buildUnsubscribeHeaders({
+      unsubscribeUrl: '<https://railsignal.london/unsubscribe?prebracketed=1>',
+    });
+
+    expect(headers['List-Unsubscribe']).toBe(
+      '<https://railsignal.london/unsubscribe?prebracketed=1>',
+    );
+  });
+
   it('Should_return_empty_object_when_no_digest_fields_and_no_custom_headers_are_provided', () => {
     const headers = buildUnsubscribeHeaders({});
     expect(headers).toEqual({});
