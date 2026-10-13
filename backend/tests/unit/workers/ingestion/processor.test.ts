@@ -6,7 +6,9 @@ import { processIngestionJob } from '../../../../src/workers/ingestion/processor
 
 describe('Ingestion Processor Unit Tests', () => {
   beforeEach(async () => {
-    await prisma.weekendDisruption.deleteMany();
+    await prisma.weekendDisruption.deleteMany({
+      where: { lineId: 'processor-victoria' },
+    });
   });
 
   afterAll(async () => {
@@ -14,7 +16,7 @@ describe('Ingestion Processor Unit Tests', () => {
   });
 
   const mockDisruption: ParsedDisruption = {
-    lineId: 'victoria',
+    lineId: 'processor-victoria',
     lineName: 'Victoria',
     mode: 'tube',
     statusSeverityDescription: 'Planned Closure',
@@ -40,10 +42,10 @@ describe('Ingestion Processor Unit Tests', () => {
     expect(result.totalFetched).toBe(1);
     expect(result.totalUpserted).toBe(1);
     expect(result.disruptions).toHaveLength(1);
-    expect(result.disruptions[0].lineId).toBe('victoria');
+    expect(result.disruptions[0].lineId).toBe('processor-victoria');
 
     const persisted = await prisma.weekendDisruption.findFirst({
-      where: { lineId: 'victoria' },
+      where: { lineId: 'processor-victoria' },
     });
     expect(persisted).not.toBeNull();
     expect(persisted?.corridorDescription).toBe(mockDisruption.corridorDescription);
@@ -65,7 +67,9 @@ describe('Ingestion Processor Unit Tests', () => {
     expect(result.totalUpserted).toBe(0);
     expect(result.disruptions).toHaveLength(0);
 
-    const count = await prisma.weekendDisruption.count();
+    const count = await prisma.weekendDisruption.count({
+      where: { lineId: 'processor-victoria' },
+    });
     expect(count).toBe(0);
   });
 

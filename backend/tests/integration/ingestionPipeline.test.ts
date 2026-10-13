@@ -46,7 +46,9 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
 
   beforeEach(async () => {
     notificationQueueDouble = new InMemoryQueueDouble();
-    await prisma.weekendDisruption.deleteMany();
+    await prisma.weekendDisruption.deleteMany({
+      where: { lineId: { startsWith: 'pipeline-' } },
+    });
   });
 
   afterAll(async () => {
@@ -108,6 +110,7 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
 
     // Verify observable Prisma SQLite persistence
     const persisted = await prisma.weekendDisruption.findMany({
+      where: { lineId: { startsWith: 'pipeline-' } },
       orderBy: { lineId: 'asc' },
     });
     expect(persisted).toHaveLength(2);
@@ -146,10 +149,18 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     };
 
     await handler(mockJob as never);
-    expect(await prisma.weekendDisruption.count()).toBe(2);
+    expect(
+      await prisma.weekendDisruption.count({
+        where: { lineId: { startsWith: 'pipeline-' } },
+      }),
+    ).toBe(2);
 
     await handler(mockJob as never);
-    expect(await prisma.weekendDisruption.count()).toBe(2);
+    expect(
+      await prisma.weekendDisruption.count({
+        where: { lineId: { startsWith: 'pipeline-' } },
+      }),
+    ).toBe(2);
 
     const modifiedDisruptions: ParsedDisruption[] = [
       {
@@ -198,7 +209,11 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
 
     expect(result.totalFetched).toBe(0);
     expect(result.totalUpserted).toBe(0);
-    expect(await prisma.weekendDisruption.count()).toBe(0);
+    expect(
+      await prisma.weekendDisruption.count({
+        where: { lineId: { startsWith: 'pipeline-' } },
+      }),
+    ).toBe(0);
 
     // Downstream notification worker is still notified so subscribers receive normal service status
     expect(notificationQueueDouble.jobs).toHaveLength(1);

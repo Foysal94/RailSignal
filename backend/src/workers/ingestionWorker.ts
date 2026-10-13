@@ -105,8 +105,13 @@ export function createIngestionWorker(
   return worker;
 }
 
-export const ingestionWorker = createIngestionWorker();
+export const ingestionWorker =
+  config.nodeEnv !== 'test'
+    ? createIngestionWorker()
+    : (undefined as unknown as Worker<IngestJobData, IngestJobResult, string>);
 
 export async function closeIngestionWorker(): Promise<void> {
-  await ingestionWorker.close();
+  if (ingestionWorker) {
+    await ingestionWorker.close();
+  }
 }

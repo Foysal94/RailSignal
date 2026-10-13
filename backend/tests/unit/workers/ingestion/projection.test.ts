@@ -5,7 +5,9 @@ import { projectDisruptions } from '../../../../src/workers/ingestion/projection
 
 describe('Disruption Projection Persistence', () => {
   beforeEach(async () => {
-    await prisma.weekendDisruption.deleteMany();
+    await prisma.weekendDisruption.deleteMany({
+      where: { lineId: 'projection-northern' },
+    });
   });
 
   afterAll(async () => {
@@ -31,7 +33,9 @@ describe('Disruption Projection Persistence', () => {
     });
 
     expect(firstResult.totalUpserted).toBe(1);
-    const countAfterFirst = await prisma.weekendDisruption.count();
+    const countAfterFirst = await prisma.weekendDisruption.count({
+      where: { lineId: 'projection-northern' },
+    });
     expect(countAfterFirst).toBe(1);
 
     const secondResult = await projectDisruptions({
@@ -40,7 +44,9 @@ describe('Disruption Projection Persistence', () => {
     });
 
     expect(secondResult.totalUpserted).toBe(1);
-    const countAfterSecond = await prisma.weekendDisruption.count();
+    const countAfterSecond = await prisma.weekendDisruption.count({
+      where: { lineId: 'projection-northern' },
+    });
     expect(countAfterSecond).toBe(1);
   });
 
@@ -79,7 +85,9 @@ describe('Disruption Projection Persistence', () => {
     });
 
     expect(result.totalUpserted).toBe(1);
-    const count = await prisma.weekendDisruption.count();
+    const count = await prisma.weekendDisruption.count({
+      where: { lineId: 'projection-northern' },
+    });
     expect(count).toBe(1);
   });
 });

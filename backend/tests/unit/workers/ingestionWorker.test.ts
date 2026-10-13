@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import type { Job } from 'bullmq';
 import { describe, expect, it, vi } from 'vitest';
 import { QUEUE_NAMES } from '../../../src/queues/queues.js';
@@ -8,20 +9,19 @@ import {
 
 describe('Ingestion Worker Lifecycle & Downstream Orchestration', () => {
   it('Should_configure_worker_with_upstash_quota_safeguards_and_correct_queue_name', async () => {
-    const mockConnection = {
+    const mockConnection = Object.assign(new EventEmitter(), {
       options: {
         maxRetriesPerRequest: null,
         enableReadyCheck: false,
       },
-      duplicate: () => mockConnection,
-      on: vi.fn(),
-      once: vi.fn(),
-      emit: vi.fn(),
-      removeListener: vi.fn(),
+      connect: vi.fn().mockResolvedValue(undefined),
       disconnect: vi.fn(),
+      duplicate: () => mockConnection,
       quit: vi.fn().mockResolvedValue('OK'),
       status: 'ready',
-    };
+      info: vi.fn().mockResolvedValue('redis_version:7.0.0\r\nmaxmemory_policy:noeviction\r\n'),
+      defineCommand: vi.fn(),
+    });
 
     const worker = createIngestionWorker({
       connection: mockConnection as never,
