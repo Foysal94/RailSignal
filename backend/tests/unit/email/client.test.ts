@@ -1,9 +1,11 @@
+import type { IPolicy } from 'cockatiel';
 import React from 'react';
 import type { Resend } from 'resend';
 import { describe, expect, it, vi } from 'vitest';
-import { type Logger, ResendEmailClient } from '../../../src/email/resendClient.js';
+import { createEmailClient, EmailClient, emailClient } from '../../../src/email/client.js';
+import type { Logger } from '../../../src/email/types.js';
 
-describe('ResendEmailClient', () => {
+describe('EmailClient', () => {
   it('Should_use_mock_fallback_and_log_html_when_resend_api_key_is_omitted_in_development', async () => {
     const loggedMessages: string[] = [];
     const mockLogger: Logger = {
@@ -12,7 +14,7 @@ describe('ResendEmailClient', () => {
       error: (msg: string) => loggedMessages.push(msg),
     };
 
-    const client = new ResendEmailClient({
+    const client = new EmailClient({
       nodeEnv: 'development',
       logger: mockLogger,
     });
@@ -31,7 +33,7 @@ describe('ResendEmailClient', () => {
   });
 
   it('Should_throw_an_error_when_api_key_is_omitted_in_production', async () => {
-    const client = new ResendEmailClient({
+    const client = new EmailClient({
       nodeEnv: 'production',
       resendApiKey: undefined,
     });
@@ -46,7 +48,7 @@ describe('ResendEmailClient', () => {
   });
 
   it('Should_throw_an_error_when_neither_react_element_nor_html_string_is_provided', async () => {
-    const client = new ResendEmailClient({
+    const client = new EmailClient({
       nodeEnv: 'development',
     });
 
@@ -64,7 +66,7 @@ describe('ResendEmailClient', () => {
       error: null,
     });
 
-    const client = new ResendEmailClient({
+    const client = new EmailClient({
       nodeEnv: 'development',
       resendApiKey: 're_test_key_abc',
       resendInstance: {
@@ -103,7 +105,7 @@ describe('ResendEmailClient', () => {
       },
     });
 
-    const client = new ResendEmailClient({
+    const client = new EmailClient({
       nodeEnv: 'production',
       resendApiKey: 're_live_key',
       resendInstance: {
@@ -131,7 +133,7 @@ describe('ResendEmailClient', () => {
         error: null,
       });
 
-    const client = new ResendEmailClient({
+    const client = new EmailClient({
       nodeEnv: 'production',
       resendApiKey: 're_live_key',
       resendInstance: {
@@ -152,13 +154,48 @@ describe('ResendEmailClient', () => {
     expect(mockSend).toHaveBeenCalledTimes(2);
   });
 
-  it('Should_send_disruption_digest_with_rfc_8058_unsubscribe_headers', async () => {
+  it('Should_accept_custom_retry_policy_in_constructor_options_for_test_isolation', async () => {
+    const mockSend = vi.fn().mockResolvedValue({
+      data: { id: 'email_custom_policy_111' },
+      error: null,
+    });
+
+    const executedPolicySpies: string[] = [];
+    const customPolicy: IPolicy = {
+      execute: async (fn) => {
+        executedPolicySpies.push('custom_policy_executed');
+        return fn({ attempt: 1 } as never);
+      },
+    } as unknown as IPolicy;
+
+    const client = new EmailClient({
+      nodeEnv: 'production',
+      resendApiKey: 're_live_key',
+      retryPolicy: customPolicy,
+      resendInstance: {
+        emails: {
+          send: mockSend,
+        },
+      } as unknown as Resend,
+    });
+
+    const result = await client.sendEmail({
+      to: 'commuter@example.com',
+      subject: 'Custom policy test',
+      html: '<p>Custom policy</p>',
+    });
+
+    expect(result.delivered).toBe(true);
+    expect(executedPolicySpies).toContain('custom_policy_executed');
+  });
+
+  it('Should_send_disruption_digest_with_rfc_8058_unsubscribe_headers_and_rendered_template', async () => {
     const mockSend = vi.fn().mockResolvedValue({
       data: { id: 'email_digest_789' },
       error: null,
     });
 
-    const client = new ResendEmailClient({
+    const client = new EmailClient({
       nodeEnv: 'production',
       resendApiKey: 're_live_key',
       resendInstance: {
@@ -196,5 +233,52 @@ describe('ResendEmailClient', () => {
     expect(callArgs.headers['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click');
     expect(callArgs.html).toContain('Central');
     expect(callArgs.text).toContain('Central');
+  });
+
+  it('Should_preserve_custom_subject_and_from_when_sending_disruption_digest', async () => {
+    const mockSend = vi.fn().mockResolvedValue({
+      data: { id: 'email_custom_digest_999' },
+      error: null,
+    });
+
+    const client = new EmailClient({
+      nodeEnv: 'production',
+      resendApiKey: 're_live_key',
+      resendInstance: {
+        emails: {
+          send: mockSend,
+        },
+      } as unknown as Resend,
+    });
+
+    await client.sendDisruptionDigest({
+      to: 'subscriber@example.com',
+      from: 'Custom Sender <custom@railsignal.london>',
+      subject: 'Custom Disruption Radar Subject',
+      digest: {
+        weekendDate: '2026-10-16',
+        disruptions: [],
+      },
+    });
+
+    const callArgs = mockSend.mock.calls[0]?.[0];
+    expect(callArgs.from).toBe('Custom Sender <custom@railsignal.london>');
+    expect(callArgs.subject).toBe('Custom Disruption Radar Subject');
+  });
+
+  it('Should_instantiate_via_createEmailClient_factory', () => {
+    const client = createEmailClient({ nodeEnv: 'development' });
+    expect(client).toBeInstanceOf(EmailClient);
+  });
+
+  it('Should_delegate_calls_via_lazy_emailClient_proxy_singleton', async () => {
+    const result = await emailClient.sendEmail({
+      to: 'lazy@example.com',
+      subject: 'Lazy proxy test',
+      html: '<p>Lazy</p>',
+    });
+
+    expect(result.mocked).toBe(true);
+    expect(result.delivered).toBe(false);
   });
 });
