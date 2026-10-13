@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  TFL_LINES,
-  TFL_LINE_IDS,
+  getLinesByMode,
   getTflLineById,
   isValidLineId,
-  getLinesByMode,
+  TFL_LINE_IDS,
+  TFL_LINES,
 } from '../src/lines.js';
 
 describe('TfL Line Definitions', () => {

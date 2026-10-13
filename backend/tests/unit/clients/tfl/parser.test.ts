@@ -1,11 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { TZDate } from '@date-fns/tz';
+import { describe, expect, it } from 'vitest';
 import { parseTflDisruptions } from '../../../../src/clients/tfl/parser.js';
+import type { WeekendWindow } from '../../../../src/clients/tfl/types.js';
 
 describe('TfL Parser - Disruption Payload Normalization', () => {
-  const mockWeekendWindow = {
+  const mockWeekendWindow: WeekendWindow = {
     weekendDate: '2026-07-10',
-    windowStart: new Date('2026-07-10T18:00:00.000Z'), // Friday 19:00 BST
-    windowEnd: new Date('2026-07-13T03:30:00.000Z'),   // Monday 04:30 BST
+    windowStart: new TZDate('2026-07-10T18:00:00.000Z', 'Europe/London'), // Friday 19:00 BST
+    windowEnd: new TZDate('2026-07-13T03:30:00.000Z', 'Europe/London'), // Monday 04:30 BST
   };
 
   it('Should_parse_raw_tfl_disruption_with_affected_routes_matching_canonical_line', () => {
@@ -14,7 +16,8 @@ describe('TfL Parser - Disruption Payload Normalization', () => {
         $type: 'Tfl.Api.Presentation.Entities.Disruption, Tfl.Api.Presentation.Entities',
         category: 'PlannedWork',
         categoryDescription: 'PlannedWork',
-        description: 'Piccadilly Line: No service between Acton Town and Uxbridge due to track renewal.',
+        description:
+          'Piccadilly Line: No service between Acton Town and Uxbridge due to track renewal.',
         closureText: 'partClosure',
         created: '2026-07-01T10:00:00Z',
         lastUpdate: '2026-07-05T12:00:00Z',
@@ -33,7 +36,7 @@ describe('TfL Parser - Disruption Payload Normalization', () => {
 
     const parsed = parseTflDisruptions({
       disruptions: rawDisruptions,
-      weekendWindow: mockWeekendWindow as any,
+      weekendWindow: mockWeekendWindow,
     });
 
     expect(parsed).toHaveLength(1);
@@ -56,7 +59,8 @@ describe('TfL Parser - Disruption Payload Normalization', () => {
         $type: 'Tfl.Api.Presentation.Entities.Disruption, Tfl.Api.Presentation.Entities',
         category: 'PlannedWork',
         categoryDescription: 'PlannedWork',
-        description: 'Northern Line: No service between Camden Town and High Barnet due to station improvements.',
+        description:
+          'Northern Line: No service between Camden Town and High Barnet due to station improvements.',
         closureText: 'partClosure',
         created: '2026-07-01T10:00:00Z',
         lastUpdate: '2026-07-05T12:00:00Z',
@@ -67,7 +71,7 @@ describe('TfL Parser - Disruption Payload Normalization', () => {
 
     const parsed = parseTflDisruptions({
       disruptions: rawDisruptions,
-      weekendWindow: mockWeekendWindow as any,
+      weekendWindow: mockWeekendWindow,
     });
 
     expect(parsed).toHaveLength(1);
@@ -76,7 +80,7 @@ describe('TfL Parser - Disruption Payload Normalization', () => {
     expect(parsed[0]?.mode).toBe('tube');
     expect(parsed[0]?.statusSeverityDescription).toBe('Part Closure');
     expect(parsed[0]?.corridorDescription).toBe(
-      'No service between Camden Town and High Barnet due to station improvements.'
+      'No service between Camden Town and High Barnet due to station improvements.',
     );
   });
 
@@ -101,7 +105,7 @@ describe('TfL Parser - Disruption Payload Normalization', () => {
 
     const parsed = parseTflDisruptions({
       disruptions: rawDisruptions,
-      weekendWindow: mockWeekendWindow as any,
+      weekendWindow: mockWeekendWindow,
     });
 
     expect(parsed).toHaveLength(3);
@@ -141,7 +145,7 @@ describe('TfL Parser - Disruption Payload Normalization', () => {
 
     const parsed = parseTflDisruptions({
       disruptions: rawDisruptions,
-      weekendWindow: mockWeekendWindow as any,
+      weekendWindow: mockWeekendWindow,
     });
 
     expect(parsed).toHaveLength(1);
@@ -164,7 +168,7 @@ describe('TfL Parser - Disruption Payload Normalization', () => {
 
     const parsed = parseTflDisruptions({
       disruptions: duplicateRaw,
-      weekendWindow: mockWeekendWindow as any,
+      weekendWindow: mockWeekendWindow,
     });
 
     expect(parsed).toHaveLength(1);

@@ -15,6 +15,12 @@
     "build": "npm run build:shared && npm run build:backend && npm run build:client",
     "dev": "npm run build:shared && npm run dev --workspace=@railsignal/backend",
     "test": "npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15"
   }
 }

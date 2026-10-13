@@ -7,7 +7,6 @@
     "dev": "echo 'Client dev server'",
     "build": "tsc --noEmit",
     "test": "echo 'No tests yet'",
-    "lint": "echo 'Linting client'",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

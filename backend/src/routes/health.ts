@@ -1,5 +1,5 @@
-import type { FastifyPluginAsync } from 'fastify';
 import { HealthResponseSchema } from '@railsignal/shared';
+import type { FastifyPluginAsync } from 'fastify';
 
 export const healthRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
@@ -13,6 +13,6 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async () => {
       return { status: 'healthy' };
-    }
+    },
   );
 };

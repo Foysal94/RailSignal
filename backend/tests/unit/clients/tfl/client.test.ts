@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
-  TflClient,
   createTflResiliencePolicy,
+  TflClient,
   TflHttpError,
 } from '../../../../src/clients/tfl/index.js';
 
@@ -12,7 +12,7 @@ describe('TfL Client - HTTP Transport Orchestration', () => {
         status: 200,
         statusText: 'OK',
         headers: { 'Content-Type': 'application/json' },
-      })
+      }),
     );
 
     const client = new TflClient({
@@ -30,7 +30,7 @@ describe('TfL Client - HTTP Transport Orchestration', () => {
       expect.objectContaining({
         method: 'GET',
         headers: { Accept: 'application/json' },
-      })
+      }),
     );
   });
 
@@ -39,7 +39,7 @@ describe('TfL Client - HTTP Transport Orchestration', () => {
       new Response('Service Unavailable', {
         status: 503,
         statusText: 'Service Unavailable',
-      })
+      }),
     );
 
     const client = new TflClient({
@@ -69,7 +69,7 @@ describe('TfL Client - HTTP Transport Orchestration', () => {
       new Response(JSON.stringify(sampleDisruptions), {
         status: 200,
         statusText: 'OK',
-      })
+      }),
     );
 
     const client = new TflClient({

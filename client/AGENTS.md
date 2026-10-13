@@ -6,7 +6,8 @@
 - Dev Server: `npm run dev` (inside `/client`)
 - Build: `npm run build`
 - Run Tests: `npm run test`
-- Lint & Typecheck: `npm run lint && npm run typecheck`
+- Typecheck: `npm run typecheck`
+- Lint & Format: Execute at monorepo root via `npm run lint` / `npm run format`
 
 ## Architecture & Conventions
 - **API Client Layer:** All HTTP calls route through `src/api/client.ts` to the local Fastify backend. Never call external third-party vendor APIs directly from the browser.

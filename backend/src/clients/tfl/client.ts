@@ -1,20 +1,12 @@
-import { type IPolicy } from 'cockatiel';
+import type { IPolicy } from 'cockatiel';
+import { parseTflDisruptions } from './parser.js';
 import {
   createTflResiliencePolicy,
-  TflHttpError,
   type ResiliencePolicyOptions,
+  TflHttpError,
 } from './resilience.js';
-import {
-  getUpcomingWeekendWindow,
-} from './temporal.js';
-import {
-  parseTflDisruptions,
-} from './parser.js';
-import {
-  type RawTflDisruption,
-  type ParsedDisruption,
-  type WeekendWindowOptions,
-} from './types.js';
+import { getUpcomingWeekendWindow } from './temporal.js';
+import type { ParsedDisruption, RawTflDisruption, WeekendWindowOptions } from './types.js';
 
 export interface TflClientOptions {
   baseUrl?: string | undefined;
@@ -43,9 +35,7 @@ export class TflClient {
   }
 
   public async fetchRawDisruptions(): Promise<RawTflDisruption[]> {
-    const url = new URL(
-      `${this.baseUrl}/Line/Mode/tube,elizabeth-line,overground,dlr/Disruption`
-    );
+    const url = new URL(`${this.baseUrl}/Line/Mode/tube,elizabeth-line,overground,dlr/Disruption`);
     if (this.appKey) {
       url.searchParams.set('app_key', this.appKey);
     }

@@ -1,16 +1,16 @@
 import {
-  retry,
-  timeout,
-  circuitBreaker,
-  wrap,
-  handleWhen,
-  ExponentialBackoff,
-  decorrelatedJitterGenerator,
-  ConsecutiveBreaker,
   BrokenCircuitError,
+  ConsecutiveBreaker,
+  circuitBreaker,
+  decorrelatedJitterGenerator,
+  ExponentialBackoff,
+  handleWhen,
+  type IPolicy,
+  retry,
   TaskCancelledError,
   TimeoutStrategy,
-  type IPolicy,
+  timeout,
+  wrap,
 } from 'cockatiel';
 
 export { BrokenCircuitError, TaskCancelledError };
@@ -27,7 +27,9 @@ export class TflHttpError extends Error {
 
   constructor(options: TflHttpErrorOptions) {
     const detail = options.body ? `: ${options.body}` : '';
-    super(`TfL Unified API request failed with status ${options.status} (${options.statusText})${detail}`);
+    super(
+      `TfL Unified API request failed with status ${options.status} (${options.statusText})${detail}`,
+    );
     this.name = 'TflHttpError';
     this.status = options.status;
     // 429 Too Many Requests and 5xx Server Errors represent transient downstream capacity issues

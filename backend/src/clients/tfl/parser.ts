@@ -1,20 +1,8 @@
-import {
-  TFL_LINES,
-  TFL_LINES_BY_ID,
-  type TflLine,
-} from '@railsignal/shared';
+import { TFL_LINES, TFL_LINES_BY_ID, type TflLine } from '@railsignal/shared';
 import { isDisruptionInWindow } from './temporal.js';
-import {
-  type RawTflDisruption,
-  type ParsedDisruption,
-  type ParseTflDisruptionsOptions,
-} from './types.js';
+import type { ParsedDisruption, ParseTflDisruptionsOptions, RawTflDisruption } from './types.js';
 
-export {
-  type RawTflDisruption,
-  type ParsedDisruption,
-  type ParseTflDisruptionsOptions,
-};
+export type { ParsedDisruption, ParseTflDisruptionsOptions, RawTflDisruption };
 
 const LINE_ID_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   'hammersmith-and-city': 'hammersmith-city',
@@ -81,7 +69,10 @@ export function resolveTflLine(rawLineId?: string, description?: string): TflLin
  * Normalizes TfL disruption status strings into human-readable severity descriptions.
  * Structured closureText is evaluated first before falling back to description phrase matching.
  */
-export function resolveStatusSeverityDescription(closureText?: string, description?: string): string {
+export function resolveStatusSeverityDescription(
+  closureText?: string,
+  description?: string,
+): string {
   if (closureText) {
     const mapped = CLOSURE_TEXT_MAP[closureText.toLowerCase()];
     if (mapped) return mapped;
@@ -114,13 +105,15 @@ export function parseTflDisruptions(options: ParseTflDisruptionsOptions): Parsed
   const seenKeys = new Set<string>();
 
   for (const raw of disruptions) {
-    const routes = raw.affectedRoutes && raw.affectedRoutes.length > 0 ? raw.affectedRoutes : [undefined];
+    const routes =
+      raw.affectedRoutes && raw.affectedRoutes.length > 0 ? raw.affectedRoutes : [undefined];
 
     for (const route of routes) {
       const line = resolveTflLine(route?.lineId, raw.description);
       if (!line) continue;
 
-      const validFromStr = route?.validFrom || raw.created || weekendWindow.windowStart.toISOString();
+      const validFromStr =
+        route?.validFrom || raw.created || weekendWindow.windowStart.toISOString();
       const validToStr = route?.validTo || weekendWindow.windowEnd.toISOString();
 
       const overlaps = isDisruptionInWindow({

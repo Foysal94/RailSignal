@@ -42,7 +42,7 @@ export const TFL_LINES_BY_ID: Readonly<Record<string, TflLine>> = Object.freeze(
   TFL_LINES.reduce<Record<string, TflLine>>((acc, line) => {
     acc[line.id] = line;
     return acc;
-  }, {})
+  }, {}),
 );
 
 export function getTflLineById(id: string): TflLine | undefined {
