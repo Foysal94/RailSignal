@@ -33,11 +33,11 @@ jobs:
       - name: Check formatting and linting (Biome)
         run: npm run lint
 
-      - name: Typecheck
-        run: npm run typecheck
-
       - name: Build monorepo packages
         run: npm run build
+
+      - name: Typecheck
+        run: npm run typecheck
 
       - name: Run test suite
         run: npm run test
