@@ -72,7 +72,14 @@ RailSignal/
 │   │   │   ├── notificationWorker.ts   # Matches subscribers, sends Resend digest with deduplication
 │   │   │   └── demoAlertWorker.ts      # On-demand test alert processor
 │   │   ├── clients/                    # External HTTP clients
-│   │   │   └── tflClient.ts            # TfL Unified API typed client with cockatiel resilience
+│   │   │   └── tfl/                    # Sealed TfL client module (deep facade, internal parser & resilience)
+│   │   │       ├── client.ts           # Deep TflClient class (URL building, fetch, private resilience)
+│   │   │       ├── parser.ts           # Heuristic disruption parser, line matcher & deduplicator
+│   │   │       ├── resilience.ts       # Cockatiel retry, breaker & timeout policies
+│   │   │       ├── types.ts            # Internal TfL DTOs (RawTflDisruption) & ParsedDisruption
+│   │   │       └── index.ts            # Sealed public barrel (TflClient, ParsedDisruption, TflHttpError)
+│   │   ├── domain/                     # Core domain business rules
+│   │   │   └── temporal.ts             # Europe/London weekend operational window calculator
 │   │   ├── email/                      # Email notifications
 │   │   │   ├── resendClient.ts         # Resend SDK wrapper with local console mock fallback
 │   │   │   └── templates/              # @react-email templates
@@ -188,14 +195,17 @@ model WeekendDisruption {
 
 ## 5. External Adapters & Contracts
 
-### 5.1 TfL Unified API Client (`src/clients/tflClient.ts`)
+### 5.1 Sealed TfL Unified API Client Module (`src/clients/tfl/`)
 * **Endpoint**: `https://api.tfl.gov.uk/Line/Mode/tube,elizabeth-line,overground,dlr/Disruption`
+* **Architecture**: Deep module exposing minimal public entry point (`TflClient`, `tflClient`, `TflHttpError`, `ParsedDisruption`). All raw DTOs (`RawTflDisruption`, `RawTflAffectedRoute`), regex parsing helpers, and internal resilience policy constructors remain completely hidden behind internal module seams.
 * **Resilience Policy (`cockatiel`)**: 
   - Retry: 3 attempts with exponential backoff and decorrelated jitter.
   - Timeout: 8000ms abort signal.
   - Circuit Breaker: 5 consecutive failures opens circuit for 30 seconds.
-* **Temporal Window Filter (`date-fns`)**: 
-  - Strictly filters disruptions overlapping **Friday 19:00 to Monday 04:30 UK local time** (`Europe/London`), accurately resolving GMT/BST transitions.
+  - Policies are fully encapsulated; `TflClientOptions` accepts test controls (`disableResilience?: boolean`, `fetchFn?: typeof fetch`) to bypass latency without exposing Cockatiel `IPolicy` instances.
+* **Domain Temporal Window Calculator (`src/domain/temporal.ts`)**: 
+  - Pure domain temporal module calculating the **Friday 19:00 to Monday 04:30 UK local time** (`Europe/London`) operational weekend window using `date-fns` and `@date-fns/tz`.
+  - Decoupled from third-party client code, serving both TfL ingestion filtering and future scheduling/digest jobs. Accurately resolves GMT/BST boundaries.
 
 ### 5.2 Transactional Email Dispatcher (`src/email/`)
 * **Provider**: Resend API (free tier: 3,000 emails/month).

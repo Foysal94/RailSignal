@@ -1,5 +1,5 @@
 import { TFL_LINES, TFL_LINES_BY_ID, type TflLine } from '@railsignal/shared';
-import { isDisruptionInWindow } from './temporal.js';
+import { isDisruptionInWindow } from '../../domain/temporal.js';
 import type { ParsedDisruption, ParseTflDisruptionsOptions, RawTflDisruption } from './types.js';
 
 export type { ParsedDisruption, ParseTflDisruptionsOptions, RawTflDisruption };

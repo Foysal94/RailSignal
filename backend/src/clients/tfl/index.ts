@@ -1,10 +1,8 @@
 /**
  * TfL Client Module Seam
- * Public entry point exposing the resilient TfL client and domain models.
+ * Sealed public entry point exposing the resilient TfL client adapter.
  */
 
-export * from './client.js';
-export * from './parser.js';
-export * from './resilience.js';
-export * from './temporal.js';
-export * from './types.js';
+export { TflClient, type TflClientOptions, tflClient } from './client.js';
+export { TflHttpError } from './resilience.js';
+export type { ParsedDisruption } from './types.js';

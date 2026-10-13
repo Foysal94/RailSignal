@@ -1,19 +1,14 @@
-import type { IPolicy } from 'cockatiel';
+import { type IPolicy, noop } from 'cockatiel';
+import { getUpcomingWeekendWindow, type WeekendWindowOptions } from '../../domain/temporal.js';
 import { parseTflDisruptions } from './parser.js';
-import {
-  createTflResiliencePolicy,
-  type ResiliencePolicyOptions,
-  TflHttpError,
-} from './resilience.js';
-import { getUpcomingWeekendWindow } from './temporal.js';
-import type { ParsedDisruption, RawTflDisruption, WeekendWindowOptions } from './types.js';
+import { createTflResiliencePolicy, TflHttpError } from './resilience.js';
+import type { ParsedDisruption, RawTflDisruption } from './types.js';
 
 export interface TflClientOptions {
   baseUrl?: string | undefined;
   appKey?: string | undefined;
   fetchFn?: typeof fetch | undefined;
-  policy?: IPolicy | undefined;
-  policyOptions?: ResiliencePolicyOptions | undefined;
+  disableResilience?: boolean | undefined;
 }
 
 /**
@@ -31,10 +26,10 @@ export class TflClient {
     this.baseUrl = (options?.baseUrl ?? 'https://api.tfl.gov.uk').replace(/\/+$/, '');
     this.appKey = options?.appKey;
     this.fetchFn = options?.fetchFn ?? globalThis.fetch;
-    this.policy = options?.policy ?? createTflResiliencePolicy(options?.policyOptions);
+    this.policy = options?.disableResilience ? noop : createTflResiliencePolicy();
   }
 
-  public async fetchRawDisruptions(): Promise<RawTflDisruption[]> {
+  private async fetchRawDisruptions(): Promise<RawTflDisruption[]> {
     const url = new URL(`${this.baseUrl}/Line/Mode/tube,elizabeth-line,overground,dlr/Disruption`);
     if (this.appKey) {
       url.searchParams.set('app_key', this.appKey);

@@ -1,7 +1,7 @@
 import { TZDate } from '@date-fns/tz';
 import { describe, expect, it } from 'vitest';
 import { parseTflDisruptions } from '../../../../src/clients/tfl/parser.js';
-import type { WeekendWindow } from '../../../../src/clients/tfl/types.js';
+import type { WeekendWindow } from '../../../../src/domain/temporal.js';
 
 describe('TfL Parser - Disruption Payload Normalization', () => {
   const mockWeekendWindow: WeekendWindow = {

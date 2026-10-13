@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { tflClient as defaultTflClient, type TflClient } from '../../clients/tfl/client.js';
-import { getUpcomingWeekendWindow } from '../../clients/tfl/temporal.js';
+import { getUpcomingWeekendWindow } from '../../domain/temporal.js';
 import { prisma as defaultPrisma } from '../../db.js';
 import type { IngestJobResult } from '../../queues/queues.js';
 import type { WorkerLogger } from '../types.js';
