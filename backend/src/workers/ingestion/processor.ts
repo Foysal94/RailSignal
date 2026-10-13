@@ -3,25 +3,18 @@ import { tflClient as defaultTflClient, type TflClient } from '../../clients/tfl
 import { getUpcomingWeekendWindow } from '../../clients/tfl/temporal.js';
 import { prisma as defaultPrisma } from '../../db.js';
 import type { IngestJobResult } from '../../queues/queues.js';
+import type { WorkerLogger } from '../types.js';
 import { projectDisruptions } from './projection.js';
 
 export interface ProcessIngestionJobOptions {
   tflClient?: Pick<TflClient, 'getWeekendDisruptions'> | undefined;
   prisma?: PrismaClient | undefined;
   referenceDate?: Date | string | undefined;
-  logger?:
-    | {
-        info: (...args: unknown[]) => void;
-        error: (...args: unknown[]) => void;
-      }
-    | undefined;
+  logger?: WorkerLogger | undefined;
 }
 
 /**
- * Ingestion processor that fetches TfL weekend disruptions, extracts upcoming
- * weekend impacts, and idempotently projects records into the database read model.
- * If an error occurs during TfL fetching or database transactions, it throws
- * to trigger BullMQ's exponential retry policy.
+ * Propagates TfL and database errors upward so BullMQ triggers its configured retry policy.
  */
 export async function processIngestionJob(
   options: ProcessIngestionJobOptions = {},

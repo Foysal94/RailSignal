@@ -111,9 +111,6 @@ export const ingestQueue = createIngestQueue();
 export const notificationQueue = createNotificationQueue();
 export const demoAlertQueue = createDemoAlertQueue();
 
-/**
- * Closes all singleton queues and disconnects their Redis connection pools.
- */
 export async function closeAllQueues(): Promise<void> {
   await Promise.allSettled([
     ingestQueue.close(),

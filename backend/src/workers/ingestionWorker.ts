@@ -11,21 +11,14 @@ import {
 } from '../queues/queues.js';
 import { processIngestionJob } from './ingestion/processor.js';
 
+import type { WorkerLogger } from './types.js';
+
 export interface IngestionWorkerHandlerDependencies {
   notificationQueue?: Pick<Queue<NotificationJobData, void, string>, 'add'> | undefined;
   processor?: typeof processIngestionJob | undefined;
-  logger?:
-    | {
-        info: (...args: unknown[]) => void;
-        error: (...args: unknown[]) => void;
-      }
-    | undefined;
+  logger?: WorkerLogger | undefined;
 }
 
-/**
- * Creates the BullMQ job processing function for the ingestion worker.
- * Orchestrates TfL fetching and projection, then enqueues downstream notification jobs.
- */
 export function createIngestionWorkerHandler(deps: IngestionWorkerHandlerDependencies = {}) {
   const targetNotificationQueue = deps.notificationQueue ?? defaultNotificationQueue;
   const executeProcessor = deps.processor ?? processIngestionJob;
@@ -63,18 +56,9 @@ export interface IngestionWorkerOptions {
   drainDelay?: number | undefined;
   stalledInterval?: number | undefined;
   lockDuration?: number | undefined;
-  logger?:
-    | {
-        info: (...args: unknown[]) => void;
-        error: (...args: unknown[]) => void;
-      }
-    | undefined;
+  logger?: WorkerLogger | undefined;
 }
 
-/**
- * Creates an Ingestion BullMQ Worker instance listening on the ingestion queue.
- * Configured with Upstash quota protections (drainDelay: 60s, stalledInterval: 60s).
- */
 export function createIngestionWorker(
   options: IngestionWorkerOptions = {},
 ): Worker<IngestJobData, IngestJobResult, string> {
@@ -123,9 +107,6 @@ export function createIngestionWorker(
 
 export const ingestionWorker = createIngestionWorker();
 
-/**
- * Gracefully shuts down the default ingestion worker, releasing active job locks.
- */
 export async function closeIngestionWorker(): Promise<void> {
   await ingestionWorker.close();
 }

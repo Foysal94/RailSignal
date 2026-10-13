@@ -37,7 +37,6 @@ export async function projectDisruptions(
 
   const deduplicated = Array.from(uniqueMap.values());
 
-  // Execute upserts sequentially or in a transaction to guarantee deterministic idempotency
   await prisma.$transaction(
     deduplicated.map((disruption) =>
       prisma.weekendDisruption.upsert({
