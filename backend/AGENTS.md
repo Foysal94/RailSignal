@@ -25,3 +25,6 @@
 - Runner: Vitest with Fastify `app.inject()` for in-memory integration testing.
 - Test Naming: Every test case must follow `Should_...`.
 - Assert observable state and side effects; avoid mocking internal implementations.
+- **Pre-Flight Baseline:** Always execute `npm test && npm run typecheck && npm run lint` before starting work to confirm a green baseline.
+- **Runtime Smoke Verification:** In-memory `app.inject()` tests alone do not prove live server viability. Always execute live smoke checks (`npm run dev` with health endpoint check or CLI runner execution) before opening a PR.
+
