@@ -13,7 +13,7 @@ describe('Disruption Projection Persistence', () => {
   });
 
   const mockDisruption: ParsedDisruption = {
-    lineId: 'northern',
+    lineId: 'projection-northern',
     lineName: 'Northern',
     mode: 'tube',
     statusSeverityDescription: 'Part Closure',
@@ -25,7 +25,6 @@ describe('Disruption Projection Persistence', () => {
   };
 
   it('Should_idempotently_upsert_weekend_disruptions_into_prisma_without_duplication', async () => {
-    // First projection
     const firstResult = await projectDisruptions({
       prisma,
       disruptions: [mockDisruption],
@@ -35,7 +34,6 @@ describe('Disruption Projection Persistence', () => {
     const countAfterFirst = await prisma.weekendDisruption.count();
     expect(countAfterFirst).toBe(1);
 
-    // Second projection with identical data
     const secondResult = await projectDisruptions({
       prisma,
       disruptions: [mockDisruption],
@@ -64,7 +62,7 @@ describe('Disruption Projection Persistence', () => {
 
     const persisted = await prisma.weekendDisruption.findFirst({
       where: {
-        lineId: 'northern',
+        lineId: 'projection-northern',
         weekendDate: '2026-10-17',
       },
     });

@@ -107,66 +107,17 @@ export function createDemoAlertQueue(
   );
 }
 
-let defaultIngestQueue: Queue<IngestJobData, IngestJobResult, string> | null = null;
-let defaultNotificationQueue: Queue<NotificationJobData, void, string> | null = null;
-let defaultDemoAlertQueue: Queue<DemoAlertJobData, void, string> | null = null;
-
-export function getIngestQueue(): Queue<IngestJobData, IngestJobResult, string> {
-  if (!defaultIngestQueue) {
-    defaultIngestQueue = createIngestQueue();
-  }
-  return defaultIngestQueue;
-}
-
-export function getNotificationQueue(): Queue<NotificationJobData, void, string> {
-  if (!defaultNotificationQueue) {
-    defaultNotificationQueue = createNotificationQueue();
-  }
-  return defaultNotificationQueue;
-}
-
-export function getDemoAlertQueue(): Queue<DemoAlertJobData, void, string> {
-  if (!defaultDemoAlertQueue) {
-    defaultDemoAlertQueue = createDemoAlertQueue();
-  }
-  return defaultDemoAlertQueue;
-}
-
-// Module-level lazy singleton queue instances
-export const ingestQueue = new Proxy({} as Queue<IngestJobData, IngestJobResult, string>, {
-  get(_target, prop) {
-    return (getIngestQueue() as unknown as Record<string | symbol, unknown>)[prop];
-  },
-});
-
-export const notificationQueue = new Proxy({} as Queue<NotificationJobData, void, string>, {
-  get(_target, prop) {
-    return (getNotificationQueue() as unknown as Record<string | symbol, unknown>)[prop];
-  },
-});
-
-export const demoAlertQueue = new Proxy({} as Queue<DemoAlertJobData, void, string>, {
-  get(_target, prop) {
-    return (getDemoAlertQueue() as unknown as Record<string | symbol, unknown>)[prop];
-  },
-});
+export const ingestQueue = createIngestQueue();
+export const notificationQueue = createNotificationQueue();
+export const demoAlertQueue = createDemoAlertQueue();
 
 /**
- * Closes all active singleton queues and disconnects their Redis connection pools.
+ * Closes all singleton queues and disconnects their Redis connection pools.
  */
 export async function closeAllQueues(): Promise<void> {
-  const promises: Promise<unknown>[] = [];
-  if (defaultIngestQueue) {
-    promises.push(defaultIngestQueue.close());
-    defaultIngestQueue = null;
-  }
-  if (defaultNotificationQueue) {
-    promises.push(defaultNotificationQueue.close());
-    defaultNotificationQueue = null;
-  }
-  if (defaultDemoAlertQueue) {
-    promises.push(defaultDemoAlertQueue.close());
-    defaultDemoAlertQueue = null;
-  }
-  await Promise.allSettled(promises);
+  await Promise.allSettled([
+    ingestQueue.close(),
+    notificationQueue.close(),
+    demoAlertQueue.close(),
+  ]);
 }

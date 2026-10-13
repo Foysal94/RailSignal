@@ -43,12 +43,10 @@ export function createIngestionWorkerHandler(deps: IngestionWorkerHandlerDepende
       `[Ingestion Worker] Ingestion successful for weekend ${result.weekendDate}. Enqueuing notification job...`,
     );
 
-    // Enqueue downstream notification dispatch job with deterministic jobId for idempotency
-    await targetNotificationQueue.add(
-      'dispatch-weekend-digest',
-      { weekendDate: result.weekendDate },
-      { jobId: `notification-digest-${result.weekendDate}` },
-    );
+    // Enqueue downstream notification dispatch job (consumer enforces idempotency via lastNotifiedWeekendDate)
+    await targetNotificationQueue.add('dispatch-weekend-digest', {
+      weekendDate: result.weekendDate,
+    });
 
     logger.info(`[Ingestion Worker] Notification job enqueued for weekend ${result.weekendDate}`);
 
@@ -64,6 +62,7 @@ export interface IngestionWorkerOptions {
   concurrency?: number | undefined;
   drainDelay?: number | undefined;
   stalledInterval?: number | undefined;
+  lockDuration?: number | undefined;
   logger?:
     | {
         info: (...args: unknown[]) => void;
@@ -90,6 +89,7 @@ export function createIngestionWorker(
     concurrency: options.concurrency ?? 1,
     drainDelay: options.drainDelay ?? UPSTASH_WORKER_DEFAULTS.drainDelay,
     stalledInterval: options.stalledInterval ?? UPSTASH_WORKER_DEFAULTS.stalledInterval,
+    lockDuration: options.lockDuration ?? UPSTASH_WORKER_DEFAULTS.lockDuration,
     maxStalledCount: UPSTASH_WORKER_DEFAULTS.maxStalledCount,
     autorun: options.autorun ?? config.nodeEnv !== 'test',
   };
@@ -121,28 +121,11 @@ export function createIngestionWorker(
   return worker;
 }
 
-let defaultWorkerInstance: Worker<IngestJobData, IngestJobResult, string> | null = null;
-
-export function getIngestionWorker(): Worker<IngestJobData, IngestJobResult, string> {
-  if (!defaultWorkerInstance) {
-    defaultWorkerInstance = createIngestionWorker();
-  }
-  return defaultWorkerInstance;
-}
-
-// Module-level worker instance getter/proxy
-export const ingestionWorker = new Proxy({} as Worker<IngestJobData, IngestJobResult, string>, {
-  get(_target, prop) {
-    return (getIngestionWorker() as unknown as Record<string | symbol, unknown>)[prop];
-  },
-});
+export const ingestionWorker = createIngestionWorker();
 
 /**
  * Gracefully shuts down the default ingestion worker, releasing active job locks.
  */
 export async function closeIngestionWorker(): Promise<void> {
-  if (defaultWorkerInstance) {
-    await defaultWorkerInstance.close();
-    defaultWorkerInstance = null;
-  }
+  await ingestionWorker.close();
 }

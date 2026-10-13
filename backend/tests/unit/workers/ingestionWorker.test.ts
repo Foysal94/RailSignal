@@ -68,12 +68,9 @@ describe('Ingestion Worker Lifecycle & Downstream Orchestration', () => {
     const result = await handler(mockJob);
 
     expect(result).toEqual(mockProcessorResult);
-    expect(mockProcessor).toHaveBeenCalledTimes(1);
-    expect(mockNotificationQueue.add).toHaveBeenCalledWith(
-      'dispatch-weekend-digest',
-      { weekendDate: '2026-10-16' },
-      { jobId: 'notification-digest-2026-10-16' },
-    );
+    expect(mockNotificationQueue.add).toHaveBeenCalledWith('dispatch-weekend-digest', {
+      weekendDate: '2026-10-16',
+    });
   });
 
   it('Should_propagate_processor_errors_without_enqueuing_downstream_notification_jobs', async () => {

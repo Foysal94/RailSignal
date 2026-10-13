@@ -55,7 +55,7 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
 
   const sampleDisruptions: ParsedDisruption[] = [
     {
-      lineId: 'central',
+      lineId: 'pipeline-central',
       lineName: 'Central',
       mode: 'tube',
       statusSeverityDescription: 'Part Closure',
@@ -66,7 +66,7 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       sourceLastUpdated: '2026-10-16T08:00:00.000Z',
     },
     {
-      lineId: 'northern',
+      lineId: 'pipeline-northern',
       lineName: 'Northern',
       mode: 'tube',
       statusSeverityDescription: 'Planned Closure',
@@ -111,19 +111,17 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       orderBy: { lineId: 'asc' },
     });
     expect(persisted).toHaveLength(2);
-    expect(persisted[0].lineId).toBe('central');
+    expect(persisted[0].lineId).toBe('pipeline-central');
     expect(persisted[0].corridorDescription).toBe(
       'No service between White City and Ealing Broadway',
     );
-    expect(persisted[1].lineId).toBe('northern');
+    expect(persisted[1].lineId).toBe('pipeline-northern');
     expect(persisted[1].statusSeverityDescription).toBe('Planned Closure');
 
-    // Verify downstream notification job was enqueued
     expect(notificationQueueDouble.jobs).toHaveLength(1);
     const downstreamJob = notificationQueueDouble.jobs[0];
     expect(downstreamJob.name).toBe('dispatch-weekend-digest');
     expect(downstreamJob.data.weekendDate).toBe('2026-10-16');
-    expect(downstreamJob.opts?.jobId).toBe('notification-digest-2026-10-16');
   });
 
   it('Should_maintain_strict_idempotency_when_ingestion_pipeline_runs_repeatedly_for_the_same_weekend', async () => {
@@ -147,15 +145,12 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       data: { referenceDate: '2026-10-15T12:00:00Z' } as IngestJobData,
     };
 
-    // First execution
     await handler(mockJob as never);
     expect(await prisma.weekendDisruption.count()).toBe(2);
 
-    // Second execution with identical payload
     await handler(mockJob as never);
     expect(await prisma.weekendDisruption.count()).toBe(2);
 
-    // Third execution with updated disruption status for existing compound key
     const modifiedDisruptions: ParsedDisruption[] = [
       {
         ...sampleDisruptions[0],
@@ -167,14 +162,14 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     await handler(mockJob as never);
 
     const central = await prisma.weekendDisruption.findFirst({
-      where: { lineId: 'central' },
+      where: { lineId: 'pipeline-central' },
     });
     expect(central?.statusSeverityDescription).toBe('Suspended (Updated)');
 
-    // Ensure downstream job enqueuing retains deterministic deduplication ID
     expect(notificationQueueDouble.jobs).toHaveLength(3);
     for (const job of notificationQueueDouble.jobs) {
-      expect(job.opts?.jobId).toBe('notification-digest-2026-10-16');
+      expect(job.name).toBe('dispatch-weekend-digest');
+      expect(job.data.weekendDate).toBe('2026-10-16');
     }
   });
 

@@ -16,6 +16,7 @@ export const DEFAULT_DRAIN_DELAY_MS = 60_000;
 export const UPSTASH_WORKER_DEFAULTS = {
   drainDelay: DEFAULT_DRAIN_DELAY_SECONDS,
   stalledInterval: 60_000,
+  lockDuration: 60_000,
   maxStalledCount: 2,
 } as const;
 
