@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   getUpcomingWeekendWindow,
   isDisruptionInWindow,
@@ -94,7 +94,7 @@ describe('TfL Temporal - Weekend Window & Filtering', () => {
         validFrom: '2026-07-11T00:00:00Z',
         validTo: '2026-07-12T23:59:59Z',
         window,
-      })
+      }),
     ).toBe(true);
 
     // 2. Starts before window, ends inside window
@@ -103,7 +103,7 @@ describe('TfL Temporal - Weekend Window & Filtering', () => {
         validFrom: '2026-07-09T00:00:00Z',
         validTo: '2026-07-11T12:00:00Z',
         window,
-      })
+      }),
     ).toBe(true);
 
     // 3. Starts inside window, ends after window
@@ -112,7 +112,7 @@ describe('TfL Temporal - Weekend Window & Filtering', () => {
         validFrom: '2026-07-12T12:00:00Z',
         validTo: '2026-07-15T00:00:00Z',
         window,
-      })
+      }),
     ).toBe(true);
 
     // 4. Completely before window (ended Friday afternoon)
@@ -121,7 +121,7 @@ describe('TfL Temporal - Weekend Window & Filtering', () => {
         validFrom: '2026-07-08T00:00:00Z',
         validTo: '2026-07-10T17:00:00Z',
         window,
-      })
+      }),
     ).toBe(false);
 
     // 5. Completely after window (starts Monday noon)
@@ -130,7 +130,7 @@ describe('TfL Temporal - Weekend Window & Filtering', () => {
         validFrom: '2026-07-13T12:00:00Z',
         validTo: '2026-07-14T00:00:00Z',
         window,
-      })
+      }),
     ).toBe(false);
   });
 });

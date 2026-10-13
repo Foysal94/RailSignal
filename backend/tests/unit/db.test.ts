@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll, beforeEach } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../../src/db.js';
 
 describe('Prisma Persistence Unit Tests', () => {
@@ -17,10 +17,7 @@ describe('Prisma Persistence Unit Tests', () => {
       data: {
         email: 'test@example.com',
         lines: {
-          create: [
-            { lineId: 'northern' },
-            { lineId: 'victoria' },
-          ],
+          create: [{ lineId: 'northern' }, { lineId: 'victoria' }],
         },
       },
       include: {
@@ -34,7 +31,9 @@ describe('Prisma Persistence Unit Tests', () => {
     expect(created.lastNotifiedWeekendDate).toBeNull();
     expect(created.createdAt).toBeInstanceOf(Date);
     expect(created.lines).toHaveLength(2);
-    expect(created.lines.map((l) => l.lineId)).toEqual(expect.arrayContaining(['northern', 'victoria']));
+    expect(created.lines.map((l) => l.lineId)).toEqual(
+      expect.arrayContaining(['northern', 'victoria']),
+    );
 
     const retrieved = await prisma.subscription.findUnique({
       where: { email: 'test@example.com' },

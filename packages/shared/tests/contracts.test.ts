@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
 import { Value } from '@sinclair/typebox/value';
+import { describe, expect, it } from 'vitest';
 import {
+  CreateSubscriptionRequestSchema,
   HealthResponseSchema,
   ProblemDetailsSchema,
-  CreateSubscriptionRequestSchema,
   WeekendStatusResponseSchema,
 } from '../src/contracts.js';
 
@@ -23,9 +23,7 @@ describe('Shared TypeBox Contracts', () => {
       status: 400,
       detail: 'Request validation failed',
       instance: '/api/subscriptions',
-      invalidParams: [
-        { name: 'email', reason: 'Must match format email' },
-      ],
+      invalidParams: [{ name: 'email', reason: 'Must match format email' }],
     };
     expect(Value.Check(ProblemDetailsSchema, valid)).toBe(true);
   });

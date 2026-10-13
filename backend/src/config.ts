@@ -1,4 +1,4 @@
-import { Type, type Static } from '@sinclair/typebox';
+import { type Static, Type } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
 
 export const ConfigSchema = Type.Object({
@@ -19,14 +19,14 @@ export const ConfigSchema = Type.Object({
 export type AppConfig = Static<typeof ConfigSchema>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const rawNodeEnv = env['NODE_ENV'] || 'development';
+  const rawNodeEnv = env.NODE_ENV || 'development';
   const nodeEnv = rawNodeEnv === 'production' || rawNodeEnv === 'test' ? rawNodeEnv : 'development';
 
-  const rawPort = env['PORT'];
+  const rawPort = env.PORT;
   const port = rawPort ? Number.parseInt(rawPort, 10) : 3000;
-  const host = env['HOST'] || '0.0.0.0';
+  const host = env.HOST || '0.0.0.0';
 
-  const databaseUrl = env['DATABASE_URL'] || (nodeEnv === 'production' ? '' : 'file:./railsignal.db');
+  const databaseUrl = env.DATABASE_URL || (nodeEnv === 'production' ? '' : 'file:./railsignal.db');
   if (nodeEnv === 'production' && !databaseUrl) {
     throw new Error('DATABASE_URL environment variable is required in production');
   }
@@ -36,10 +36,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: Number.isNaN(port) ? 3000 : port,
     host,
     databaseUrl,
-    ...(env['REDIS_URL'] ? { redisUrl: env['REDIS_URL'] } : {}),
-    ...(env['RESEND_API_KEY'] ? { resendApiKey: env['RESEND_API_KEY'] } : {}),
-    ...(env['EMAIL_FROM'] ? { emailFrom: env['EMAIL_FROM'] } : {}),
-    ...(env['JOB_SECRET'] ? { jobSecret: env['JOB_SECRET'] } : {}),
+    ...(env.REDIS_URL ? { redisUrl: env.REDIS_URL } : {}),
+    ...(env.RESEND_API_KEY ? { resendApiKey: env.RESEND_API_KEY } : {}),
+    ...(env.EMAIL_FROM ? { emailFrom: env.EMAIL_FROM } : {}),
+    ...(env.JOB_SECRET ? { jobSecret: env.JOB_SECRET } : {}),
   };
 
   const errors = [...Value.Errors(ConfigSchema, candidate)];

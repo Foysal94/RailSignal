@@ -1,23 +1,33 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  createTflResiliencePolicy,
-  TflHttpError,
   BrokenCircuitError,
-  TaskCancelledError,
+  createTflResiliencePolicy,
   isTransientError,
+  TaskCancelledError,
+  TflHttpError,
 } from '../../../../src/clients/tfl/resilience.js';
 
 describe('TfL Resilience - Cockatiel Policy & Error Handling', () => {
   it('Should_classify_429_and_5xx_and_network_drops_as_transient', () => {
-    expect(isTransientError(new TflHttpError({ status: 503, statusText: 'Service Unavailable' }))).toBe(true);
-    expect(isTransientError(new TflHttpError({ status: 429, statusText: 'Too Many Requests' }))).toBe(true);
-    expect(isTransientError(new TflHttpError({ status: 500, statusText: 'Internal Server Error' }))).toBe(true);
+    expect(
+      isTransientError(new TflHttpError({ status: 503, statusText: 'Service Unavailable' })),
+    ).toBe(true);
+    expect(
+      isTransientError(new TflHttpError({ status: 429, statusText: 'Too Many Requests' })),
+    ).toBe(true);
+    expect(
+      isTransientError(new TflHttpError({ status: 500, statusText: 'Internal Server Error' })),
+    ).toBe(true);
     expect(isTransientError(new TaskCancelledError('Timed out'))).toBe(true);
     expect(isTransientError(new Error('fetch failed: ECONNREFUSED'))).toBe(true);
 
     // Non-transient errors
-    expect(isTransientError(new TflHttpError({ status: 400, statusText: 'Bad Request' }))).toBe(false);
-    expect(isTransientError(new TflHttpError({ status: 404, statusText: 'Not Found' }))).toBe(false);
+    expect(isTransientError(new TflHttpError({ status: 400, statusText: 'Bad Request' }))).toBe(
+      false,
+    );
+    expect(isTransientError(new TflHttpError({ status: 404, statusText: 'Not Found' }))).toBe(
+      false,
+    );
     expect(isTransientError(new TypeError('Cannot read properties of undefined'))).toBe(false);
     expect(isTransientError(new BrokenCircuitError())).toBe(false);
   });
@@ -54,7 +64,7 @@ describe('TfL Resilience - Cockatiel Policy & Error Handling', () => {
       policy.execute(async () => {
         callCount++;
         throw new TflHttpError({ status: 503, statusText: 'Service Unavailable' });
-      })
+      }),
     ).rejects.toThrow(TflHttpError);
 
     // 1 initial try + 3 retries = 4 attempts
@@ -73,7 +83,7 @@ describe('TfL Resilience - Cockatiel Policy & Error Handling', () => {
       policy.execute(async () => {
         callCount++;
         throw new TflHttpError({ status: 400, statusText: 'Bad Request' });
-      })
+      }),
     ).rejects.toThrow(TflHttpError);
 
     expect(callCount).toBe(1);
@@ -92,7 +102,7 @@ describe('TfL Resilience - Cockatiel Policy & Error Handling', () => {
         policy.execute(async () => {
           callCount++;
           throw new TflHttpError({ status: 503, statusText: 'Service Unavailable' });
-        })
+        }),
       ).rejects.toThrow(TflHttpError);
     }
     expect(callCount).toBe(3);
@@ -102,7 +112,7 @@ describe('TfL Resilience - Cockatiel Policy & Error Handling', () => {
       policy.execute(async () => {
         callCount++;
         return 'never';
-      })
+      }),
     ).rejects.toThrow(BrokenCircuitError);
 
     expect(callCount).toBe(3);
@@ -116,12 +126,12 @@ describe('TfL Resilience - Cockatiel Policy & Error Handling', () => {
 
     await expect(
       policy.execute(async ({ signal }) => {
-        return new Promise((resolve, reject) => {
+        return new Promise((_resolve, reject) => {
           signal.addEventListener('abort', () => {
             reject(new TaskCancelledError('Timed out'));
           });
         });
-      })
+      }),
     ).rejects.toThrow(TaskCancelledError);
   });
 });

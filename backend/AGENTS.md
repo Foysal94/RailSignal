@@ -5,6 +5,7 @@
 - Run Tests: `npm run test`
 - Database Migrations: `npx prisma migrate dev`
 - Run Scheduled Job: `node dist/index.js --job sync-disruptions`
+- Lint & Format: Execute at monorepo root via `npm run lint` / `npm run format`
 
 ## Architecture & Boundaries
 - **Fastify Plugins:** Endpoints reside in `src/routes/` as Fastify plugins. Routes are HTTP transport adapters only: read routes query Prisma directly; trigger routes enqueue BullMQ jobs.

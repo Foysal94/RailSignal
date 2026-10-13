@@ -1,12 +1,8 @@
 import { TZDate } from '@date-fns/tz';
-import { format, addDays } from 'date-fns';
-import {
-  type WeekendWindowOptions,
-  type WeekendWindow,
-  type IsDisruptionInWindowOptions,
-} from './types.js';
+import { addDays, format } from 'date-fns';
+import type { IsDisruptionInWindowOptions, WeekendWindow, WeekendWindowOptions } from './types.js';
 
-export { type WeekendWindowOptions, type WeekendWindow, type IsDisruptionInWindowOptions };
+export type { IsDisruptionInWindowOptions, WeekendWindow, WeekendWindowOptions };
 
 /**
  * Calculates the operational weekend disruption window pinned strictly to Europe/London local time.
@@ -25,18 +21,18 @@ export function getUpcomingWeekendWindow(options?: WeekendWindowOptions): Weeken
 
   // Days offset to target Friday
   const weekdayOffsets: Record<number, number> = {
-    5: 0,  // Friday
+    5: 0, // Friday
     6: -1, // Saturday
     0: -2, // Sunday
-    2: 3,  // Tuesday
-    3: 2,  // Wednesday
-    4: 1,  // Thursday
+    2: 3, // Tuesday
+    3: 2, // Wednesday
+    4: 1, // Thursday
   };
 
   let daysToFriday: number;
   if (day === 1) {
     // Before 04:30 London time, Monday is still active engineering weekend; after 04:30 advance to next Friday
-    daysToFriday = (hours < 4 || (hours === 4 && minutes < 30)) ? -3 : 4;
+    daysToFriday = hours < 4 || (hours === 4 && minutes < 30) ? -3 : 4;
   } else {
     daysToFriday = weekdayOffsets[day] ?? 0;
   }
@@ -52,7 +48,7 @@ export function getUpcomingWeekendWindow(options?: WeekendWindowOptions): Weeken
     19,
     0,
     0,
-    'Europe/London'
+    'Europe/London',
   );
   const windowEnd = new TZDate(
     targetMonday.getFullYear(),
@@ -61,7 +57,7 @@ export function getUpcomingWeekendWindow(options?: WeekendWindowOptions): Weeken
     4,
     30,
     0,
-    'Europe/London'
+    'Europe/London',
   );
   const weekendDate = format(windowStart, 'yyyy-MM-dd');
 

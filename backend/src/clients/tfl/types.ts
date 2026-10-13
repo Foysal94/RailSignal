@@ -1,5 +1,5 @@
-import { type LineMode } from '@railsignal/shared';
-import { type TZDate } from '@date-fns/tz';
+import type { TZDate } from '@date-fns/tz';
+import type { LineMode } from '@railsignal/shared';
 
 export interface RawTflAffectedRoute {
   id?: string | undefined;
@@ -47,7 +47,7 @@ export interface WeekendWindowOptions {
 export interface WeekendWindow {
   weekendDate: string; // ISO date 'YYYY-MM-DD' representing target Friday
   windowStart: TZDate; // Friday 19:00 Europe/London
-  windowEnd: TZDate;   // Monday 04:30 Europe/London
+  windowEnd: TZDate; // Monday 04:30 Europe/London
 }
 
 export interface IsDisruptionInWindowOptions {

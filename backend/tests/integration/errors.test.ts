@@ -1,6 +1,6 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import type { FastifyInstance } from 'fastify';
 import { Type } from '@sinclair/typebox';
+import type { FastifyInstance } from 'fastify';
+import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app.js';
 
 describe('RFC 9457 Problem Details Error Handling', () => {
@@ -46,7 +46,7 @@ describe('RFC 9457 Problem Details Error Handling', () => {
           }),
         },
       },
-      async () => ({ ok: true })
+      async () => ({ ok: true }),
     );
 
     const response = await app.inject({

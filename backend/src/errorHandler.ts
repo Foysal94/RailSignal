@@ -1,13 +1,13 @@
 import { STATUS_CODES } from 'node:http';
-import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import type { ProblemDetails } from '@railsignal/shared';
+import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 
 const RFC_9457_TYPE = 'https://datatracker.ietf.org/doc/html/rfc9457';
 
 export function errorHandler(
   error: FastifyError,
   request: FastifyRequest,
-  reply: FastifyReply
+  reply: FastifyReply,
 ): void {
   const isValidationError = Boolean(error.validation && error.validation.length > 0);
   const status = isValidationError
@@ -56,16 +56,10 @@ export function errorHandler(
     ...(invalidParams ? { invalidParams } : {}),
   };
 
-  void reply
-    .type('application/problem+json')
-    .status(status)
-    .send(problem);
+  void reply.type('application/problem+json').status(status).send(problem);
 }
 
-export function notFoundHandler(
-  request: FastifyRequest,
-  reply: FastifyReply
-): void {
+export function notFoundHandler(request: FastifyRequest, reply: FastifyReply): void {
   const instance = request.url.split('?')[0] || request.url;
   const problem: ProblemDetails = {
     type: RFC_9457_TYPE,
@@ -75,8 +69,5 @@ export function notFoundHandler(
     instance,
   };
 
-  void reply
-    .type('application/problem+json')
-    .status(404)
-    .send(problem);
+  void reply.type('application/problem+json').status(404).send(problem);
 }
