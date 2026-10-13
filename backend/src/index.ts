@@ -1,6 +1,7 @@
 import { buildApp } from './app.js';
 import { config } from './config.js';
 import { prisma } from './db.js';
+import { closeAllWorkers } from './workers/index.js';
 
 const app = buildApp({
   logger: {
@@ -15,7 +16,7 @@ async function shutdown(signal: string): Promise<void> {
     return;
   }
   isShuttingDown = true;
-  app.log.info(`Received ${signal}, closing server gracefully...`);
+  app.log.info(`Received ${signal}, closing server and workers gracefully...`);
 
   // Force termination fallback if cleanup hangs
   const forceKillTimeout = setTimeout(() => {
@@ -25,8 +26,8 @@ async function shutdown(signal: string): Promise<void> {
   forceKillTimeout.unref();
 
   try {
-    await app.close();
-    app.log.info('Server closed successfully');
+    await Promise.allSettled([app.close(), closeAllWorkers()]);
+    app.log.info('Server and workers closed successfully');
   } catch (error) {
     app.log.error(error, 'Error during graceful shutdown');
     process.exitCode = 1;
