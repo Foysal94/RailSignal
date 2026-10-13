@@ -1,9 +1,11 @@
+import { FormatRegistry } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
 import { describe, expect, it } from 'vitest';
 import {
   CreateSubscriptionRequestSchema,
   HealthResponseSchema,
   ProblemDetailsSchema,
+  registerEmailFormat,
   WeekendStatusResponseSchema,
 } from '../src/contracts.js';
 
@@ -61,5 +63,17 @@ describe('Shared TypeBox Contracts', () => {
       lastUpdated: '2026-10-16T09:00:00Z',
     };
     expect(Value.Check(WeekendStatusResponseSchema, valid)).toBe(true);
+  });
+
+  it('Should_register_email_format_idempotently', () => {
+    // Format is already registered on module load; calling again tests the idempotency branch
+    registerEmailFormat();
+    expect(FormatRegistry.Has('email')).toBe(true);
+
+    // Test registering when absent
+    FormatRegistry.Delete('email');
+    expect(FormatRegistry.Has('email')).toBe(false);
+    registerEmailFormat();
+    expect(FormatRegistry.Has('email')).toBe(true);
   });
 });

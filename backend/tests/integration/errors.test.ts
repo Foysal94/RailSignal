@@ -92,4 +92,30 @@ describe('RFC 9457 Problem Details Error Handling', () => {
     });
     expect(response.payload).not.toContain('supersecret123');
   });
+
+  it('Should_return_rfc_9457_problem_details_when_custom_4xx_client_error_occurs', async () => {
+    app = buildApp();
+
+    app.get('/api/test-custom-client-error', async () => {
+      const error = new Error('Conflict state detected');
+      (error as unknown as { statusCode: number }).statusCode = 409;
+      throw error;
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/test-custom-client-error',
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.headers['content-type']).toContain('application/problem+json');
+
+    const body = response.json();
+    expect(body).toMatchObject({
+      title: 'Conflict',
+      status: 409,
+      detail: 'Conflict state detected',
+      instance: '/api/test-custom-client-error',
+    });
+  });
 });
