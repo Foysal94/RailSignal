@@ -36,4 +36,4 @@ export function createResendClient(options?: ResendClientOptions): ResendEmailCl
 
 export const resendClient = createResendClient();
 
-export type { Logger, SendEmailOptions, SendEmailResult, SendDisruptionDigestOptions };
+export type { Logger, SendDisruptionDigestOptions, SendEmailOptions, SendEmailResult };

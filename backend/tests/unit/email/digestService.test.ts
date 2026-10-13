@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { buildDigestEmailPayload } from '../../../src/email/digestService.js';
 import type { SendDisruptionDigestOptions } from '../../../src/email/types.js';
 
@@ -19,10 +19,10 @@ describe('Digest service', () => {
     expect(payload.subject).toBe('RailSignal Weekend Radar: 2026-10-16');
     expect(payload.react).toBeDefined();
     expect(payload.headers).toBeDefined();
-    expect(payload.headers!['List-Unsubscribe']).toBe(
-      '<https://railsignal.london/unsubscribe?token=token_sec_999>'
+    expect(payload.headers?.['List-Unsubscribe']).toBe(
+      '<https://railsignal.london/unsubscribe?token=token_sec_999>',
     );
-    expect(payload.headers!['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click');
+    expect(payload.headers?.['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click');
   });
 
   it('Should_preserve_custom_subject_and_from_when_provided', () => {

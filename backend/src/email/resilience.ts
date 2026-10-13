@@ -1,9 +1,9 @@
 import {
-  handleWhen,
-  retry,
-  ExponentialBackoff,
   decorrelatedJitterGenerator,
+  ExponentialBackoff,
+  handleWhen,
   type IPolicy,
+  retry,
 } from 'cockatiel';
 
 export function isResendTransientError(err: unknown): boolean {

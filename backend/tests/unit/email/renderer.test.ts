@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
 import React from 'react';
+import { describe, expect, it } from 'vitest';
 import { renderEmail } from '../../../src/email/renderer.js';
 
 describe('Email renderer', () => {

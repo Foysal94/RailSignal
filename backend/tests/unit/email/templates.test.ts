@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
 import { render } from '@react-email/render';
 import React from 'react';
+import { describe, expect, it } from 'vitest';
 import DisruptionDigest, {
   type DisruptionDigestProps,
 } from '../../../src/email/templates/DisruptionDigest.js';

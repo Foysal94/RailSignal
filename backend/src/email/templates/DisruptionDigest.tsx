@@ -1,4 +1,4 @@
-import React from 'react';
+import { getTflLineById, type LineMode } from '@railsignal/shared';
 import {
   Body,
   Container,
@@ -11,9 +11,9 @@ import {
   Section,
   Text,
 } from '@react-email/components';
-import { getTflLineById, type LineMode } from '@railsignal/shared';
-import { emailStyles } from './styles.js';
+import type React from 'react';
 import { SAMPLE_DISRUPTION_DIGEST_PROPS } from './sampleData.js';
+import { emailStyles } from './styles.js';
 
 export interface DisruptionDigestItem {
   lineId: string;
@@ -38,17 +38,20 @@ export { SAMPLE_DISRUPTION_DIGEST_PROPS };
 
 export default function DisruptionDigest(props: DisruptionDigestProps = {}): React.JSX.Element {
   const isPreview = Object.keys(props).length === 0;
-  const weekendDate = props.weekendDate ?? (isPreview ? SAMPLE_DISRUPTION_DIGEST_PROPS.weekendDate : '');
+  const weekendDate =
+    props.weekendDate ?? (isPreview ? SAMPLE_DISRUPTION_DIGEST_PROPS.weekendDate : '');
   const weekendWindowDescription =
     props.weekendWindowDescription ??
     (isPreview
       ? SAMPLE_DISRUPTION_DIGEST_PROPS.weekendWindowDescription
       : `Weekend Window: Friday 19:00 – Monday 04:30 UK Local Time (${weekendDate})`);
-  const disruptions = props.disruptions ?? (isPreview ? SAMPLE_DISRUPTION_DIGEST_PROPS.disruptions : []);
+  const disruptions =
+    props.disruptions ?? (isPreview ? SAMPLE_DISRUPTION_DIGEST_PROPS.disruptions : []);
   const unsubscribeToken =
     props.unsubscribeToken ?? (isPreview ? SAMPLE_DISRUPTION_DIGEST_PROPS.unsubscribeToken : '');
   const unsubscribeUrl =
-    props.unsubscribeUrl ?? `https://railsignal.london/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
+    props.unsubscribeUrl ??
+    `https://railsignal.london/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
 
   const hasDisruptions = disruptions.length > 0;
   const previewText = hasDisruptions
@@ -62,25 +65,30 @@ export default function DisruptionDigest(props: DisruptionDigestProps = {}): Rea
       <Body style={emailStyles.body}>
         <Container style={emailStyles.container}>
           <Section style={emailStyles.header}>
-            <Heading as="h1" style={emailStyles.brandTitle}>RailSignal</Heading>
+            <Heading as="h1" style={emailStyles.brandTitle}>
+              RailSignal
+            </Heading>
             <Text style={emailStyles.brandSubtitle}>London Weekend Closure Radar</Text>
           </Section>
 
           <Section style={emailStyles.summarySection}>
-            <Heading as="h2" style={emailStyles.sectionTitle}>Weekend Disruption Digest</Heading>
+            <Heading as="h2" style={emailStyles.sectionTitle}>
+              Weekend Disruption Digest
+            </Heading>
             <Text style={emailStyles.windowDescription}>{weekendWindowDescription}</Text>
           </Section>
 
           <Section style={emailStyles.contentSection}>
             {hasDisruptions ? (
-              disruptions.map((item, index) => {
+              disruptions.map((item) => {
                 const staticLine = getTflLineById(item.lineId);
                 const lineColor = item.color ?? staticLine?.color ?? '#0019A8';
-                const hasContrastBorder = item.contrastBorder ?? staticLine?.contrastBorder ?? false;
+                const hasContrastBorder =
+                  item.contrastBorder ?? staticLine?.contrastBorder ?? false;
 
                 return (
                   <Section
-                    key={`${item.lineId}-${index}`}
+                    key={`${item.lineId}-${item.corridorDescription}`}
                     style={{
                       ...emailStyles.card,
                       // Email client quirk: shorthand 'border' MUST precede 'borderLeft'. Otherwise,
@@ -96,7 +104,9 @@ export default function DisruptionDigest(props: DisruptionDigestProps = {}): Rea
                             <Text style={emailStyles.lineName}>{item.lineName}</Text>
                           </td>
                           <td style={emailStyles.badgeCell}>
-                            <span style={emailStyles.severityBadge}>{item.statusSeverityDescription}</span>
+                            <span style={emailStyles.severityBadge}>
+                              {item.statusSeverityDescription}
+                            </span>
                           </td>
                         </tr>
                       </tbody>
@@ -113,7 +123,8 @@ export default function DisruptionDigest(props: DisruptionDigestProps = {}): Rea
                       <td>
                         <Text style={emailStyles.goodServiceTitle}>Good Service</Text>
                         <Text style={emailStyles.goodServiceDescription}>
-                          No planned closures reported on your monitored lines for this weekend window.
+                          No planned closures reported on your monitored lines for this weekend
+                          window.
                         </Text>
                       </td>
                     </tr>
@@ -126,17 +137,22 @@ export default function DisruptionDigest(props: DisruptionDigestProps = {}): Rea
           <Section style={emailStyles.footerSection}>
             <Hr style={emailStyles.divider} />
             <Text style={emailStyles.footerNote}>
-              You received this radar digest because you subscribed to RailSignal closure alerts for your monitored London transit routes.
+              You received this radar digest because you subscribed to RailSignal closure alerts for
+              your monitored London transit routes.
             </Text>
             <Text style={emailStyles.footerLinkRow}>
-              <Link href={unsubscribeUrl} style={emailStyles.unsubscribeLink}>Unsubscribe from alerts</Link>
+              <Link href={unsubscribeUrl} style={emailStyles.unsubscribeLink}>
+                Unsubscribe from alerts
+              </Link>
             </Text>
             {unsubscribeToken && (
               <Text style={emailStyles.footerToken}>
                 Subscription Token: <code style={emailStyles.tokenCode}>{unsubscribeToken}</code>
               </Text>
             )}
-            <Text style={emailStyles.footerBrand}>RailSignal · Automated London Transit Engineering Radar</Text>
+            <Text style={emailStyles.footerBrand}>
+              RailSignal · Automated London Transit Engineering Radar
+            </Text>
           </Section>
         </Container>
       </Body>

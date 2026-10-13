@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { Resend } from 'resend';
 import type { IPolicy } from 'cockatiel';
-import { createResendRetryPolicy } from './resilience.js';
-import { renderEmail } from './renderer.js';
-import type { Logger, SendEmailOptions, SendEmailResult } from './types.js';
+import { Resend } from 'resend';
 import { config } from '../config.js';
+import { renderEmail } from './renderer.js';
+import { createResendRetryPolicy } from './resilience.js';
+import type { Logger, SendEmailOptions, SendEmailResult } from './types.js';
 
 export interface TransportClientOptions {
   resendApiKey?: string;
@@ -66,7 +66,7 @@ export class ResendTransportClient {
       const recipientText = Array.isArray(options.to) ? options.to.join(', ') : options.to;
       this.logger.info(
         `[Resend Mock Fallback] Email to ${recipientText} | Subject: "${options.subject}" (${htmlContent.length} bytes HTML)\n` +
-          `Preview:\n${textContent ?? htmlContent.slice(0, 300)}`
+          `Preview:\n${textContent ?? htmlContent.slice(0, 300)}`,
       );
 
       return {
@@ -76,8 +76,9 @@ export class ResendTransportClient {
       };
     }
 
+    const resend = this.resend;
     const response = await this.retryPolicy.execute(async () => {
-      const res = await this.resend!.emails.send({
+      const res = await resend.emails.send({
         from: fromAddress,
         to: options.to,
         subject: options.subject,

@@ -1,9 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
-import {
-  ResendEmailClient,
-  type Logger,
-} from '../../../src/email/resendClient.js';
+import type { Resend } from 'resend';
+import { describe, expect, it, vi } from 'vitest';
+import { type Logger, ResendEmailClient } from '../../../src/email/resendClient.js';
 
 describe('ResendEmailClient', () => {
   it('Should_use_mock_fallback_and_log_html_when_resend_api_key_is_omitted_in_development', async () => {
@@ -43,7 +41,7 @@ describe('ResendEmailClient', () => {
         to: 'commuter@example.com',
         subject: 'Alert',
         html: '<p>Production alert</p>',
-      })
+      }),
     ).rejects.toThrow(/RESEND_API_KEY is required in production/);
   });
 
@@ -56,7 +54,7 @@ describe('ResendEmailClient', () => {
       client.sendEmail({
         to: 'commuter@example.com',
         subject: 'Empty email',
-      })
+      }),
     ).rejects.toThrow('Either react element or html string must be provided');
   });
 
@@ -73,7 +71,7 @@ describe('ResendEmailClient', () => {
         emails: {
           send: mockSend,
         },
-      } as any,
+      } as unknown as Resend,
     });
 
     const result = await client.sendEmail({
@@ -88,7 +86,7 @@ describe('ResendEmailClient', () => {
     expect(result.id).toBe('email_resend_123');
     expect(mockSend).toHaveBeenCalledOnce();
 
-    const callArgs = mockSend.mock.calls[0]![0];
+    const callArgs = mockSend.mock.calls[0]?.[0];
     expect(callArgs.to).toBe('passenger@example.com');
     expect(callArgs.subject).toBe('Weekend Disruption Alert');
     expect(callArgs.from).toBe('RailSignal <test@railsignal.london>');
@@ -112,7 +110,7 @@ describe('ResendEmailClient', () => {
         emails: {
           send: mockSend,
         },
-      } as any,
+      } as unknown as Resend,
     });
 
     await expect(
@@ -120,7 +118,7 @@ describe('ResendEmailClient', () => {
         to: 'invalid-email',
         subject: 'Weekend alert',
         html: '<p>Content</p>',
-      })
+      }),
     ).rejects.toThrow('Invalid email recipient address');
   });
 
@@ -140,7 +138,7 @@ describe('ResendEmailClient', () => {
         emails: {
           send: mockSend,
         },
-      } as any,
+      } as unknown as Resend,
     });
 
     const result = await client.sendEmail({
@@ -167,7 +165,7 @@ describe('ResendEmailClient', () => {
         emails: {
           send: mockSend,
         },
-      } as any,
+      } as unknown as Resend,
     });
 
     const result = await client.sendDisruptionDigest({
@@ -191,8 +189,10 @@ describe('ResendEmailClient', () => {
     });
 
     expect(result.delivered).toBe(true);
-    const callArgs = mockSend.mock.calls[0]![0];
-    expect(callArgs.headers['List-Unsubscribe']).toBe('<https://railsignal.london/unsubscribe?token=token_123>');
+    const callArgs = mockSend.mock.calls[0]?.[0];
+    expect(callArgs.headers['List-Unsubscribe']).toBe(
+      '<https://railsignal.london/unsubscribe?token=token_123>',
+    );
     expect(callArgs.headers['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click');
     expect(callArgs.html).toContain('Central');
     expect(callArgs.text).toContain('Central');

@@ -11,7 +11,8 @@ export const SAMPLE_DISRUPTION_DIGEST_PROPS: Required<DisruptionDigestProps> = {
       mode: 'tube',
       color: '#E32017',
       statusSeverityDescription: 'Part Closure',
-      corridorDescription: 'No service between White City and West Ruislip. Rail replacement buses operate.',
+      corridorDescription:
+        'No service between White City and West Ruislip. Rail replacement buses operate.',
     },
     {
       lineId: 'northern',
