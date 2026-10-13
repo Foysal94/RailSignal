@@ -12,6 +12,7 @@ export const ConfigSchema = Type.Object({
   databaseUrl: Type.String({ minLength: 1 }),
   redisUrl: Type.Optional(Type.String()),
   resendApiKey: Type.Optional(Type.String()),
+  emailFrom: Type.Optional(Type.String()),
   jobSecret: Type.Optional(Type.String()),
 });
 
@@ -37,6 +38,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     databaseUrl,
     ...(env.REDIS_URL ? { redisUrl: env.REDIS_URL } : {}),
     ...(env.RESEND_API_KEY ? { resendApiKey: env.RESEND_API_KEY } : {}),
+    ...(env.EMAIL_FROM ? { emailFrom: env.EMAIL_FROM } : {}),
     ...(env.JOB_SECRET ? { jobSecret: env.JOB_SECRET } : {}),
   };
 
