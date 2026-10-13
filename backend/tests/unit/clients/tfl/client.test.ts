@@ -1,14 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  createTflResiliencePolicy,
-  TflClient,
-  TflHttpError,
-} from '../../../../src/clients/tfl/index.js';
+import { TflClient, TflHttpError } from '../../../../src/clients/tfl/index.js';
 
 describe('TfL Client - HTTP Transport Orchestration', () => {
-  it('Should_fetch_and_return_raw_disruptions_passing_app_key_and_headers', async () => {
+  it('Should_pass_app_key_and_headers_when_fetching_weekend_disruptions', async () => {
     const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify([{ id: '1', description: 'Test disruption' }]), {
+      new Response(JSON.stringify([]), {
         status: 200,
         statusText: 'OK',
         headers: { 'Content-Type': 'application/json' },
@@ -19,12 +15,12 @@ describe('TfL Client - HTTP Transport Orchestration', () => {
       baseUrl: 'https://api.tfl.gov.uk',
       appKey: 'test-app-key',
       fetchFn: mockFetch as unknown as typeof fetch,
-      policy: createTflResiliencePolicy({ maxRetries: 0 }),
+      disableResilience: true,
     });
 
-    const raw = await client.fetchRawDisruptions();
+    const result = await client.getWeekendDisruptions();
 
-    expect(raw).toHaveLength(1);
+    expect(result).toEqual([]);
     expect(mockFetch).toHaveBeenCalledWith(
       'https://api.tfl.gov.uk/Line/Mode/tube,elizabeth-line,overground,dlr/Disruption?app_key=test-app-key',
       expect.objectContaining({
@@ -44,10 +40,10 @@ describe('TfL Client - HTTP Transport Orchestration', () => {
 
     const client = new TflClient({
       fetchFn: mockFetch as unknown as typeof fetch,
-      policy: createTflResiliencePolicy({ maxRetries: 0 }),
+      disableResilience: true,
     });
 
-    await expect(client.fetchRawDisruptions()).rejects.toThrow(TflHttpError);
+    await expect(client.getWeekendDisruptions()).rejects.toThrow(TflHttpError);
   });
 
   it('Should_fetch_and_return_parsed_weekend_disruptions_end_to_end', async () => {
@@ -74,7 +70,7 @@ describe('TfL Client - HTTP Transport Orchestration', () => {
 
     const client = new TflClient({
       fetchFn: mockFetch as unknown as typeof fetch,
-      policy: createTflResiliencePolicy({ maxRetries: 0 }),
+      disableResilience: true,
     });
 
     const disruptions = await client.getWeekendDisruptions({
