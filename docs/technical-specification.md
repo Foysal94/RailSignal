@@ -82,6 +82,7 @@ RailSignal/
 │   │   │   └── temporal.ts             # Europe/London weekend operational window calculator
 │   │   ├── email/                      # Email notifications
 │   │   │   ├── client.ts               # Deep EmailClient module (Resend SDK, retries, console mock)
+│   │   │   ├── dispatcher.ts           # Domain email dispatcher (DisruptionDigest coordination)
 │   │   │   ├── headers.ts              # RFC 8058 one-click list-unsubscribe headers
 │   │   │   ├── renderer.ts             # React Email pure JSX compilation
 │   │   │   ├── resilience.ts           # Cockatiel exponential backoff retry policy
@@ -213,7 +214,7 @@ model WeekendDisruption {
   - Decoupled from third-party client code, serving both TfL ingestion filtering and future scheduling/digest jobs. Accurately resolves GMT/BST boundaries.
 
 ### 5.2 Transactional Email Dispatcher (`src/email/`)
-* **Architecture**: Deep `EmailClient` module collapsing transport dispatch, payload construction, and resilience into a minimal public interface (`sendEmail`, `sendDisruptionDigest`), with internal pure helper modules for JSX rendering (`renderer.ts`), retry policies (`resilience.ts`), and RFC 8058 unsubscribe header generation (`headers.ts`).
+* **Architecture**: Deep `EmailClient` transport module (`client.ts`) collapsing Resend SDK dispatch, JSX compilation, console mock fallback, and Cockatiel retries into `sendEmail`, decoupled from the domain email dispatcher (`dispatcher.ts`) exposing `sendDisruptionDigest` with internal pure helpers for JSX rendering (`renderer.ts`), retry policies (`resilience.ts`), and RFC 8058 unsubscribe header generation (`headers.ts`).
 * **Provider**: Resend API (free tier: 3,000 emails/month).
 * **Templates**: Built with `@react-email/components` (`templates/DisruptionDigest.tsx`). Produces accessible, bulletproof HTML with inline CSS compatible with Outlook and mobile clients.
 * **Deliverability & Spam Compliance**: Automatic RFC 8058 one-click list-unsubscribe headers (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`) to satisfy Gmail and Yahoo bulk sender requirements.

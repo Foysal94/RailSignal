@@ -1,19 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import type { IPolicy } from 'cockatiel';
-import React from 'react';
 import { Resend } from 'resend';
 import { config } from '../config.js';
-import { buildUnsubscribeHeaders } from './headers.js';
 import { renderEmail } from './renderer.js';
 import { createResendRetryPolicy } from './resilience.js';
-import DisruptionDigest from './templates/DisruptionDigest.js';
-import type {
-  DisruptionDigestProps,
-  Logger,
-  SendDisruptionDigestOptions,
-  SendEmailOptions,
-  SendEmailResult,
-} from './types.js';
+import type { Logger, SendEmailOptions, SendEmailResult } from './types.js';
 
 export interface EmailClientOptions {
   resendApiKey?: string;
@@ -25,8 +16,11 @@ export interface EmailClientOptions {
 }
 
 /**
- * Deep transactional email client consolidating template compilation,
- * RFC 8058 deliverability headers, Cockatiel retries, and Resend delivery.
+ * Deep transactional email transport client consolidating React template compilation,
+ * Cockatiel retries, dev-mode console fallback, and Resend delivery.
+ *
+ * Keeps transport I/O strictly decoupled from specific domain email templates, adhering
+ * to Single Responsibility and avoiding God-object coupling.
  */
 export class EmailClient {
   private readonly resend: Resend | null;
@@ -118,27 +112,6 @@ export class EmailClient {
       delivered: true,
       mocked: false,
     };
-  }
-
-  async sendDisruptionDigest(options: SendDisruptionDigestOptions): Promise<SendEmailResult> {
-    const subject =
-      options.subject ??
-      `RailSignal Weekend Radar: ${options.digest.weekendDate ?? 'Disruption Digest'}`;
-
-    const digestElement = React.createElement(
-      DisruptionDigest,
-      options.digest as DisruptionDigestProps & React.Attributes,
-    );
-
-    const headers = buildUnsubscribeHeaders(options.digest, options.headers);
-
-    return this.sendEmail({
-      to: options.to,
-      subject,
-      react: digestElement,
-      headers,
-      ...(options.from ? { from: options.from } : {}),
-    });
   }
 }
 
