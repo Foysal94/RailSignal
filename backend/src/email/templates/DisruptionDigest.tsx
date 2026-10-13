@@ -83,6 +83,8 @@ export default function DisruptionDigest(props: DisruptionDigestProps = {}): Rea
                     key={`${item.lineId}-${index}`}
                     style={{
                       ...emailStyles.card,
+                      // Email client quirk: shorthand 'border' MUST precede 'borderLeft'. Otherwise,
+                      // 'border: 1px solid' renders after and erases the line brand color bar.
                       border: hasContrastBorder ? '1px solid #94a3b8' : '1px solid #e2e8f0',
                       borderLeft: `6px solid ${lineColor}`,
                     }}

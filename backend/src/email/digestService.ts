@@ -26,7 +26,8 @@ export function buildDigestEmailPayload(
       ? `https://railsignal.london/unsubscribe?token=${encodeURIComponent(options.digest.unsubscribeToken)}`
       : undefined);
 
-  // RFC 8058 one-click list-unsubscribe headers for inbox deliverability
+  // Gmail/Yahoo 2024 mandate: RFC 8058 requires BOTH bracketed <url> in List-Unsubscribe
+  // and exact 'List-Unsubscribe=One-Click' in List-Unsubscribe-Post to prevent spam penalties.
   const headers: Record<string, string> = {
     ...(unsubscribeUrl
       ? {

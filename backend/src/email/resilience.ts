@@ -14,7 +14,9 @@ export function isResendTransientError(err: unknown): boolean {
     }
 
     const msg = err.message.toLowerCase();
-    // 429 Rate Limits, 5xx server issues, or socket/network stalls
+    // Vendor quirk: Resend SDK returns generic Error objects without HTTP status codes,
+    // and Node fetch throws generic TypeError on socket stalls. We inspect strings to isolate
+    // transient capacity/socket errors from deterministic 400/401 errors.
     return (
       msg.includes('429') ||
       msg.includes('rate limit') ||
