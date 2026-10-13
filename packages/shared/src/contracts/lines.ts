@@ -53,3 +53,8 @@ export const WeekendStatusResponseSchema = Type.Object({
   lastUpdated: Type.String(),
 });
 export type WeekendStatusResponse = Static<typeof WeekendStatusResponseSchema>;
+
+export const WeekendStatusQuerySchema = Type.Object({
+  referenceDate: Type.Optional(Type.String()),
+});
+export type WeekendStatusQuery = Static<typeof WeekendStatusQuerySchema>;
