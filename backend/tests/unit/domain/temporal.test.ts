@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import {
-  getUpcomingWeekendWindow,
-  isDisruptionInWindow,
-} from '../../../../src/clients/tfl/temporal.js';
+import { getUpcomingWeekendWindow, isDisruptionInWindow } from '../../../src/domain/temporal.js';
 
-describe('TfL Temporal - Weekend Window & Filtering', () => {
+describe('Domain Temporal - Weekend Window & Filtering', () => {
   it('Should_calculate_upcoming_weekend_window_during_weekday_midweek', () => {
     // Tuesday 14:00 UTC in BST (July 2026)
     const tuesday = new Date('2026-07-07T14:00:00Z');

@@ -1,5 +1,5 @@
-import type { TZDate } from '@date-fns/tz';
 import type { LineMode } from '@railsignal/shared';
+import type { WeekendWindow } from '../../domain/temporal.js';
 
 export interface RawTflAffectedRoute {
   id?: string | undefined;
@@ -38,22 +38,6 @@ export interface ParsedDisruption {
   validFrom: string;
   validTo: string;
   sourceLastUpdated: string;
-}
-
-export interface WeekendWindowOptions {
-  referenceDate?: Date | undefined;
-}
-
-export interface WeekendWindow {
-  weekendDate: string; // ISO date 'YYYY-MM-DD' representing target Friday
-  windowStart: TZDate; // Friday 19:00 Europe/London
-  windowEnd: TZDate; // Monday 04:30 Europe/London
-}
-
-export interface IsDisruptionInWindowOptions {
-  validFrom?: string | Date | undefined;
-  validTo?: string | Date | undefined;
-  window: WeekendWindow;
 }
 
 export interface ParseTflDisruptionsOptions {

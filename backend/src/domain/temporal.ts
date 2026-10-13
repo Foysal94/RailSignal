@@ -1,8 +1,21 @@
 import { TZDate } from '@date-fns/tz';
 import { addDays, format } from 'date-fns';
-import type { IsDisruptionInWindowOptions, WeekendWindow, WeekendWindowOptions } from './types.js';
 
-export type { IsDisruptionInWindowOptions, WeekendWindow, WeekendWindowOptions };
+export interface WeekendWindowOptions {
+  referenceDate?: Date | undefined;
+}
+
+export interface WeekendWindow {
+  weekendDate: string; // ISO date 'YYYY-MM-DD' representing target Friday
+  windowStart: TZDate; // Friday 19:00 Europe/London
+  windowEnd: TZDate; // Monday 04:30 Europe/London
+}
+
+export interface IsDisruptionInWindowOptions {
+  validFrom?: string | Date | undefined;
+  validTo?: string | Date | undefined;
+  window: WeekendWindow;
+}
 
 /**
  * Calculates the operational weekend disruption window pinned strictly to Europe/London local time.
