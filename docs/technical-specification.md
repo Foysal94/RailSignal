@@ -289,7 +289,6 @@ See [ADR 0006](file:///Users/foysalahmed/Code/RailSignal/docs/adr/0006-frontend-
   * **Phase 1B: Prisma Persistence, Models & Dual-Database Setup**: Prisma schema, `Subscription` & `WeekendDisruption` models, SQLite migrations, `src/db.ts` singleton, and `prisma:prep-prod` build script.
 * **Phase 2: External Adapters**
   * **Phase 2A: Resilient TfL API Client**: Typed TfL client with `cockatiel` resilience and `date-fns` London weekend filter.
-  * **Phase 2A.2: Seal Disruption Ingestion Seam & Domain Temporal Extraction (Architecture Refactoring)**: Deepen TfL client module seam, eliminate legacy facade, extract pure domain temporal module (`src/domain/temporal.ts`), and seal public barrel exports.
   * **Phase 2B: Transactional Email Client & Templates**: `@react-email` templates and Resend client with local mock fallback.
 * **Phase 3: Queue Pipeline & Background Workers**
   * **Phase 3A: BullMQ Upstash Pipeline & Ingestion Worker**: Redis connection factory (TLS, `drainDelay: 60s`), `ingestionWorker.ts` with idempotent Prisma upserts.

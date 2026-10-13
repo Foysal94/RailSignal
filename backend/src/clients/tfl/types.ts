@@ -1,5 +1,7 @@
 import type { LineMode } from '@railsignal/shared';
-import type { WeekendWindow } from '../../domain/temporal.js';
+import type { WeekendWindow, WeekendWindowOptions } from '../../domain/temporal.js';
+
+export type { WeekendWindow, WeekendWindowOptions };
 
 export interface RawTflAffectedRoute {
   id?: string | undefined;

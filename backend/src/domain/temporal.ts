@@ -90,7 +90,7 @@ export function isDisruptionInWindow(options: IsDisruptionInWindowOptions): bool
   const startMs = window.windowStart.getTime();
   const endMs = window.windowEnd.getTime();
 
-  // If TfL omits both validity bounds, treat as actively current
+  // If both validity bounds are omitted, treat as actively current
   if (!validFrom && !validTo) {
     return true;
   }

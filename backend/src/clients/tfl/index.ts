@@ -1,6 +1,6 @@
 /**
  * TfL Client Module Seam
- * Sealed public entry point exposing the resilient TfL client and domain models.
+ * Sealed public entry point exposing the resilient TfL client adapter.
  */
 
 export { TflClient, type TflClientOptions, tflClient } from './client.js';
