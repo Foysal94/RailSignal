@@ -1,19 +1,28 @@
-import type { PrismaClient, WeekendDisruption } from '@prisma/client';
+import type {
+  PrismaClient,
+  Subscription,
+  SubscriptionLine,
+  WeekendDisruption,
+} from '@prisma/client';
 import { prisma as defaultPrisma } from '../../db.js';
 
-export interface MatchedSubscriber {
+export interface MatchedSubscriber<TDisruption = WeekendDisruption> {
   subscriptionId: string;
   email: string;
   unsubscribeToken: string;
   lastNotifiedWeekendDate: string | null;
   subscribedLineIds: string[];
-  disruptions: WeekendDisruption[];
+  disruptions: TDisruption[];
 }
 
 export interface MatchSubscribersOptions {
   prisma?: PrismaClient | undefined;
   weekendDate: string;
 }
+
+export type SubscriptionWithLines = Subscription & {
+  lines: SubscriptionLine[];
+};
 
 /**
  * Pure domain filtering helper isolating in-memory disruption matching per line set.
@@ -27,30 +36,62 @@ export function filterDisruptionsForLines<T extends { lineId: string }>(
 }
 
 /**
- * Pure domain matching logic querying active Subscription records via the SubscriptionLine junction table.
- * Matches subscribers whose selected lines have active disruptions for the target weekend.
+ * Pure domain matching function operating entirely in memory.
+ * Matches subscriber records via their SubscriptionLine junction relations against active weekend disruptions.
+ */
+export function matchSubscribersToDisruptions<
+  S extends {
+    id: string;
+    email: string;
+    unsubscribeToken: string;
+    lastNotifiedWeekendDate: string | null;
+    lines: Array<{ lineId: string }>;
+  },
+  D extends { lineId: string },
+>(subscriptions: S[], disruptions: D[]): MatchedSubscriber<D>[] {
+  const matched: MatchedSubscriber<D>[] = [];
+
+  for (const subscription of subscriptions) {
+    const subscribedLineIds = subscription.lines.map((l) => l.lineId);
+    const subscriberDisruptions = filterDisruptionsForLines(subscribedLineIds, disruptions);
+
+    if (subscriberDisruptions.length > 0) {
+      matched.push({
+        subscriptionId: subscription.id,
+        email: subscription.email,
+        unsubscribeToken: subscription.unsubscribeToken,
+        lastNotifiedWeekendDate: subscription.lastNotifiedWeekendDate,
+        subscribedLineIds,
+        disruptions: subscriberDisruptions,
+      });
+    }
+  }
+
+  return matched;
+}
+
+/**
+ * Queries active subscription projections via Prisma and coordinates domain matching.
+ * Filters out subscriptions already notified for the target weekend at the database layer
+ * to avoid unbounded memory allocation during large weekly broadcast runs.
  */
 export async function matchSubscribersForWeekend(
   options: MatchSubscribersOptions,
-): Promise<MatchedSubscriber[]> {
+): Promise<MatchedSubscriber<WeekendDisruption>[]> {
   const db = options.prisma ?? defaultPrisma;
   const weekendDate = options.weekendDate;
 
-  // 1. Fetch all materialized disruption projections for the target weekend
   const weekendDisruptions = await db.weekendDisruption.findMany({
     where: { weekendDate },
     orderBy: [{ lineName: 'asc' }, { corridorDescription: 'asc' }],
   });
 
-  // Short-circuit: when no lines are disrupted for the weekend, zero subscriber digests are needed
   if (weekendDisruptions.length === 0) {
     return [];
   }
 
-  // Extract distinct line IDs with disruptions to limit junction table search space
   const disruptedLineIds = Array.from(new Set(weekendDisruptions.map((d) => d.lineId)));
 
-  // 2. Query active subscriptions whose selected lines intersect the disrupted line set
   const subscriptions = await db.subscription.findMany({
     where: {
       lines: {
@@ -69,18 +110,5 @@ export async function matchSubscribersForWeekend(
     },
   });
 
-  // 3. Compile matched subscribers with their specific relevant disruptions
-  return subscriptions.map((subscription) => {
-    const subscribedLineIds = subscription.lines.map((l) => l.lineId);
-    const subscriberDisruptions = filterDisruptionsForLines(subscribedLineIds, weekendDisruptions);
-
-    return {
-      subscriptionId: subscription.id,
-      email: subscription.email,
-      unsubscribeToken: subscription.unsubscribeToken,
-      lastNotifiedWeekendDate: subscription.lastNotifiedWeekendDate,
-      subscribedLineIds,
-      disruptions: subscriberDisruptions,
-    };
-  });
+  return matchSubscribersToDisruptions(subscriptions, weekendDisruptions);
 }

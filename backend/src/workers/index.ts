@@ -4,6 +4,7 @@ import { closeNotificationWorker } from './notificationWorker.js';
 
 export * from './demo/index.js';
 export * from './demoAlertWorker.js';
+export * from './digestMapper.js';
 export * from './ingestion/index.js';
 export * from './ingestionWorker.js';
 export * from './notifications/index.js';

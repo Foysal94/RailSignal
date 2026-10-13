@@ -104,12 +104,3 @@ export async function closeNotificationWorker(): Promise<void> {
     await notificationWorker.close();
   }
 }
-
-// Graceful shutdown hooks to prevent locked BullMQ jobs during container scale-to-zero
-if (config.nodeEnv !== 'test' && notificationWorker) {
-  const handleScaleToZero = () => {
-    void closeNotificationWorker();
-  };
-  process.once('SIGTERM', handleScaleToZero);
-  process.once('SIGINT', handleScaleToZero);
-}

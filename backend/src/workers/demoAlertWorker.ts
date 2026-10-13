@@ -100,12 +100,3 @@ export async function closeDemoAlertWorker(): Promise<void> {
     await demoAlertWorker.close();
   }
 }
-
-// Graceful shutdown hooks to prevent locked BullMQ jobs during container scale-to-zero
-if (config.nodeEnv !== 'test' && demoAlertWorker) {
-  const handleScaleToZero = () => {
-    void closeDemoAlertWorker();
-  };
-  process.once('SIGTERM', handleScaleToZero);
-  process.once('SIGINT', handleScaleToZero);
-}
