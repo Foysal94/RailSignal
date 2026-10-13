@@ -72,8 +72,7 @@ export function matchSubscribersToDisruptions<
 
 /**
  * Queries active subscription projections via Prisma and coordinates domain matching.
- * Filters out subscriptions already notified for the target weekend at the database layer
- * to avoid unbounded memory allocation during large weekly broadcast runs.
+ * Traverses the SubscriptionLine junction table to find subscribers monitoring disrupted lines.
  */
 export async function matchSubscribersForWeekend(
   options: MatchSubscribersOptions,

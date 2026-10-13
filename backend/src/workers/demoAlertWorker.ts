@@ -1,6 +1,5 @@
 import { type ConnectionOptions, type Job, Worker, type WorkerOptions } from 'bullmq';
 import type { Redis } from 'ioredis';
-import { config } from '../config.js';
 import { createRedisConnection, UPSTASH_WORKER_DEFAULTS } from '../queues/connection.js';
 import { type DemoAlertJobData, QUEUE_NAMES } from '../queues/queues.js';
 import { type ProcessDemoAlertJobResult, processDemoAlertJob } from './demo/processor.js';
@@ -60,7 +59,7 @@ export function createDemoAlertWorker(
     stalledInterval: options.stalledInterval ?? UPSTASH_WORKER_DEFAULTS.stalledInterval,
     lockDuration: options.lockDuration ?? UPSTASH_WORKER_DEFAULTS.lockDuration,
     maxStalledCount: UPSTASH_WORKER_DEFAULTS.maxStalledCount,
-    autorun: options.autorun ?? config.nodeEnv !== 'test',
+    autorun: options.autorun ?? true,
   };
 
   const worker = new Worker<DemoAlertJobData, ProcessDemoAlertJobResult, string>(
@@ -82,21 +81,8 @@ export function createDemoAlertWorker(
   });
 
   worker.on('error', (error) => {
-    if (config.nodeEnv !== 'test') {
-      logger.error(`[Demo Alert Worker] Internal worker error: ${error.message}`);
-    }
+    logger.error(`[Demo Alert Worker] Internal worker error: ${error.message}`);
   });
 
   return worker;
-}
-
-export const demoAlertWorker =
-  config.nodeEnv !== 'test'
-    ? createDemoAlertWorker()
-    : (undefined as unknown as Worker<DemoAlertJobData, ProcessDemoAlertJobResult, string>);
-
-export async function closeDemoAlertWorker(): Promise<void> {
-  if (demoAlertWorker) {
-    await demoAlertWorker.close();
-  }
 }

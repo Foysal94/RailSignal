@@ -1,6 +1,5 @@
 import { type ConnectionOptions, type Job, Worker, type WorkerOptions } from 'bullmq';
 import type { Redis } from 'ioredis';
-import { config } from '../config.js';
 import { createRedisConnection, UPSTASH_WORKER_DEFAULTS } from '../queues/connection.js';
 import { type NotificationJobData, QUEUE_NAMES } from '../queues/queues.js';
 import {
@@ -64,7 +63,7 @@ export function createNotificationWorker(
     stalledInterval: options.stalledInterval ?? UPSTASH_WORKER_DEFAULTS.stalledInterval,
     lockDuration: options.lockDuration ?? UPSTASH_WORKER_DEFAULTS.lockDuration,
     maxStalledCount: UPSTASH_WORKER_DEFAULTS.maxStalledCount,
-    autorun: options.autorun ?? config.nodeEnv !== 'test',
+    autorun: options.autorun ?? true,
   };
 
   const worker = new Worker<NotificationJobData, ProcessNotificationJobResult, string>(
@@ -86,21 +85,8 @@ export function createNotificationWorker(
   });
 
   worker.on('error', (error) => {
-    if (config.nodeEnv !== 'test') {
-      logger.error(`[Notification Worker] Internal worker error: ${error.message}`);
-    }
+    logger.error(`[Notification Worker] Internal worker error: ${error.message}`);
   });
 
   return worker;
-}
-
-export const notificationWorker =
-  config.nodeEnv !== 'test'
-    ? createNotificationWorker()
-    : (undefined as unknown as Worker<NotificationJobData, ProcessNotificationJobResult, string>);
-
-export async function closeNotificationWorker(): Promise<void> {
-  if (notificationWorker) {
-    await notificationWorker.close();
-  }
 }

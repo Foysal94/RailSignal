@@ -6,12 +6,11 @@ import type { ResendEmailClient, SendDisruptionDigestOptions } from '../../src/e
 import type { DemoAlertJobData, NotificationJobData } from '../../src/queues/queues.js';
 import {
   closeAllWorkers,
-  createDemoAlertWorker,
   createDemoAlertWorkerHandler,
-  createNotificationWorker,
   createNotificationWorkerHandler,
   processDemoAlertJob,
   processNotificationJob,
+  startAllWorkers,
 } from '../../src/workers/index.js';
 
 describe('Notification & Demo Pipeline Integration Tests', () => {
@@ -272,17 +271,14 @@ describe('Notification & Demo Pipeline Integration Tests', () => {
       defineCommand: vi.fn(),
     });
 
-    const notifWorker = createNotificationWorker({
+    const active = startAllWorkers({
       connection: mockConnection as never,
-      autorun: false,
-    });
-    const demoWorker = createDemoAlertWorker({
-      connection: mockConnection as never,
-      autorun: false,
     });
 
-    await expect(notifWorker.close()).resolves.toBeUndefined();
-    await expect(demoWorker.close()).resolves.toBeUndefined();
+    expect(active.ingestionWorker).toBeDefined();
+    expect(active.notificationWorker).toBeDefined();
+    expect(active.demoAlertWorker).toBeDefined();
+
     await expect(closeAllWorkers()).resolves.toBeUndefined();
   });
 });

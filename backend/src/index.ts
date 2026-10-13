@@ -1,7 +1,7 @@
 import { buildApp } from './app.js';
 import { config } from './config.js';
 import { prisma } from './db.js';
-import { closeAllWorkers } from './workers/index.js';
+import { closeAllWorkers, startAllWorkers } from './workers/index.js';
 
 const app = buildApp({
   logger: {
@@ -39,6 +39,7 @@ async function shutdown(signal: string): Promise<void> {
 
 async function start(): Promise<void> {
   try {
+    startAllWorkers();
     const address = await app.listen({
       port: config.port,
       host: config.host,
