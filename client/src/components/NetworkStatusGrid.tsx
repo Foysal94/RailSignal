@@ -1,0 +1,122 @@
+import { useMemo } from 'react';
+import { useWeekendStatus } from '../hooks/useWeekendStatus';
+import { LineCard } from './LineCard';
+import { isDisrupted, sortStatusItems } from './statusSorter';
+
+export interface NetworkStatusGridProps {
+  referenceDate?: string;
+}
+
+export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
+  const { data, isFetching, isError, error, refetch } = useWeekendStatus(referenceDate);
+
+  const lines = data?.lines;
+  const sortedLines = useMemo(() => sortStatusItems(lines ?? []), [lines]);
+  const disruptionCount = useMemo(() => sortedLines.filter(isDisrupted).length, [sortedLines]);
+
+  if (isFetching && !data) {
+    return (
+      <div
+        data-testid="status-grid-skeleton"
+        role="status"
+        className="flex flex-col gap-3"
+        aria-busy="true"
+        aria-label="Loading transit status"
+      >
+        <span className="sr-only">Loading weekend transit statuses...</span>
+        {[...Array(6)].map((_, i) => (
+          <div
+            // Skeletons are static layout placeholders; index key is safe here
+            // biome-ignore lint/suspicious/noArrayIndexKey: placeholder skeletons
+            key={i}
+            className="flex h-20 animate-pulse rounded-lg border border-slate-800 bg-radar-card"
+          >
+            <div className="w-1 bg-slate-700" />
+            <div className="flex flex-1 items-center justify-between p-4">
+              <div className="space-y-2">
+                <div className="h-4 w-32 rounded bg-slate-800" />
+                <div className="h-3 w-48 rounded bg-slate-800/60" />
+              </div>
+              <div className="h-6 w-24 rounded-full bg-slate-800" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (isError && !data) {
+    return (
+      <div
+        role="alert"
+        className="rounded-lg border border-red-900/60 bg-red-950/30 p-6 text-center text-slate-200"
+      >
+        <p className="font-semibold text-red-300">Unable to load weekend status</p>
+        <p className="mt-1 text-sm text-slate-400">
+          {error?.message || 'A network error occurred while contacting the server.'}
+        </p>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="mt-4 inline-flex items-center rounded-lg bg-red-800/80 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 min-h-[44px]"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (sortedLines.length === 0) {
+    return (
+      <div className="rounded-lg border border-slate-800 bg-radar-card p-8 text-center text-slate-400">
+        <p>No transit line data available for this weekend window.</p>
+      </div>
+    );
+  }
+
+  return (
+    <section className="space-y-4" aria-label="London weekend transit status stream">
+      <h2 className="sr-only">London Weekend Transit Line Statuses</h2>
+
+      {isError && data && (
+        <div
+          role="status"
+          className="rounded-lg border border-amber-900/60 bg-amber-950/40 px-4 py-2 text-xs text-amber-200 flex items-center justify-between"
+        >
+          <span>Background sync failed. Displaying cached data.</span>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="inline-flex items-center min-h-[44px] px-2 underline hover:text-white"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between text-xs font-medium text-slate-400 px-1">
+        <span>
+          {disruptionCount > 0 ? (
+            <strong className="text-amber-400">
+              {disruptionCount} {disruptionCount === 1 ? 'disruption' : 'disruptions'} active
+            </strong>
+          ) : (
+            <strong className="text-emerald-400">All monitored lines reporting normal</strong>
+          )}
+        </span>
+        <span>
+          {sortedLines.length} lines monitored
+          {isFetching && <span className="ml-2 text-blue-400 animate-pulse">(updating...)</span>}
+        </span>
+      </div>
+
+      <ul className="flex flex-col gap-3">
+        {sortedLines.map((line) => (
+          <li key={line.lineId}>
+            <LineCard line={line} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
