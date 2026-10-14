@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { isValidLineId, type SubscriptionResponse } from '@railsignal/shared';
-import { prisma as defaultPrisma } from '../db.js';
+import { prisma as defaultPrisma } from '../../db.js';
 
 export interface CreateSubscriptionServiceOptions {
   prisma?: PrismaClient | undefined;
@@ -41,7 +41,6 @@ export async function createOrUpdateSubscription(
   const normalizedEmail = options.email.trim().toLowerCase();
   const uniqueLineIds = Array.from(new Set(options.lineIds));
 
-  // Reject payloads with unknown TfL line IDs
   const invalidIds = uniqueLineIds.filter((id) => !isValidLineId(id));
   if (invalidIds.length > 0) {
     throw new InvalidLineIdError(invalidIds);

@@ -1,7 +1,7 @@
 import type { Queue } from 'bullmq';
 import { describe, expect, it, vi } from 'vitest';
 import type { IngestJobData, IngestJobResult } from '../../../src/queues/queues.js';
-import { enqueueSyncDisruptionsJob } from '../../../src/routes/jobs.service.js';
+import { enqueueSyncDisruptionsJob } from '../../../src/routes/jobs/index.js';
 
 describe('Jobs Service Unit Tests', () => {
   it('Should_return_unauthorized_when_expected_secret_is_undefined', async () => {

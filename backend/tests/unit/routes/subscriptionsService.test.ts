@@ -4,7 +4,7 @@ import {
   createOrUpdateSubscription,
   deleteSubscription,
   InvalidLineIdError,
-} from '../../../src/routes/subscriptions.service.js';
+} from '../../../src/routes/subscriptions/index.js';
 
 describe('Subscriptions Service Unit Tests', () => {
   it('Should_throw_InvalidLineIdError_when_unknown_line_id_provided', async () => {

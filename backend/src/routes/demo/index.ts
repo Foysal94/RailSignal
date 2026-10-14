@@ -1,11 +1,10 @@
 import type { SendTestDigestRequest } from '@railsignal/shared';
 import type { Queue } from 'bullmq';
 import type { FastifyPluginAsync } from 'fastify';
-import type { DemoAlertJobData } from '../queues/queues.js';
-import { sendTestDigestSchema } from './demo.schema.js';
-import { enqueueDemoAlert, InvalidDemoLineSelectionError } from './demo.service.js';
-
-const RFC_9457_TYPE = 'https://datatracker.ietf.org/doc/html/rfc9457';
+import { RFC_9457_TYPE } from '../../errorHandler.js';
+import type { DemoAlertJobData } from '../../queues/queues.js';
+import { sendTestDigestSchema } from './schema.js';
+import { enqueueDemoAlert, InvalidDemoLineSelectionError } from './service.js';
 
 export interface DemoRoutesOptions {
   demoAlertQueue?: Pick<Queue<DemoAlertJobData, void, string>, 'add'> | undefined;
@@ -50,3 +49,6 @@ export const demoRoutes: FastifyPluginAsync<DemoRoutesOptions> = async (fastify,
     },
   );
 };
+
+export * from './schema.js';
+export * from './service.js';

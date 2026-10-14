@@ -4,11 +4,13 @@ import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastif
 import type { AppConfig } from './config.js';
 import { errorHandler, notFoundHandler } from './errorHandler.js';
 import type { DemoAlertJobData, IngestJobData, IngestJobResult } from './queues/queues.js';
-import { demoRoutes } from './routes/demo.js';
-import { healthRoutes } from './routes/health.js';
-import { jobsRoutes } from './routes/jobs.js';
-import { linesRoutes } from './routes/lines.js';
-import { subscriptionsRoutes } from './routes/subscriptions.js';
+import {
+  demoRoutes,
+  healthRoutes,
+  jobsRoutes,
+  linesRoutes,
+  subscriptionsRoutes,
+} from './routes/index.js';
 
 export interface AppOptions extends FastifyServerOptions {
   prisma?: PrismaClient | undefined;

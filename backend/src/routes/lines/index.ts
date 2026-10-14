@@ -1,8 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
 import type { WeekendStatusQuery } from '@railsignal/shared';
 import type { FastifyPluginAsync } from 'fastify';
-import { getWeekendStatusSchema } from './lines.schema.js';
-import { fetchWeekendStatus } from './lines.service.js';
+import { getWeekendStatusSchema } from './schema.js';
+import { fetchWeekendStatus } from './service.js';
 
 export interface LinesRoutesOptions {
   prisma?: PrismaClient | undefined;
@@ -22,3 +22,6 @@ export const linesRoutes: FastifyPluginAsync<LinesRoutesOptions> = async (fastif
     },
   );
 };
+
+export * from './schema.js';
+export * from './service.js';

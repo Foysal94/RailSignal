@@ -1,12 +1,11 @@
 import type { SyncWeekendDisruptionsRequest } from '@railsignal/shared';
 import type { Queue } from 'bullmq';
 import type { FastifyPluginAsync } from 'fastify';
-import { type AppConfig, config as defaultConfig } from '../config.js';
-import type { IngestJobData, IngestJobResult } from '../queues/queues.js';
-import { syncWeekendDisruptionsSchema } from './jobs.schema.js';
-import { enqueueSyncDisruptionsJob } from './jobs.service.js';
-
-const RFC_9457_TYPE = 'https://datatracker.ietf.org/doc/html/rfc9457';
+import { type AppConfig, config as defaultConfig } from '../../config.js';
+import { RFC_9457_TYPE } from '../../errorHandler.js';
+import type { IngestJobData, IngestJobResult } from '../../queues/queues.js';
+import { syncWeekendDisruptionsSchema } from './schema.js';
+import { enqueueSyncDisruptionsJob } from './service.js';
 
 export interface JobsRoutesOptions {
   ingestQueue?: Pick<Queue<IngestJobData, IngestJobResult, string>, 'add'> | undefined;
@@ -47,3 +46,6 @@ export const jobsRoutes: FastifyPluginAsync<JobsRoutesOptions> = async (fastify,
     },
   );
 };
+
+export * from './schema.js';
+export * from './service.js';

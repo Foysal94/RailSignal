@@ -2,7 +2,7 @@ import { STATUS_CODES } from 'node:http';
 import type { ProblemDetails } from '@railsignal/shared';
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 
-const RFC_9457_TYPE = 'https://datatracker.ietf.org/doc/html/rfc9457';
+export const RFC_9457_TYPE = 'https://datatracker.ietf.org/doc/html/rfc9457';
 
 export function errorHandler(
   error: FastifyError,

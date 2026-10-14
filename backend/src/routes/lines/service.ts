@@ -6,8 +6,8 @@ import {
   type WeekendStatusItem,
   type WeekendStatusResponse,
 } from '@railsignal/shared';
-import { prisma as defaultPrisma } from '../db.js';
-import { getUpcomingWeekendWindow } from '../domain/temporal.js';
+import { prisma as defaultPrisma } from '../../db.js';
+import { getUpcomingWeekendWindow } from '../../domain/temporal.js';
 
 export interface FetchWeekendStatusOptions {
   prisma?: PrismaClient | undefined;

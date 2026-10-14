@@ -5,14 +5,9 @@ import type {
   UnsubscribeQuery,
 } from '@railsignal/shared';
 import type { FastifyPluginAsync } from 'fastify';
-import { createSubscriptionSchema, deleteSubscriptionSchema } from './subscriptions.schema.js';
-import {
-  createOrUpdateSubscription,
-  deleteSubscription,
-  InvalidLineIdError,
-} from './subscriptions.service.js';
-
-const RFC_9457_TYPE = 'https://datatracker.ietf.org/doc/html/rfc9457';
+import { RFC_9457_TYPE } from '../../errorHandler.js';
+import { createSubscriptionSchema, deleteSubscriptionSchema } from './schema.js';
+import { createOrUpdateSubscription, deleteSubscription, InvalidLineIdError } from './service.js';
 
 export interface SubscriptionsRoutesOptions {
   prisma?: PrismaClient | undefined;
@@ -100,3 +95,6 @@ export const subscriptionsRoutes: FastifyPluginAsync<SubscriptionsRoutesOptions>
     },
   );
 };
+
+export * from './schema.js';
+export * from './service.js';

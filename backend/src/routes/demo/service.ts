@@ -3,7 +3,7 @@ import type { Queue } from 'bullmq';
 import {
   type DemoAlertJobData,
   demoAlertQueue as defaultDemoAlertQueue,
-} from '../queues/queues.js';
+} from '../../queues/queues.js';
 
 export interface EnqueueDemoAlertOptions {
   queue?: Pick<Queue<DemoAlertJobData, void, string>, 'add'> | undefined;

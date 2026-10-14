@@ -3,7 +3,7 @@ import {
   ingestQueue as defaultIngestQueue,
   type IngestJobData,
   type IngestJobResult,
-} from '../queues/queues.js';
+} from '../../queues/queues.js';
 
 export interface EnqueueSyncJobOptions {
   queue?: Pick<Queue<IngestJobData, IngestJobResult, string>, 'add'> | undefined;
@@ -25,7 +25,6 @@ export async function enqueueSyncDisruptionsJob(
 ): Promise<EnqueueSyncJobResult> {
   const { expectedSecret, providedSecret, referenceDate, force } = options;
 
-  // Header verification: both expected and provided secrets must be non-empty and equal
   if (!expectedSecret || !providedSecret || providedSecret !== expectedSecret) {
     return { status: 'unauthorized' };
   }
