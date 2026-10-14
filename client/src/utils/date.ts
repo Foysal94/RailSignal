@@ -1,22 +1,9 @@
-/**
- * Pure date parsing utilities adhering to client/AGENTS.md.
- * Strictly uses string splitting and UTC getters to prevent browser timezone shift bugs.
- */
-
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-] as const;
+const UK_DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
 
 export interface ParsedUtcDate {
   year: number;
@@ -24,9 +11,6 @@ export interface ParsedUtcDate {
   day: number;
 }
 
-/**
- * Splits an ISO date string (YYYY-MM-DD) into UTC numerical parts without Date object timezone shift.
- */
 export function parseUtcDateString(isoDate: string): ParsedUtcDate {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
     throw new Error(`Invalid ISO date format: "${isoDate}", expected "YYYY-MM-DD"`);
@@ -47,11 +31,8 @@ export function parseUtcDateString(isoDate: string): ParsedUtcDate {
   return { year, month, day };
 }
 
-/**
- * Formats a YYYY-MM-DD weekend date into human-readable British format e.g. "17 October 2026".
- */
 export function formatUtcWeekendLabel(isoDate: string): string {
   const { year, month, day } = parseUtcDateString(isoDate);
-  const monthName = MONTH_NAMES[month - 1] ?? '';
-  return `${day} ${monthName} ${year}`;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return UK_DATE_FORMATTER.format(date);
 }
