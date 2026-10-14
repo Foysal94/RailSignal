@@ -1,19 +1,7 @@
 import type { DisruptionDigestProps } from './types.js';
 
-/**
- * Constructs email headers enforcing RFC 8058 one-click unsubscribe compliance.
- *
- * Rationale:
- * Gmail and Yahoo (effective February 2024) mandate that bulk senders provide both:
- * 1. A bracketed URI in 'List-Unsubscribe' (<https://...>)
- * 2. The exact header 'List-Unsubscribe-Post: List-Unsubscribe=One-Click'
- * Failing to provide both triggers deliverability degradation and spam filtering.
- *
- * Precedence & Normalization:
- * - Colliding header keys (case-insensitive) are stripped from customHeaders so that RFC 8058
- *   headers take precedence and prevent duplicate/conflicting header fields.
- * - Leading/trailing brackets are normalized to prevent invalid double-bracket syntax <<...>>.
- */
+// RFC 8058 one-click list-unsubscribe headers for Gmail/Yahoo bulk-sender deliverability mandates.
+// Colliding keys (case-insensitive) are stripped from customHeaders and angle brackets normalized.
 export function buildUnsubscribeHeaders(
   digest: Pick<DisruptionDigestProps, 'unsubscribeUrl' | 'unsubscribeToken'>,
   customHeaders?: Record<string, string>,

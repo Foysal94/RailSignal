@@ -15,13 +15,8 @@ export interface EmailClientOptions {
   retryPolicy?: IPolicy;
 }
 
-/**
- * Deep transactional email transport client consolidating React template compilation,
- * Cockatiel retries, dev-mode console fallback, and Resend delivery.
- *
- * Keeps transport I/O strictly decoupled from specific domain email templates, adhering
- * to Single Responsibility and avoiding God-object coupling.
- */
+// Transport client consolidating React template compilation, Cockatiel retries, dev-mode console fallback, and Resend delivery.
+// Decouples transport I/O from domain email templates to adhere to Single Responsibility.
 export class EmailClient {
   private readonly resend: Resend | null;
   private readonly nodeEnv: string;
@@ -132,10 +127,8 @@ export function resetEmailClient(): void {
   _defaultClient = null;
 }
 
-/**
- * Lazy singleton proxy. Defers initialization until first method call so configuration
- * and environment variables are guaranteed to be populated, preserving prototypes and method binding.
- */
+// Lazy singleton proxy defers initialization until first method call so configuration
+// and environment variables are guaranteed to be populated, preserving prototypes and method binding.
 export const emailClient = new Proxy(Object.create(EmailClient.prototype) as EmailClient, {
   get(_target, prop, receiver) {
     const instance = getEmailClient();

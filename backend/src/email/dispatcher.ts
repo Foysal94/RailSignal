@@ -8,14 +8,8 @@ import type {
   SendEmailResult,
 } from './types.js';
 
-/**
- * Domain dispatcher coordinating transactional email templates and domain payloads.
- *
- * Rationale:
- * Keeps domain presentation logic (React email template creation, fallback subjects, and
- * RFC 8058 deliverability headers) decoupled from the underlying network transport client,
- * adhering to Single Responsibility and avoiding God-object accumulation as new email types are added.
- */
+// Coordinates domain presentation logic (React email template creation, fallback subjects,
+// and RFC 8058 deliverability headers) decoupled from the underlying network transport client.
 export async function sendDisruptionDigest(
   options: SendDisruptionDigestOptions,
   client: EmailClient = emailClient,

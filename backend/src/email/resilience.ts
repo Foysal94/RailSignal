@@ -34,10 +34,8 @@ export function isResendTransientError(err: unknown): boolean {
   return false;
 }
 
-/**
- * Creates an exponential backoff retry policy with decorrelated jitter (ADR 0004)
- * to absorb Resend API free-tier rate limits (2 req/s) and transient network stalls.
- */
+// Creates an exponential backoff retry policy with decorrelated jitter (ADR 0004)
+// to absorb Resend API free-tier rate limits (2 req/s) and transient network stalls.
 export function createResendRetryPolicy(maxAttempts = 3): IPolicy {
   return retry(handleWhen(isResendTransientError), {
     maxAttempts,
