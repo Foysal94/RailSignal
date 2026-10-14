@@ -3,8 +3,6 @@ import { fileURLToPath } from 'node:url';
 import { buildApp } from './app.js';
 import { config } from './config.js';
 import { prisma } from './db.js';
-import { parseCliArgs } from './jobs/cliArgs.js';
-import { runSyncDisruptionsCli } from './jobs/syncDisruptionsRunner.js';
 import { closeAllWorkers, startAllWorkers } from './workers/index.js';
 
 let isShuttingDown = false;
@@ -35,7 +33,7 @@ async function shutdown(app: ReturnType<typeof buildApp>, signal: string): Promi
   }
 }
 
-async function startServer(): Promise<void> {
+export async function start(): Promise<void> {
   const app = buildApp({
     logger: {
       level: config.nodeEnv === 'test' ? 'silent' : 'info',
@@ -71,41 +69,6 @@ async function startServer(): Promise<void> {
   }
 }
 
-export interface MainOptions {
-  argv?: string[] | undefined;
-  runSyncJob?: typeof runSyncDisruptionsCli | undefined;
-  startHttpServer?: (() => Promise<void>) | undefined;
-  exit?: ((code: number) => void) | undefined;
-  logger?: Pick<typeof console, 'error'> | undefined;
-}
-
-/**
- * Root composition entrypoint. Inspects CLI arguments:
- * - If `--job sync-disruptions` is provided, executes the scheduled runner and exits.
- * - Otherwise, boots background BullMQ workers and starts the Fastify HTTP listener.
- */
-export async function main(options: MainOptions = {}): Promise<void> {
-  const argv = options.argv ?? process.argv.slice(2);
-  const { job } = parseCliArgs(argv);
-
-  if (job) {
-    if (job === 'sync-disruptions') {
-      const runner = options.runSyncJob ?? runSyncDisruptionsCli;
-      await runner();
-      return;
-    }
-
-    const logger = options.logger ?? console;
-    const exit = options.exit ?? ((code: number) => process.exit(code));
-    logger.error(`Unknown job: "${job}". Supported jobs: sync-disruptions`);
-    exit(1);
-    return;
-  }
-
-  const startHttp = options.startHttpServer ?? startServer;
-  await startHttp();
-}
-
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  void main();
+  void start();
 }
