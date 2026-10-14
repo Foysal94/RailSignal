@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useWeekendStatus } from '../hooks/useWeekendStatus';
 import { LineCard } from './LineCard';
 import { isDisrupted, sortStatusItems } from './statusSorter';
@@ -14,6 +15,10 @@ export interface NetworkStatusGridProps {
 export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
   const { data, isFetching, isError, error, refetch } = useWeekendStatus(referenceDate);
 
+  const lines = data?.lines;
+  const sortedLines = useMemo(() => sortStatusItems(lines ?? []), [lines]);
+  const disruptionCount = useMemo(() => sortedLines.filter(isDisrupted).length, [sortedLines]);
+
   if (isFetching && !data) {
     return (
       <div
@@ -23,6 +28,7 @@ export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
         aria-busy="true"
         aria-label="Loading transit status"
       >
+        <span className="sr-only">Loading weekend transit statuses...</span>
         {[...Array(6)].map((_, i) => (
           <div
             // Skeletons are static layout placeholders; index key is safe here
@@ -65,9 +71,6 @@ export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
     );
   }
 
-  const lines = data?.lines ?? [];
-  const sortedLines = sortStatusItems(lines);
-
   if (sortedLines.length === 0) {
     return (
       <div className="rounded-lg border border-slate-800 bg-radar-card p-8 text-center text-slate-400">
@@ -76,10 +79,10 @@ export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
     );
   }
 
-  const disruptionCount = sortedLines.filter(isDisrupted).length;
-
   return (
     <section className="space-y-4" aria-label="London weekend transit status stream">
+      <h2 className="sr-only">London Weekend Transit Line Statuses</h2>
+
       {isError && data && (
         <div
           role="status"
@@ -89,7 +92,7 @@ export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
           <button
             type="button"
             onClick={() => void refetch()}
-            className="underline hover:text-white"
+            className="inline-flex items-center min-h-[44px] px-2 underline hover:text-white"
           >
             Retry
           </button>

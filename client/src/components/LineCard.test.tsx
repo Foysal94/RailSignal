@@ -91,10 +91,10 @@ describe('LineCard Component', () => {
       disruptions: [],
     };
 
-    const { container } = render(<LineCard line={item} />);
+    render(<LineCard line={item} />);
 
-    const stripe = container.querySelector('[data-testid="line-accent-stripe"]');
+    const stripe = screen.getByTestId('line-accent-stripe');
     expect(stripe).toBeInTheDocument();
-    expect(stripe?.className).toContain('ring-neutral-500');
+    expect(stripe.className).toContain('ring-neutral-500');
   });
 });

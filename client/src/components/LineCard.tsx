@@ -65,11 +65,7 @@ export function LineCard({ line }: LineCardProps) {
             <span className="text-xs text-slate-400 capitalize">{line.mode.replace('-', ' ')}</span>
           </div>
 
-          {line.corridorDescription && (
-            <p className="text-sm text-slate-300">{line.corridorDescription}</p>
-          )}
-
-          {!line.corridorDescription && line.disruptions.length > 0 && (
+          {line.disruptions.length > 0 ? (
             <div className="space-y-0.5">
               {line.disruptions.map((disruption) => (
                 <p key={disruption.id} className="text-sm text-slate-300">
@@ -77,6 +73,10 @@ export function LineCard({ line }: LineCardProps) {
                 </p>
               ))}
             </div>
+          ) : (
+            line.corridorDescription && (
+              <p className="text-sm text-slate-300">{line.corridorDescription}</p>
+            )
           )}
         </div>
 

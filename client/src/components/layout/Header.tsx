@@ -19,7 +19,9 @@ export function Header({ onSendTestAlert, onFridayAlerts }: HeaderProps) {
             />
             <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
               <span>RailSignal</span>
-              <span className="text-slate-500 font-normal">|</span>
+              <span className="text-slate-500 font-normal" aria-hidden="true">
+                |
+              </span>
               <span className="text-slate-300 font-medium text-base">Weekend Closure Radar</span>
             </h1>
           </div>
