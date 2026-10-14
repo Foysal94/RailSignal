@@ -4,13 +4,34 @@
   "type": "module",
   "description": "RailSignal React Client",
   "scripts": {
-    "dev": "echo 'Client dev server'",
-    "build": "tsc --noEmit",
-    "test": "echo 'No tests yet'",
-    "test:coverage": "echo 'No tests yet'",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@railsignal/shared": "*",
+    "@tanstack/react-query": "^5.104.2",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^22.13.9",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "jsdom": "^26.0.0",
+    "msw": "^2.7.3",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.3",
+    "vite": "^6.2.0",
+    "vitest": "^4.1.11"
   }
 }
