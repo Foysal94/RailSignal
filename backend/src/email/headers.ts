@@ -14,7 +14,11 @@ export function buildUnsubscribeHeaders(
 
   const unsubscribeUrl = rawUrl ? rawUrl.trim().replace(/^<+|>+$/g, '') : undefined;
 
-  // Case-insensitive filtering of colliding headers to prevent duplicate list-unsubscribe headers
+  if (!unsubscribeUrl) {
+    return { ...(customHeaders ?? {}) };
+  }
+
+  // Case-insensitive filtering of colliding headers so RFC 8058 headers take strict precedence
   const sanitizedHeaders = Object.fromEntries(
     Object.entries(customHeaders ?? {}).filter(
       ([k]) => !['list-unsubscribe', 'list-unsubscribe-post'].includes(k.toLowerCase()),
@@ -23,11 +27,7 @@ export function buildUnsubscribeHeaders(
 
   return {
     ...sanitizedHeaders,
-    ...(unsubscribeUrl
-      ? {
-          'List-Unsubscribe': `<${unsubscribeUrl}>`,
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        }
-      : {}),
+    'List-Unsubscribe': `<${unsubscribeUrl}>`,
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
   };
 }

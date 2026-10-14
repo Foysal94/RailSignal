@@ -6,6 +6,7 @@ import {
   createEmailClient,
   EmailClient,
   emailClient,
+  getEmailClient,
   resetEmailClient,
 } from '../../../src/email/client.js';
 import type { Logger } from '../../../src/email/types.js';
@@ -214,10 +215,11 @@ describe('EmailClient', () => {
   });
 
   it('Should_reset_singleton_instance_via_resetEmailClient', () => {
-    const client1 = createEmailClient();
+    const client1 = getEmailClient();
     expect(client1).toBeInstanceOf(EmailClient);
     resetEmailClient();
-    // Verifies that resetEmailClient executes cleanly
-    expect(true).toBe(true);
+    const client2 = getEmailClient();
+    expect(client2).toBeInstanceOf(EmailClient);
+    expect(client2).not.toBe(client1);
   });
 });

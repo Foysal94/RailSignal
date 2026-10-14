@@ -18,9 +18,9 @@ export async function sendDisruptionDigest(
     options.subject ??
     `RailSignal Weekend Radar: ${options.digest.weekendDate ?? 'Disruption Digest'}`;
 
-  const digestElement = React.createElement(
+  const digestElement = React.createElement<DisruptionDigestProps>(
     DisruptionDigest,
-    options.digest as DisruptionDigestProps & React.Attributes,
+    options.digest,
   );
 
   const headers = buildUnsubscribeHeaders(options.digest, options.headers);

@@ -1,7 +1,19 @@
 import type { Resend } from 'resend';
 import { describe, expect, it, vi } from 'vitest';
 import { EmailClient } from '../../../src/email/client.js';
-import { sendDisruptionDigest } from '../../../src/email/dispatcher.js';
+import { sendDisruptionDigest } from '../../../src/email/digest.js';
+
+function createMockClient(mockSend: ReturnType<typeof vi.fn>): EmailClient {
+  return new EmailClient({
+    nodeEnv: 'production',
+    resendApiKey: 're_live_key',
+    resendInstance: {
+      emails: {
+        send: mockSend,
+      },
+    } as unknown as Resend,
+  });
+}
 
 describe('Domain Email Dispatcher', () => {
   it('Should_send_disruption_digest_with_rfc_8058_unsubscribe_headers_and_rendered_template', async () => {
@@ -10,15 +22,7 @@ describe('Domain Email Dispatcher', () => {
       error: null,
     });
 
-    const client = new EmailClient({
-      nodeEnv: 'production',
-      resendApiKey: 're_live_key',
-      resendInstance: {
-        emails: {
-          send: mockSend,
-        },
-      } as unknown as Resend,
-    });
+    const client = createMockClient(mockSend);
 
     const result = await sendDisruptionDigest(
       {
@@ -59,15 +63,7 @@ describe('Domain Email Dispatcher', () => {
       error: null,
     });
 
-    const client = new EmailClient({
-      nodeEnv: 'production',
-      resendApiKey: 're_live_key',
-      resendInstance: {
-        emails: {
-          send: mockSend,
-        },
-      } as unknown as Resend,
-    });
+    const client = createMockClient(mockSend);
 
     await sendDisruptionDigest(
       {
@@ -93,15 +89,7 @@ describe('Domain Email Dispatcher', () => {
       error: null,
     });
 
-    const client = new EmailClient({
-      nodeEnv: 'production',
-      resendApiKey: 're_live_key',
-      resendInstance: {
-        emails: {
-          send: mockSend,
-        },
-      } as unknown as Resend,
-    });
+    const client = createMockClient(mockSend);
 
     await sendDisruptionDigest(
       {

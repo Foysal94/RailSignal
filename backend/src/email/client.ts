@@ -130,9 +130,9 @@ export function resetEmailClient(): void {
 // Lazy singleton proxy defers initialization until first method call so configuration
 // and environment variables are guaranteed to be populated, preserving prototypes and method binding.
 export const emailClient = new Proxy(Object.create(EmailClient.prototype) as EmailClient, {
-  get(_target, prop, receiver) {
+  get(_target, prop) {
     const instance = getEmailClient();
-    const value = Reflect.get(instance, prop, receiver);
+    const value = Reflect.get(instance, prop, instance);
     return typeof value === 'function' ? value.bind(instance) : value;
   },
   has(_target, prop) {

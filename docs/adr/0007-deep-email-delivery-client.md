@@ -14,14 +14,14 @@ Furthermore, several architectural defects emerged:
 
 ## Decision
 1. **Deep Transport Client (`client.ts`)**: Consolidate Resend SDK dispatch, dev-mode console fallback, React-to-HTML compilation, and Cockatiel retry policies into a single deep `EmailClient` class. Expose a minimal transport contract (`sendEmail`). The transport client has zero coupling to specific transit templates or TfL domains.
-2. **Domain Email Dispatcher (`dispatcher.ts`)**: Isolate domain template coordination in `dispatcher.ts` exposing `sendDisruptionDigest(options, client?)`. It coordinates `DisruptionDigest` React element creation, default subject fallback, and RFC 8058 deliverability headers before delegating dispatch to `EmailClient`.
+2. **Domain Email Dispatcher (`digest.ts`)**: Isolate domain template coordination in `digest.ts` exposing `sendDisruptionDigest(options, client?)`. It coordinates `DisruptionDigest` React element creation, default subject fallback, and RFC 8058 deliverability headers before delegating dispatch to `EmailClient`.
 3. **Extract Pure RFC 8058 Header Helper (`headers.ts`)**: Move header generation into an internal pure module implementing `buildUnsubscribeHeaders(digest, customHeaders)` with case-insensitive collision filtering and bracket normalization to satisfy Gmail and Yahoo 2024 bulk-sender deliverability mandates.
-4. **Lock Down Barrel Export (`index.ts`)**: Narrow `backend/src/email/index.ts` to expose only `EmailClient`, `createEmailClient`, lazy singleton proxy `emailClient`, `resetEmailClient`, `sendDisruptionDigest`, and canonical payload types (`SendEmailOptions`, `SendEmailResult`, `SendDisruptionDigestOptions`, `DisruptionDigestProps`, `DisruptionDigestItem`). Keep renderer, resilience policies, headers, and React template components private.
+4. **Lock Down Barrel Export (`index.ts`)**: Narrow `backend/src/email/index.ts` to expose only `EmailClient`, `createEmailClient`, lazy singleton proxy `emailClient`, `sendDisruptionDigest`, and canonical payload types (`SendEmailOptions`, `SendEmailResult`, `SendDisruptionDigestOptions`, `DisruptionDigestProps`, `DisruptionDigestItem`). Keep renderer, resilience policies, headers, and React template components private.
 5. **Break Type Cycles (`types.ts`)**: Establish a unidirectional type graph by locating domain types (`DisruptionDigestProps`, `DisruptionDigestItem`) in `types.ts` with zero internal imports.
 6. **Direct Contract Testing**: Migrate unit tests to exercise `EmailClient`, `sendDisruptionDigest`, and `buildUnsubscribeHeaders` directly.
 
 ## Consequences
-- **High Cohesion & Clear Seams**: Infrastructure transport (`client.ts`) and domain presentation (`dispatcher.ts`) each have exactly one reason to change, honoring monorepo SRP directives.
-- **Scalable Notification Domain**: New notification types (e.g. demo alerts, subscription confirmations) can be added to dispatchers without modifying or bloating the network transport client.
-- **Cycle-Free Dependency Graph**: Clean unidirectional imports from `types.ts` through templates, dispatcher, and clients.
+- **High Cohesion & Clear Seams**: Infrastructure transport (`client.ts`) and domain presentation (`digest.ts`) each have exactly one reason to change, honoring monorepo SRP directives.
+- **Scalable Notification Domain**: New notification types (e.g. demo alerts, subscription confirmations) can be added as cohesive domain dispatchers without modifying or bloating the network transport client.
+- **Cycle-Free Dependency Graph**: Clean unidirectional imports from `types.ts` through templates, domain dispatchers, and clients.
 - **Maintainable Test Suite**: Tests exercise public contracts and pure extracted helpers without mocking shallow internal boundaries.

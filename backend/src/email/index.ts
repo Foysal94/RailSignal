@@ -3,9 +3,8 @@ export {
   EmailClient,
   type EmailClientOptions,
   emailClient,
-  resetEmailClient,
 } from './client.js';
-export { sendDisruptionDigest } from './dispatcher.js';
+export { sendDisruptionDigest } from './digest.js';
 export type {
   DisruptionDigestItem,
   DisruptionDigestProps,
