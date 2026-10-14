@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
-import { fetchWeekendStatus } from '../../../src/routes/lines/index.js';
+import { fetchWeekendStatus } from '../../../src/routes/lines/service.js';
 
 describe('Lines Domain Service', () => {
   it('Should_assemble_weekend_status_board_with_empty_disruptions_fallback', async () => {

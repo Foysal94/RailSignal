@@ -1,7 +1,10 @@
 import type { Queue } from 'bullmq';
 import { describe, expect, it, vi } from 'vitest';
 import type { DemoAlertJobData } from '../../../src/queues/queues.js';
-import { enqueueDemoAlert, InvalidDemoLineSelectionError } from '../../../src/routes/demo/index.js';
+import {
+  enqueueDemoAlert,
+  InvalidDemoLineSelectionError,
+} from '../../../src/routes/demo/service.js';
 
 describe('Demo Alert Service Unit Tests', () => {
   it('Should_throw_InvalidDemoLineSelectionError_when_unknown_line_ids_passed', async () => {
