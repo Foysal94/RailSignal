@@ -35,7 +35,7 @@ async function shutdown(app: ReturnType<typeof buildApp>, signal: string): Promi
   }
 }
 
-export async function startServer(): Promise<void> {
+async function startServer(): Promise<void> {
   const app = buildApp({
     logger: {
       level: config.nodeEnv === 'test' ? 'silent' : 'info',
