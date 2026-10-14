@@ -2,7 +2,7 @@ import type { WeekendStatusResponse } from '@railsignal/shared';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { fetchWeekendStatus } from '../client';
+import { fetchWeekendStatus } from './client';
 
 const mockResponse: WeekendStatusResponse = {
   weekendDate: '2026-10-17',

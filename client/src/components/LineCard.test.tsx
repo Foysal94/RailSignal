@@ -1,7 +1,7 @@
 import type { WeekendStatusItem } from '@railsignal/shared';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { LineCard } from '../LineCard';
+import { LineCard } from './LineCard';
 
 describe('LineCard Component', () => {
   it('Should_render_line_name_and_emerald_badge_for_good_service', () => {

@@ -1,6 +1,6 @@
 import type { WeekendStatusItem } from '@railsignal/shared';
 import { describe, expect, it } from 'vitest';
-import { sortStatusItems } from '../statusSorter';
+import { sortStatusItems } from './statusSorter';
 
 describe('statusSorter: sortStatusItems', () => {
   it('Should_sort_disrupted_lines_to_top_and_good_service_below', () => {

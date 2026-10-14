@@ -6,7 +6,7 @@ import { delay, HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 import type { ReactNode } from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { NetworkStatusGrid } from '../NetworkStatusGrid';
+import { NetworkStatusGrid } from './NetworkStatusGrid';
 
 const mockSuccessData: WeekendStatusResponse = {
   weekendDate: '2026-10-17',

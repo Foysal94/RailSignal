@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import App from '../App';
+import App from './App';
 
 const mockWeekendResponse: WeekendStatusResponse = {
   weekendDate: '2026-10-17',

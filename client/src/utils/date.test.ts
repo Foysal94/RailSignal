@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatUtcWeekendLabel, parseUtcDateString } from '../date';
+import { formatUtcWeekendLabel, parseUtcDateString } from './date';
 
 describe('UTC Date Utility', () => {
   it('Should_parse_valid_iso_date_string_without_timezone_shift', () => {

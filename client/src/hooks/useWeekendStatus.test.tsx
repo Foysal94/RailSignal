@@ -5,7 +5,7 @@ import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 import type { ReactNode } from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { useWeekendStatus } from '../useWeekendStatus';
+import { useWeekendStatus } from './useWeekendStatus';
 
 const mockResponse: WeekendStatusResponse = {
   weekendDate: '2026-10-17',
