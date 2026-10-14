@@ -6,10 +6,6 @@ export interface ApiClientOptions {
   signal?: AbortSignal;
 }
 
-/**
- * Fetches London rail weekend closure status from the backend API.
- * Never calls third-party vendor APIs directly from the browser.
- */
 export async function fetchWeekendStatus(
   referenceDate?: string,
   options?: ApiClientOptions,
