@@ -13,3 +13,13 @@ export const SubscriptionResponseSchema = Type.Object({
   createdAt: Type.String(),
 });
 export type SubscriptionResponse = Static<typeof SubscriptionResponseSchema>;
+
+export const UnsubscribeParamsSchema = Type.Object({
+  id: Type.String({ minLength: 1 }),
+});
+export type UnsubscribeParams = Static<typeof UnsubscribeParamsSchema>;
+
+export const UnsubscribeQuerySchema = Type.Object({
+  token: Type.String({ minLength: 1 }),
+});
+export type UnsubscribeQuery = Static<typeof UnsubscribeQuerySchema>;
