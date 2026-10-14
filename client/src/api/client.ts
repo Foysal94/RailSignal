@@ -37,6 +37,8 @@ export async function fetchWeekendStatus(
       const data = (await response.json()) as ProblemDetails;
       if (data?.detail) {
         detail = data.detail;
+      } else if (data?.title) {
+        detail = data.title;
       }
     } catch {
       // Body was not JSON; keep status code fallback message

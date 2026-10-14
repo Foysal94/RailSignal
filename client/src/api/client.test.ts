@@ -79,6 +79,23 @@ describe('API Client: fetchWeekendStatus', () => {
     );
   });
 
+  it('Should_fallback_to_rfc_9457_title_when_detail_is_missing', async () => {
+    server.use(
+      http.get('/api/lines/weekend-status', () => {
+        return HttpResponse.json(
+          {
+            type: 'https://datatracker.ietf.org/doc/html/rfc9457',
+            title: 'Internal Service Unavailable',
+            status: 503,
+          },
+          { status: 503, headers: { 'Content-Type': 'application/problem+json' } },
+        );
+      }),
+    );
+
+    await expect(fetchWeekendStatus()).rejects.toThrow('Internal Service Unavailable');
+  });
+
   it('Should_throw_fallback_error_when_backend_fails_without_json_problem_details', async () => {
     await expect(fetchWeekendStatus('500-error')).rejects.toThrow('Request failed with status 500');
   });
