@@ -29,4 +29,5 @@ Single-context (`CONTEXT.md` at root + `docs/adr/`). See `docs/agents/domain.md`
 - **Modularity & SRP:** A file must have one reason to change. Never co-locate external I/O/transport, domain business logic, and payload transformation in a single file. Ticket file paths define public entry points; decompose internal responsibilities into focused sibling modules.
 - **Encapsulation & Extraction:** Never expose private class members, internal component state, or route handlers purely for test access. If unexported helper logic requires dedicated unit testing, extract it into a focused pure module and test that module's public contract directly.
 - **Comments (Why, Never What):** Zero tautological comments (`// fetch data`, `// set state`). Mandatory rationale comments for non-obvious logic: vendor quirks, framework traps, temporal edge cases, or domain heuristics.
+- **No JSDoc:** Never write JSDoc blocks (`/** ... */`). TypeScript types, interfaces, and function signatures are the documentation. Use inline comments (`//`) strictly for non-obvious rationale (vendor quirks, temporal edge cases).
 
