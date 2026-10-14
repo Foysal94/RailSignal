@@ -95,6 +95,6 @@ describe('LineCard Component', () => {
 
     const stripe = container.querySelector('[data-testid="line-accent-stripe"]');
     expect(stripe).toBeInTheDocument();
-    expect(stripe?.className).toContain('border-neutral-500');
+    expect(stripe?.className).toContain('ring-neutral-500');
   });
 });

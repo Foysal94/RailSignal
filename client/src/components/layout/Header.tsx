@@ -11,10 +11,12 @@ export function Header({ onSendTestAlert, onFridayAlerts }: HeaderProps) {
   return (
     <header className="border-b border-slate-800 bg-[#0B0F19]/90 backdrop-blur sticky top-0 z-10 px-4 py-3 sm:px-6">
       <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Branding & Subtitle */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="flex h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
+            <span
+              className="flex h-3 w-3 rounded-full bg-emerald-500 animate-pulse"
+              aria-hidden="true"
+            />
             <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
               <span>RailSignal</span>
               <span className="text-slate-500 font-normal">|</span>
@@ -22,7 +24,6 @@ export function Header({ onSendTestAlert, onFridayAlerts }: HeaderProps) {
             </h1>
           </div>
 
-          {/* Temporal Indicator Badge */}
           <div className="inline-flex items-center">
             <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-xs font-medium text-slate-300">
               <svg
@@ -44,7 +45,6 @@ export function Header({ onSendTestAlert, onFridayAlerts }: HeaderProps) {
           </div>
         </div>
 
-        {/* Dual Action Button Cluster */}
         <div className="flex items-center gap-3">
           <button
             type="button"

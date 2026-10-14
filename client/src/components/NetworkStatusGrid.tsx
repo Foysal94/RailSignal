@@ -1,6 +1,6 @@
 import { useWeekendStatus } from '../hooks/useWeekendStatus';
 import { LineCard } from './LineCard';
-import { sortStatusItems } from './statusSorter';
+import { isDisrupted, sortStatusItems } from './statusSorter';
 
 export interface NetworkStatusGridProps {
   referenceDate?: string;
@@ -44,7 +44,7 @@ export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
     );
   }
 
-  if (isError) {
+  if (isError && !data) {
     return (
       <div
         role="alert"
@@ -76,13 +76,26 @@ export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
     );
   }
 
-  const disruptionCount = sortedLines.filter(
-    (line) => line.hasDisruption || line.statusSeverityDescription.toLowerCase() !== 'good service',
-  ).length;
+  const disruptionCount = sortedLines.filter(isDisrupted).length;
 
   return (
     <section className="space-y-4" aria-label="London weekend transit status stream">
-      {/* Overview Tracker */}
+      {isError && data && (
+        <div
+          role="status"
+          className="rounded-lg border border-amber-900/60 bg-amber-950/40 px-4 py-2 text-xs text-amber-200 flex items-center justify-between"
+        >
+          <span>Background sync failed. Displaying cached data.</span>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="underline hover:text-white"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between text-xs font-medium text-slate-400 px-1">
         <span>
           {disruptionCount > 0 ? (
@@ -99,12 +112,13 @@ export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
         </span>
       </div>
 
-      {/* Disruption-first vertical stream */}
-      <div className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-3">
         {sortedLines.map((line) => (
-          <LineCard key={line.lineId} line={line} />
+          <li key={line.lineId}>
+            <LineCard line={line} />
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }

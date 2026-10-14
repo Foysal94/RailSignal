@@ -4,18 +4,37 @@ export interface LineCardProps {
   line: WeekendStatusItem;
 }
 
-function getStatusBadgeClasses(status: string): string {
-  const normalized = status.toLowerCase();
-  if (normalized.includes('planned closure') || normalized.includes('suspended')) {
-    return 'bg-red-950/80 text-red-300 border-red-800';
-  }
+function getStatusBadgeClasses(line: WeekendStatusItem): string {
+  const status = line.statusSeverityDescription.toLowerCase();
+
+  // Part closures, part suspensions, and reduced operations render amber
   if (
-    normalized.includes('part') ||
-    normalized.includes('delay') ||
-    normalized.includes('special')
+    status.includes('part closure') ||
+    status.includes('part suspended') ||
+    status.includes('minor delays') ||
+    status.includes('bus service') ||
+    status.includes('special service') ||
+    status.includes('reduced service')
   ) {
     return 'bg-amber-950/80 text-amber-300 border-amber-800';
   }
+
+  // Full closures or whole-line suspensions render red
+  if (
+    status.includes('planned closure') ||
+    status.includes('closure') ||
+    status.includes('suspended') ||
+    status.includes('no service') ||
+    status.includes('severe delays')
+  ) {
+    return 'bg-red-950/80 text-red-300 border-red-800';
+  }
+
+  // Any unmapped active disruption renders amber warning
+  if (line.hasDisruption) {
+    return 'bg-amber-950/80 text-amber-300 border-amber-800';
+  }
+
   return 'bg-emerald-950/80 text-emerald-300 border-emerald-800';
 }
 
@@ -25,17 +44,16 @@ function getStatusBadgeClasses(status: string): string {
  * and high-contrast status badge with disruption corridors.
  */
 export function LineCard({ line }: LineCardProps) {
-  const badgeClasses = getStatusBadgeClasses(line.statusSeverityDescription);
+  const badgeClasses = getStatusBadgeClasses(line);
 
   return (
     <article
       aria-label={`${line.lineName} line status`}
       className="flex overflow-hidden rounded-lg border border-slate-800 bg-[#111827] shadow-sm transition-colors hover:border-slate-700"
     >
-      {/* 4px canonical TfL accent stripe with Northern line dark-mode contrast outline */}
       <div
         data-testid="line-accent-stripe"
-        className={`w-1 shrink-0 ${line.contrastBorder ? 'border border-neutral-500' : ''}`}
+        className={`w-1 shrink-0 ${line.contrastBorder ? 'ring-1 ring-neutral-500' : ''}`}
         style={{ backgroundColor: line.color }}
         aria-hidden="true"
       />

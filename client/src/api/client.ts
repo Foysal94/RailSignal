@@ -3,6 +3,7 @@ import type { ProblemDetails, WeekendStatusResponse } from '@railsignal/shared';
 export interface ApiClientOptions {
   baseUrl?: string;
   fetchFn?: typeof fetch;
+  signal?: AbortSignal;
 }
 
 /**
@@ -18,11 +19,17 @@ export async function fetchWeekendStatus(
   const search = referenceDate ? `?referenceDate=${encodeURIComponent(referenceDate)}` : '';
   const url = `${base}/api/lines/weekend-status${search}`;
 
-  const response = await fetcher(url, {
+  const requestInit: RequestInit = {
     headers: {
       Accept: 'application/json',
     },
-  });
+  };
+
+  if (options?.signal) {
+    requestInit.signal = options.signal;
+  }
+
+  const response = await fetcher(url, requestInit);
 
   if (!response.ok) {
     let detail = `Request failed with status ${response.status}`;

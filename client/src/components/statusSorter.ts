@@ -1,6 +1,9 @@
 import type { WeekendStatusItem } from '@railsignal/shared';
 
-function isDisrupted(item: WeekendStatusItem): boolean {
+/**
+ * Determines whether a line status item indicates active disruption.
+ */
+export function isDisrupted(item: WeekendStatusItem): boolean {
   return (
     item.hasDisruption || item.statusSeverityDescription.trim().toLowerCase() !== 'good service'
   );
