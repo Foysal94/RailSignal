@@ -85,7 +85,7 @@ RailSignal/
 │   │   │   └── templates/              # @react-email templates
 │   │   │       └── DisruptionDigest.tsx# Responsive JSX email template
 │   │   └── jobs/                       # Standalone CLI job runner
-│   │       └── syncDisruptionsRunner.ts# Invoked via `node dist/index.js --job sync-disruptions`
+│   │       └── syncDisruptionsRunner.ts# Dedicated standalone script (`node dist/jobs/syncDisruptionsRunner.js`)
 │   └── tests/
 │       ├── unit/                       # TfL parsing, London date calculations, cockatiel policies
 │       └── integration/                # Fastify app.inject() endpoint & pipeline tests with local test.db
@@ -262,7 +262,7 @@ See [ADR 0006](file:///Users/foysalahmed/Code/RailSignal/docs/adr/0006-frontend-
 ## 8. Cloud Hosting Strategy (£0 Forever)
 
 * **Compute**: Azure Container Apps (ACA) consumption tier (180,000 vCPU-seconds free per month; scales to zero when idle).
-* **Scheduled Job**: ACA Scheduled Job (`azurerm_container_app_job`) runs `node dist/index.js --job sync-disruptions` every Friday at 09:00 UK time.
+* **Scheduled Job**: ACA Scheduled Job (`azurerm_container_app_job`) runs `node dist/jobs/syncDisruptionsRunner.js` every Friday at 09:00 UK time.
 * **Database**: Neon Serverless PostgreSQL free tier.
 * **Queue**: Upstash Serverless Redis free tier.
 * **Email**: Resend free tier.
@@ -295,7 +295,7 @@ See [ADR 0006](file:///Users/foysalahmed/Code/RailSignal/docs/adr/0006-frontend-
   * **Phase 3B: Notification & Demo Dispatch Worker**: `notificationWorker.ts` with `lastNotifiedWeekendDate` deduplication, and `demoAlertWorker.ts`.
 * **Phase 4: Fastify Route Plugins & CLI Jobs**
   * **Phase 4A: Fastify Route Plugins with TypeBox Validation**: Endpoints (`/api/lines/weekend-status`, `/api/subscriptions`, `/api/demo/send-test-digest`, `/api/jobs/sync-weekend-disruptions`).
-  * **Phase 4B: Standalone CLI Job Runner**: `src/jobs/syncDisruptionsRunner.ts` (`node dist/index.js --job sync-disruptions`).
+  * **Phase 4B: Standalone CLI Job Runner**: `src/jobs/syncDisruptionsRunner.ts` (`node dist/jobs/syncDisruptionsRunner.js`).
 * **Phase 5: Frontend Web Client (React 19)**
   * **Phase 5A: React 19 Frontend Shell & Weekend Status Board**: Clean Transit Radar layout, header with temporal badge and dual CTAs, `NetworkStatusGrid` with disruption-first sorting, left TfL color border stripes, Northern line contrast outline, TanStack Query v5 with `isFetching`.
   * **Phase 5B: Interactive Modals with Radix UI**: `TestAlertModal` (`POST /api/demo/send-test-digest`) and `SubscriptionModal` (`POST /api/subscriptions`) using `@radix-ui/react-dialog`.
