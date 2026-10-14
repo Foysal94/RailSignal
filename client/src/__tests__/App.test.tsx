@@ -1,0 +1,62 @@
+import type { WeekendStatusResponse } from '@railsignal/shared';
+import { render, screen, waitFor } from '@testing-library/react';
+import { HttpResponse, http } from 'msw';
+import { setupServer } from 'msw/node';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import App from '../App';
+
+const mockWeekendResponse: WeekendStatusResponse = {
+  weekendDate: '2026-10-17',
+  windowStart: '2026-10-16T19:00:00Z',
+  windowEnd: '2026-10-19T04:30:00Z',
+  lastUpdated: '2026-10-14T12:00:00Z',
+  lines: [
+    {
+      lineId: 'victoria',
+      lineName: 'Victoria',
+      mode: 'tube',
+      color: '#0098D4',
+      statusSeverityDescription: 'Good Service',
+      hasDisruption: false,
+      disruptions: [],
+    },
+    {
+      lineId: 'central',
+      lineName: 'Central',
+      mode: 'tube',
+      color: '#E32017',
+      statusSeverityDescription: 'Planned Closure',
+      corridorDescription: 'No service between White City and Ealing Broadway.',
+      hasDisruption: true,
+      disruptions: [],
+    },
+  ],
+};
+
+const server = setupServer(
+  http.get('/api/lines/weekend-status', () => {
+    return HttpResponse.json(mockWeekendResponse);
+  }),
+);
+
+describe('App Shell Integration', () => {
+  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+  afterEach(() => server.resetHandlers());
+  afterAll(() => server.close());
+
+  it('Should_render_header_and_network_status_grid', async () => {
+    render(<App />);
+
+    // Header assertions
+    expect(screen.getByText('RailSignal')).toBeInTheDocument();
+    expect(screen.getByText('Weekend Closure Radar')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /send test alert/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /friday alerts/i })).toBeInTheDocument();
+
+    // Data grid assertions
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Central' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Victoria' })).toBeInTheDocument();
+    });
+  });
+});
