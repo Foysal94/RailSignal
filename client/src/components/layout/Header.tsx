@@ -3,10 +3,6 @@ export interface HeaderProps {
   onFridayAlerts?: () => void;
 }
 
-/**
- * Top application header adhering to ADR 0006 Clean Transit Radar design.
- * Features branding, temporal window badge, and the dual CTA action cluster.
- */
 export function Header({ onSendTestAlert, onFridayAlerts }: HeaderProps) {
   return (
     <header className="border-b border-slate-800 bg-radar-bg/90 backdrop-blur sticky top-0 z-10 px-4 py-3 sm:px-6">

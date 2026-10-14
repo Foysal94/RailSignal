@@ -1,9 +1,23 @@
 import type { WeekendStatusResponse } from '@railsignal/shared';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
+import type { ReactElement } from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import App from './App';
+
+function renderWithClient(component: ReactElement) {
+  const testClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+  return render(<QueryClientProvider client={testClient}>{component}</QueryClientProvider>);
+}
 
 const mockWeekendResponse: WeekendStatusResponse = {
   weekendDate: '2026-10-17',
@@ -45,7 +59,7 @@ describe('App Shell Integration', () => {
   afterAll(() => server.close());
 
   it('Should_render_header_and_network_status_grid', async () => {
-    render(<App />);
+    renderWithClient(<App />);
 
     // Header assertions
     expect(screen.getByText('RailSignal')).toBeInTheDocument();

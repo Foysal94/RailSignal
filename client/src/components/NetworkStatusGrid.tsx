@@ -7,11 +7,6 @@ export interface NetworkStatusGridProps {
   referenceDate?: string;
 }
 
-/**
- * Status grid container stream.
- * Automatically sorts disruptions to the top and normal service below.
- * Gates skeleton loaders strictly on TanStack Query's isFetching flag.
- */
 export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
   const { data, isFetching, isError, error, refetch } = useWeekendStatus(referenceDate);
 

@@ -4,33 +4,34 @@ export interface LineCardProps {
   line: WeekendStatusItem;
 }
 
+const PARTIAL_DISRUPTION_KEYWORDS = [
+  'part closure',
+  'part suspended',
+  'minor delays',
+  'bus service',
+  'special service',
+  'reduced service',
+] as const;
+
+const SEVERE_DISRUPTION_KEYWORDS = [
+  'planned closure',
+  'closure',
+  'suspended',
+  'no service',
+  'severe delays',
+] as const;
+
 function getStatusBadgeClasses(line: WeekendStatusItem): string {
   const status = line.statusSeverityDescription.toLowerCase();
 
-  // Part closures, part suspensions, and reduced operations render amber
-  if (
-    status.includes('part closure') ||
-    status.includes('part suspended') ||
-    status.includes('minor delays') ||
-    status.includes('bus service') ||
-    status.includes('special service') ||
-    status.includes('reduced service')
-  ) {
+  if (PARTIAL_DISRUPTION_KEYWORDS.some((kw) => status.includes(kw))) {
     return 'bg-amber-950/80 text-amber-300 border-amber-800';
   }
 
-  // Full closures or whole-line suspensions render red
-  if (
-    status.includes('planned closure') ||
-    status.includes('closure') ||
-    status.includes('suspended') ||
-    status.includes('no service') ||
-    status.includes('severe delays')
-  ) {
+  if (SEVERE_DISRUPTION_KEYWORDS.some((kw) => status.includes(kw))) {
     return 'bg-red-950/80 text-red-300 border-red-800';
   }
 
-  // Any unmapped active disruption renders amber warning
   if (line.hasDisruption) {
     return 'bg-amber-950/80 text-amber-300 border-amber-800';
   }
@@ -38,11 +39,6 @@ function getStatusBadgeClasses(line: WeekendStatusItem): string {
   return 'bg-emerald-950/80 text-emerald-300 border-emerald-800';
 }
 
-/**
- * Pure leaf component presenting a single transit line's weekend status.
- * Renders TfL canonical colors, Northern line dark-mode contrast outline,
- * and high-contrast status badge with disruption corridors.
- */
 export function LineCard({ line }: LineCardProps) {
   const badgeClasses = getStatusBadgeClasses(line);
 
