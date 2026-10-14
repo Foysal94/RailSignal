@@ -7,9 +7,13 @@ describe('UTC Date Utility', () => {
     expect(parsed).toEqual({ year: 2026, month: 10, day: 17 });
   });
 
-  it('Should_throw_error_on_invalid_format', () => {
+  it('Should_throw_error_on_invalid_format_or_out_of_bounds', () => {
     expect(() => parseUtcDateString('invalid')).toThrow('Invalid ISO date format');
-    expect(() => parseUtcDateString('2026-aa-bb')).toThrow('Non-numeric date components');
+    expect(() => parseUtcDateString('2026-aa-bb')).toThrow('Invalid ISO date format');
+    expect(() => parseUtcDateString('2026-13-01')).toThrow('Invalid month: 13');
+    expect(() => parseUtcDateString('2026-00-01')).toThrow('Invalid month: 0');
+    expect(() => parseUtcDateString('2026-10-32')).toThrow('Invalid day: 32');
+    expect(() => parseUtcDateString('2026-10-00')).toThrow('Invalid day: 0');
   });
 
   it('Should_format_utc_weekend_label_accurately', () => {

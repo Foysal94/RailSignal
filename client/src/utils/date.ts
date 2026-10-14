@@ -28,16 +28,20 @@ export interface ParsedUtcDate {
  * Splits an ISO date string (YYYY-MM-DD) into UTC numerical parts without Date object timezone shift.
  */
 export function parseUtcDateString(isoDate: string): ParsedUtcDate {
-  const parts = isoDate.split('-');
-  if (parts.length !== 3) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
     throw new Error(`Invalid ISO date format: "${isoDate}", expected "YYYY-MM-DD"`);
   }
+
+  const parts = isoDate.split('-');
   const year = Number.parseInt(parts[0] || '0', 10);
   const month = Number.parseInt(parts[1] || '0', 10);
   const day = Number.parseInt(parts[2] || '0', 10);
 
-  if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) {
-    throw new Error(`Non-numeric date components in "${isoDate}"`);
+  if (month < 1 || month > 12) {
+    throw new Error(`Invalid month: ${month} in "${isoDate}", expected 1-12`);
+  }
+  if (day < 1 || day > 31) {
+    throw new Error(`Invalid day: ${day} in "${isoDate}", expected 1-31`);
   }
 
   return { year, month, day };
