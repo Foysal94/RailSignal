@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { LineCard } from './LineCard';
 
 describe('LineCard Component', () => {
-  it('Should_render_line_name_and_emerald_badge_for_good_service', () => {
+  it('Should_render_line_name_and_emerald_badge_for_no_planned_closures', () => {
     const item: WeekendStatusItem = {
       lineId: 'victoria',
       lineName: 'Victoria',
@@ -18,7 +18,7 @@ describe('LineCard Component', () => {
     render(<LineCard line={item} />);
 
     expect(screen.getByRole('heading', { name: 'Victoria' })).toBeInTheDocument();
-    const badge = screen.getByText('Good Service');
+    const badge = screen.getByText('No Planned Closures');
     expect(badge).toBeInTheDocument();
     expect(badge.className).toContain('text-emerald-300');
   });

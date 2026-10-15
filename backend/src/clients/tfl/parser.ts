@@ -99,12 +99,54 @@ export function cleanCorridorDescription(description: string, lineName?: string)
  * Maps raw TfL disruptions into normalized domain disruptions filtered strictly to the weekend window.
  * Deduplicates multiple reports for the same line and corridor within the same weekend.
  */
+const REALTIME_CATEGORIES = new Set(['realtime']);
+const TRANSIENT_SEVERITY_DESCRIPTIONS: ReadonlySet<string> = new Set([
+  'Minor Delays',
+  'Severe Delays',
+]);
+
+function isRealTimeDisruption(raw: RawTflDisruption): boolean {
+  if (raw.category && REALTIME_CATEGORIES.has(raw.category.toLowerCase().trim())) {
+    return true;
+  }
+  if (
+    raw.categoryDescription &&
+    REALTIME_CATEGORIES.has(raw.categoryDescription.toLowerCase().trim())
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function isPlannedWorkDisruption(raw: RawTflDisruption): boolean {
+  if (raw.category && raw.category.toLowerCase().trim() === 'plannedwork') {
+    return true;
+  }
+  if (raw.categoryDescription && raw.categoryDescription.toLowerCase().trim() === 'plannedwork') {
+    return true;
+  }
+  if (raw.type && raw.type.toLowerCase().trim() === 'plannedwork') {
+    return true;
+  }
+  if (raw.closureText && raw.closureText.toLowerCase().trim() in CLOSURE_TEXT_MAP) {
+    return true;
+  }
+  return false;
+}
+
 export function parseTflDisruptions(options: ParseTflDisruptionsOptions): ParsedDisruption[] {
   const { disruptions, weekendWindow } = options;
   const results: ParsedDisruption[] = [];
   const seenKeys = new Set<string>();
 
   for (const raw of disruptions) {
+    // TfL returns real-time live incidents alongside planned works; live incidents must be discarded
+    if (isRealTimeDisruption(raw)) {
+      continue;
+    }
+
+    const isPlanned = isPlannedWorkDisruption(raw);
+
     const routes =
       raw.affectedRoutes && raw.affectedRoutes.length > 0 ? raw.affectedRoutes : [undefined];
 
@@ -112,8 +154,33 @@ export function parseTflDisruptions(options: ParseTflDisruptionsOptions): Parsed
       const line = resolveTflLine(route?.lineId, raw.description);
       if (!line) continue;
 
+      const hasExplicitValidTo = Boolean(route?.validTo);
+      const hasExplicitValidFrom = Boolean(route?.validFrom);
+
+      // TfL transient weekday incidents lack validTo dates and start before Friday 19:00.
+      // We must never default validToStr to Monday morning for midweek incidents.
+      const effectiveStartIso = route?.validFrom || (!isPlanned ? raw.created : undefined);
+      if (!hasExplicitValidTo) {
+        if (effectiveStartIso) {
+          const effectiveStartDate = new Date(effectiveStartIso);
+          if (
+            !Number.isNaN(effectiveStartDate.getTime()) &&
+            effectiveStartDate < weekendWindow.windowStart
+          ) {
+            continue;
+          }
+        }
+        if (!isPlanned) {
+          continue;
+        }
+      }
+
       const validFromStr =
-        route?.validFrom || raw.created || weekendWindow.windowStart.toISOString();
+        route?.validFrom ||
+        (isPlanned && !hasExplicitValidFrom
+          ? weekendWindow.windowStart.toISOString()
+          : raw.created || weekendWindow.windowStart.toISOString());
+
       const validToStr = route?.validTo || weekendWindow.windowEnd.toISOString();
 
       const overlaps = isDisruptionInWindow({
@@ -125,6 +192,10 @@ export function parseTflDisruptions(options: ParseTflDisruptionsOptions): Parsed
       if (!overlaps) continue;
 
       const severity = resolveStatusSeverityDescription(raw.closureText, raw.description);
+      if (TRANSIENT_SEVERITY_DESCRIPTIONS.has(severity) && (!isPlanned || !hasExplicitValidTo)) {
+        continue;
+      }
+
       const corridor = cleanCorridorDescription(raw.description, line.name);
       const dedupeKey = `${line.id}:${weekendWindow.weekendDate}:${corridor}`;
 

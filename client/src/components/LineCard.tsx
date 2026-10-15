@@ -41,6 +41,12 @@ function getStatusBadgeClasses(line: WeekendStatusItem): string {
 
 export function LineCard({ line }: LineCardProps) {
   const badgeClasses = getStatusBadgeClasses(line);
+  const badgeText =
+    !line.hasDisruption &&
+    (line.statusSeverityDescription.trim().toLowerCase() === 'good service' ||
+      line.statusSeverityDescription.trim().toLowerCase() === 'no planned closures')
+      ? 'No Planned Closures'
+      : line.statusSeverityDescription;
 
   return (
     <article
@@ -80,7 +86,7 @@ export function LineCard({ line }: LineCardProps) {
           <span
             className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${badgeClasses}`}
           >
-            {line.statusSeverityDescription}
+            {badgeText}
           </span>
         </div>
       </div>

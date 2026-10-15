@@ -174,4 +174,91 @@ describe('TfL Parser - Disruption Payload Normalization', () => {
     expect(parsed).toHaveLength(1);
     expect(parsed[0]?.lineId).toBe('victoria');
   });
+
+  it('Should_discard_real_time_transient_incidents_with_realtime_category', () => {
+    const realTimeRaw = [
+      {
+        category: 'RealTime',
+        categoryDescription: 'RealTime',
+        description: 'Central line: Minor delays due to train cancellations.',
+        created: '2026-07-09T17:00:00Z',
+        lastUpdate: '2026-07-09T17:30:00Z',
+        affectedRoutes: [{ lineId: 'central' }],
+      },
+      {
+        category: 'RealTime',
+        categoryDescription: 'RealTime',
+        description:
+          'Weaver line: Severe delays between Hackney Downs and Liverpool Street due to an earlier operational incident.',
+        created: '2026-07-09T18:00:00Z',
+        affectedRoutes: [{ lineId: 'weaver' }],
+      },
+    ];
+
+    const parsed = parseTflDisruptions({
+      disruptions: realTimeRaw,
+      weekendWindow: mockWeekendWindow,
+    });
+
+    expect(parsed).toHaveLength(0);
+  });
+
+  it('Should_discard_midweek_incidents_starting_before_weekend_without_explicit_future_validTo', () => {
+    const midweekIncidents = [
+      {
+        description: 'Victoria Line: Minor delays due to train cancellations.',
+        created: '2026-07-09T16:00:00Z',
+        affectedRoutes: [{ lineId: 'victoria' }],
+      },
+      {
+        description: 'Hammersmith and City Line: Minor delays due to train cancellations.',
+        created: '2026-07-09T17:15:00Z',
+        affectedRoutes: [{ lineId: 'hammersmith-city', validFrom: '2026-07-09T17:15:00Z' }],
+      },
+    ];
+
+    const parsed = parseTflDisruptions({
+      disruptions: midweekIncidents,
+      weekendWindow: mockWeekendWindow,
+    });
+
+    expect(parsed).toHaveLength(0);
+  });
+
+  it('Should_assert_only_genuine_weekend_planned_closures_with_overlapping_dates_are_parsed', () => {
+    const mixedDisruptions = [
+      {
+        category: 'PlannedWork',
+        description: 'Jubilee Line: Part closure between Waterloo and Stanmore.',
+        closureText: 'partClosure',
+        affectedRoutes: [
+          {
+            lineId: 'jubilee',
+            validFrom: '2026-07-11T00:00:00Z',
+            validTo: '2026-07-12T23:59:00Z',
+          },
+        ],
+      },
+      {
+        category: 'RealTime',
+        description: 'Northern Line: Minor delays due to train cancellations.',
+        created: '2026-07-09T17:00:00Z',
+        affectedRoutes: [{ lineId: 'northern' }],
+      },
+      {
+        description: 'District Line: Severe delays due to signal failure.',
+        created: '2026-07-09T18:30:00Z',
+        affectedRoutes: [{ lineId: 'district' }],
+      },
+    ];
+
+    const parsed = parseTflDisruptions({
+      disruptions: mixedDisruptions,
+      weekendWindow: mockWeekendWindow,
+    });
+
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]?.lineId).toBe('jubilee');
+    expect(parsed[0]?.statusSeverityDescription).toBe('Part Closure');
+  });
 });

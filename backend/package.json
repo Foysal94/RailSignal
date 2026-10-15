@@ -9,6 +9,8 @@
     "start": "node dist/index.js",
     "job:sync-disruptions": "node dist/jobs/syncDisruptionsRunner.js",
     "job:sync-disruptions:dev": "tsx src/jobs/syncDisruptionsRunner.ts",
+    "job:purge-transient": "node dist/jobs/purgeContaminatedDisruptions.js",
+    "job:purge-transient:dev": "tsx src/jobs/purgeContaminatedDisruptions.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",

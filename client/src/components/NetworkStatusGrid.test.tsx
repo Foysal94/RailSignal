@@ -94,6 +94,12 @@ describe('NetworkStatusGrid Component', () => {
       expect(screen.getByRole('heading', { name: 'Central' })).toBeInTheDocument();
     });
 
+    expect(
+      screen.getByText('This Weekend: Friday 19:00 - Monday 04:30 London Time'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('1 Planned Disruption This Weekend')).toBeInTheDocument();
+    expect(screen.getByText('3 lines monitored')).toBeInTheDocument();
+
     const articles = screen.getAllByRole('article');
     expect(articles).toHaveLength(3);
 
@@ -101,9 +107,11 @@ describe('NetworkStatusGrid Component', () => {
     expect(articles[0]).toHaveTextContent('Central');
     expect(articles[0]).toHaveTextContent('Planned Closure');
 
-    // Bakerloo and Victoria are Good Service -> must sort after Central
+    // Bakerloo and Victoria display No Planned Closures -> must sort after Central
     expect(articles[1]).toHaveTextContent('Bakerloo');
+    expect(articles[1]).toHaveTextContent('No Planned Closures');
     expect(articles[2]).toHaveTextContent('Victoria');
+    expect(articles[2]).toHaveTextContent('No Planned Closures');
   });
 
   it('Should_display_error_state_and_retry_when_fetching_fails', async () => {

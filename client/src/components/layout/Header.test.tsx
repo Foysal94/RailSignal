@@ -10,13 +10,6 @@ describe('Header Component', () => {
     expect(screen.getByText('Weekend Closure Radar')).toBeInTheDocument();
   });
 
-  it('Should_render_temporal_window_badge', () => {
-    render(<Header />);
-    expect(
-      screen.getByText('This Weekend: Friday 19:00 - Monday 04:30 London Time'),
-    ).toBeInTheDocument();
-  });
-
   it('Should_render_dual_action_cta_buttons_with_min_44px_height', () => {
     render(<Header />);
     const testAlertBtn = screen.getByRole('button', { name: /send test alert/i });

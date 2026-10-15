@@ -1,9 +1,8 @@
 import type { WeekendStatusItem } from '@railsignal/shared';
 
 export function isDisrupted(item: WeekendStatusItem): boolean {
-  return (
-    item.hasDisruption || item.statusSeverityDescription.trim().toLowerCase() !== 'good service'
-  );
+  const desc = item.statusSeverityDescription.trim().toLowerCase();
+  return item.hasDisruption || (desc !== 'good service' && desc !== 'no planned closures');
 }
 
 export function sortStatusItems(items: readonly WeekendStatusItem[]): WeekendStatusItem[] {
