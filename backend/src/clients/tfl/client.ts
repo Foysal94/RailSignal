@@ -1,8 +1,9 @@
 import { type IPolicy, noop } from 'cockatiel';
+import { format } from 'date-fns';
 import { getUpcomingWeekendWindow, type WeekendWindowOptions } from '../../domain/temporal.js';
 import { parseTflDisruptions } from './parser.js';
 import { createTflResiliencePolicy, TflHttpError } from './resilience.js';
-import type { ParsedDisruption, RawTflDisruption } from './types.js';
+import type { ParsedDisruption, RawTflLineStatus } from './types.js';
 
 export interface TflClientOptions {
   baseUrl?: string | undefined;
@@ -11,11 +12,9 @@ export interface TflClientOptions {
   disableResilience?: boolean | undefined;
 }
 
-/**
- * Resilient HTTP client for the Transport for London (TfL) Unified API.
- * Encapsulates URL formatting and transport execution, delegating
- * resilience, temporal math, and parsing to focused sibling modules.
- */
+// Resilient HTTP client for the Transport for London (TfL) Unified API.
+// Encapsulates date-scoped line status fetching, delegating resilience,
+// temporal calculation, and parsing to focused sibling modules.
 export class TflClient {
   private readonly baseUrl: string;
   private readonly appKey: string | undefined;
@@ -29,8 +28,13 @@ export class TflClient {
     this.policy = options?.disableResilience ? noop : createTflResiliencePolicy();
   }
 
-  private async fetchRawDisruptions(): Promise<RawTflDisruption[]> {
-    const url = new URL(`${this.baseUrl}/Line/Mode/tube,elizabeth-line,overground,dlr/Disruption`);
+  private async fetchRawLineStatuses(
+    startDate: string,
+    endDate: string,
+  ): Promise<RawTflLineStatus[]> {
+    const url = new URL(
+      `${this.baseUrl}/Line/Mode/tube,elizabeth-line,overground,dlr/Status?startDate=${startDate}&endDate=${endDate}`,
+    );
     if (this.appKey) {
       url.searchParams.set('app_key', this.appKey);
     }
@@ -53,14 +57,16 @@ export class TflClient {
         });
       }
 
-      return (await response.json()) as RawTflDisruption[];
+      return (await response.json()) as RawTflLineStatus[];
     });
   }
 
   public async getWeekendDisruptions(options?: WeekendWindowOptions): Promise<ParsedDisruption[]> {
     const weekendWindow = getUpcomingWeekendWindow(options);
-    const rawDisruptions = await this.fetchRawDisruptions();
-    return parseTflDisruptions({ disruptions: rawDisruptions, weekendWindow });
+    const startDate = weekendWindow.weekendDate;
+    const endDate = format(weekendWindow.windowEnd, 'yyyy-MM-dd');
+    const rawLineStatuses = await this.fetchRawLineStatuses(startDate, endDate);
+    return parseTflDisruptions({ disruptions: rawLineStatuses, weekendWindow });
   }
 }
 

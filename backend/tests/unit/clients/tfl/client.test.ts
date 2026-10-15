@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { TflClient, TflHttpError } from '../../../../src/clients/tfl/index.js';
+import type { RawTflLineStatus } from '../../../../src/clients/tfl/types.js';
 
 describe('TfL Client - HTTP Transport Orchestration', () => {
-  it('Should_pass_app_key_and_headers_when_fetching_weekend_disruptions', async () => {
+  it('Should_pass_date_scoped_query_params_app_key_and_headers_when_fetching_weekend_disruptions', async () => {
     const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify([]), {
         status: 200,
@@ -18,11 +19,13 @@ describe('TfL Client - HTTP Transport Orchestration', () => {
       disableResilience: true,
     });
 
-    const result = await client.getWeekendDisruptions();
+    const result = await client.getWeekendDisruptions({
+      referenceDate: new Date('2026-07-10T10:00:00Z'),
+    });
 
     expect(result).toEqual([]);
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.tfl.gov.uk/Line/Mode/tube,elizabeth-line,overground,dlr/Disruption?app_key=test-app-key',
+      'https://api.tfl.gov.uk/Line/Mode/tube,elizabeth-line,overground,dlr/Status?startDate=2026-07-10&endDate=2026-07-13&app_key=test-app-key',
       expect.objectContaining({
         method: 'GET',
         headers: { Accept: 'application/json' },
@@ -47,22 +50,35 @@ describe('TfL Client - HTTP Transport Orchestration', () => {
   });
 
   it('Should_fetch_and_return_parsed_weekend_disruptions_end_to_end', async () => {
-    const sampleDisruptions = [
+    const sampleLineStatuses: RawTflLineStatus[] = [
       {
-        description: 'Jubilee Line: No service between Waterloo and Stanmore.',
-        closureText: 'partClosure',
-        affectedRoutes: [
+        id: 'jubilee',
+        name: 'Jubilee',
+        modeName: 'tube',
+        lineStatuses: [
           {
-            lineId: 'jubilee',
-            validFrom: '2026-07-11T00:00:00Z',
-            validTo: '2026-07-12T23:59:00Z',
+            id: 1,
+            statusSeverity: 9,
+            statusSeverityDescription: 'Part Closure',
+            reason: 'Jubilee Line: No service between Waterloo and Stanmore.',
+            validityPeriods: [
+              {
+                fromDate: '2026-07-11T00:00:00Z',
+                toDate: '2026-07-12T23:59:00Z',
+              },
+            ],
+            disruption: {
+              category: 'PlannedWork',
+              categoryDescription: 'PlannedWork',
+              description: 'Jubilee Line: No service between Waterloo and Stanmore.',
+            },
           },
         ],
       },
     ];
 
     const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(sampleDisruptions), {
+      new Response(JSON.stringify(sampleLineStatuses), {
         status: 200,
         statusText: 'OK',
       }),

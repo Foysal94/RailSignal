@@ -90,4 +90,89 @@ describe('Disruption Projection Persistence', () => {
     });
     expect(count).toBe(1);
   });
+
+  it('Should_delete_stale_disruptions_for_weekendDate_when_not_in_incoming_payload', async () => {
+    // Initial projection with 1 disruption
+    await projectDisruptions({
+      prisma,
+      disruptions: [mockDisruption],
+      weekendDate: '2026-10-17',
+    });
+
+    const countBefore = await prisma.weekendDisruption.count({
+      where: { lineId: 'projection-northern', weekendDate: '2026-10-17' },
+    });
+    expect(countBefore).toBe(1);
+
+    // Re-project with an empty array for that weekend (works cancelled)
+    const reconcileResult = await projectDisruptions({
+      prisma,
+      disruptions: [],
+      weekendDate: '2026-10-17',
+    });
+
+    expect(reconcileResult.totalDeleted).toBe(1);
+    const countAfter = await prisma.weekendDisruption.count({
+      where: { lineId: 'projection-northern', weekendDate: '2026-10-17' },
+    });
+    expect(countAfter).toBe(0);
+  });
+
+  it('Should_reconcile_and_purge_unreported_disruptions_for_target_weekend_without_affecting_other_weekends', async () => {
+    // Insert a stale disruption for the target weekend
+    await prisma.weekendDisruption.create({
+      data: {
+        lineId: 'projection-northern',
+        lineName: 'Northern',
+        mode: 'tube',
+        statusSeverityDescription: 'Minor Delays',
+        corridorDescription: 'Minor delays due to train cancellations',
+        weekendDate: '2026-10-17',
+        validFrom: new Date('2026-10-17T02:00:00.000Z'),
+        validTo: new Date('2026-10-19T03:30:00.000Z'),
+        sourceLastUpdated: new Date('2026-10-16T10:00:00.000Z'),
+      },
+    });
+
+    // Insert an engineering work for another future weekend
+    await prisma.weekendDisruption.create({
+      data: {
+        lineId: 'projection-northern',
+        lineName: 'Northern',
+        mode: 'tube',
+        statusSeverityDescription: 'Severe Delays',
+        corridorDescription: 'Future scheduled maintenance',
+        weekendDate: '2026-10-24',
+        validFrom: new Date('2026-10-24T02:00:00.000Z'),
+        validTo: new Date('2026-10-26T03:30:00.000Z'),
+        sourceLastUpdated: new Date('2026-10-16T10:00:00.000Z'),
+      },
+    });
+
+    // Run projection for target weekend 2026-10-17
+    await projectDisruptions({
+      prisma,
+      disruptions: [mockDisruption],
+      weekendDate: '2026-10-17',
+    });
+
+    // Stale record for 2026-10-17 should have been deleted via reconciliation
+    const staleCount = await prisma.weekendDisruption.count({
+      where: {
+        lineId: 'projection-northern',
+        weekendDate: '2026-10-17',
+        statusSeverityDescription: 'Minor Delays',
+      },
+    });
+    expect(staleCount).toBe(0);
+
+    // Record for other weekend 2026-10-24 must remain intact
+    const futureCount = await prisma.weekendDisruption.count({
+      where: {
+        lineId: 'projection-northern',
+        weekendDate: '2026-10-24',
+      },
+    });
+    expect(futureCount).toBe(1);
+  });
 });

@@ -73,4 +73,28 @@ describe('App Shell Integration', () => {
       expect(screen.getByRole('heading', { name: 'Victoria' })).toBeInTheDocument();
     });
   });
+
+  it('Should_open_test_alert_modal_when_send_test_alert_button_clicked', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    renderWithClient(<App />);
+
+    const sendTestAlertBtn = screen.getByRole('button', { name: /send test alert/i });
+    await user.click(sendTestAlertBtn);
+
+    expect(screen.getByRole('heading', { name: /send sample alert/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/recipient email/i)).toBeInTheDocument();
+  });
+
+  it('Should_open_subscription_modal_when_friday_alerts_button_clicked', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    renderWithClient(<App />);
+
+    const fridayAlertsBtn = screen.getByRole('button', { name: /friday alerts/i });
+    await user.click(fridayAlertsBtn);
+
+    expect(
+      screen.getByRole('heading', { name: /friday alerts subscription/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
+  });
 });

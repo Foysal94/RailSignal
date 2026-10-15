@@ -32,7 +32,7 @@ describe('GET /api/lines/weekend-status', () => {
 
     for (const line of body.lines) {
       expect(line.hasDisruption).toBe(false);
-      expect(line.statusSeverityDescription).toBe('Good Service');
+      expect(line.statusSeverityDescription).toBe('No Planned Closures');
       expect(line.disruptions).toHaveLength(0);
     }
   });
@@ -84,7 +84,7 @@ describe('GET /api/lines/weekend-status', () => {
     const nonDisrupted = body.lines.slice(2);
     for (const line of nonDisrupted) {
       expect(line.hasDisruption).toBe(false);
-      expect(line.statusSeverityDescription).toBe('Good Service');
+      expect(line.statusSeverityDescription).toBe('No Planned Closures');
     }
   });
 });
