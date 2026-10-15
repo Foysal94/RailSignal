@@ -77,9 +77,9 @@ export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
   return (
     <section className="space-y-6" aria-label="London weekend transit status stream">
       <div className="text-center py-2 space-y-2 sm:py-4">
-        <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
           Weekend Disruption Radar
-        </h1>
+        </h2>
         <div className="inline-flex items-center justify-center">
           <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-xs font-medium text-slate-300">
             <svg

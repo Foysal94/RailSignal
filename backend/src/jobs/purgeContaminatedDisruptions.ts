@@ -1,18 +1,17 @@
+import { TRANSIENT_SEVERITY_DESCRIPTIONS } from '../clients/tfl/parser.js';
 import { prisma } from '../db.js';
 
 export interface PurgeDisruptionsResult {
   purgedCount: number;
 }
 
-/**
- * Purges contaminated transient delay records (e.g. real-time Minor Delays, Severe Delays)
- * that leaked into the WeekendDisruption database table.
- */
+// Purges contaminated transient delay records (e.g. real-time Minor Delays, Severe Delays)
+// that leaked into the WeekendDisruption database table.
 export async function purgeContaminatedDisruptions(db = prisma): Promise<PurgeDisruptionsResult> {
   const result = await db.weekendDisruption.deleteMany({
     where: {
       statusSeverityDescription: {
-        in: ['Minor Delays', 'Severe Delays'],
+        in: Array.from(TRANSIENT_SEVERITY_DESCRIPTIONS),
       },
     },
   });

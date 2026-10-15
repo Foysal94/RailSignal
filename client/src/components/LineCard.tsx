@@ -1,4 +1,5 @@
 import type { WeekendStatusItem } from '@railsignal/shared';
+import { isUndisruptedStatus } from './statusSorter';
 
 export interface LineCardProps {
   line: WeekendStatusItem;
@@ -42,9 +43,7 @@ function getStatusBadgeClasses(line: WeekendStatusItem): string {
 export function LineCard({ line }: LineCardProps) {
   const badgeClasses = getStatusBadgeClasses(line);
   const badgeText =
-    !line.hasDisruption &&
-    (line.statusSeverityDescription.trim().toLowerCase() === 'good service' ||
-      line.statusSeverityDescription.trim().toLowerCase() === 'no planned closures')
+    !line.hasDisruption && isUndisruptedStatus(line.statusSeverityDescription)
       ? 'No Planned Closures'
       : line.statusSeverityDescription;
 

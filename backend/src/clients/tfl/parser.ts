@@ -99,33 +99,26 @@ export function cleanCorridorDescription(description: string, lineName?: string)
  * Maps raw TfL disruptions into normalized domain disruptions filtered strictly to the weekend window.
  * Deduplicates multiple reports for the same line and corridor within the same weekend.
  */
-const REALTIME_CATEGORIES = new Set(['realtime']);
-const TRANSIENT_SEVERITY_DESCRIPTIONS: ReadonlySet<string> = new Set([
+export const TRANSIENT_SEVERITY_DESCRIPTIONS: ReadonlySet<string> = new Set([
   'Minor Delays',
   'Severe Delays',
 ]);
 
+function normalizeTag(value?: string | null): string {
+  return value ? value.toLowerCase().replace(/[\s-_]/g, '') : '';
+}
+
 function isRealTimeDisruption(raw: RawTflDisruption): boolean {
-  if (raw.category && REALTIME_CATEGORIES.has(raw.category.toLowerCase().trim())) {
-    return true;
-  }
-  if (
-    raw.categoryDescription &&
-    REALTIME_CATEGORIES.has(raw.categoryDescription.toLowerCase().trim())
-  ) {
-    return true;
-  }
-  return false;
+  const cat = normalizeTag(raw.category);
+  const catDesc = normalizeTag(raw.categoryDescription);
+  return cat === 'realtime' || catDesc === 'realtime';
 }
 
 function isPlannedWorkDisruption(raw: RawTflDisruption): boolean {
-  if (raw.category && raw.category.toLowerCase().trim() === 'plannedwork') {
-    return true;
-  }
-  if (raw.categoryDescription && raw.categoryDescription.toLowerCase().trim() === 'plannedwork') {
-    return true;
-  }
-  if (raw.type && raw.type.toLowerCase().trim() === 'plannedwork') {
+  const cat = normalizeTag(raw.category);
+  const catDesc = normalizeTag(raw.categoryDescription);
+  const type = normalizeTag(raw.type);
+  if (cat === 'plannedwork' || catDesc === 'plannedwork' || type === 'plannedwork') {
     return true;
   }
   if (raw.closureText && raw.closureText.toLowerCase().trim() in CLOSURE_TEXT_MAP) {
