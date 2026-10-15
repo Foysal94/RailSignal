@@ -40,7 +40,7 @@ describe('TestAlertModal Component', () => {
     );
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /send demo test alert/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /send sample alert/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/recipient email/i)).toBeInTheDocument();
 
     const centralCheckbox = screen.getByLabelText(/central/i) as HTMLInputElement;
@@ -115,12 +115,10 @@ describe('TestAlertModal Component', () => {
     await user.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/demo alert enqueued/i)).toBeInTheDocument();
+      expect(screen.getByText(/sample alert sent!/i)).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText(/bullmq job was enqueued and dispatched via resend/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/we've sent a preview weekend closure briefing/i)).toBeInTheDocument();
     expect(capturedBody).toEqual({
       email: 'test@example.com',
       lineIds: ['central'],

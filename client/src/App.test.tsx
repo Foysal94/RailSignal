@@ -81,7 +81,7 @@ describe('App Shell Integration', () => {
     const sendTestAlertBtn = screen.getByRole('button', { name: /send test alert/i });
     await user.click(sendTestAlertBtn);
 
-    expect(screen.getByRole('heading', { name: /send demo test alert/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /send sample alert/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/recipient email/i)).toBeInTheDocument();
   });
 

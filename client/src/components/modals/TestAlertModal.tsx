@@ -52,15 +52,15 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
 
       showToast({
         type: 'success',
-        title: 'Demo Alert Dispatched',
-        message: `Simulated closure alert enqueued for ${trimmedEmail}`,
+        title: 'Sample Alert Sent',
+        message: `Preview closure briefing sent to ${trimmedEmail}`,
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to dispatch test alert';
+      const msg = err instanceof Error ? err.message : 'Failed to send sample alert';
       setLocalError(msg);
       showToast({
         type: 'error',
-        title: 'Dispatch Failed',
+        title: 'Unable to Send Alert',
         message: msg,
       });
     }
@@ -70,8 +70,8 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Send Demo Test Alert"
-      description="Trigger an instant closure digest dispatched to your inbox via BullMQ and Resend."
+      title="Send Sample Alert"
+      description="Preview a weekend closure briefing sent directly to your inbox."
     >
       {sendAlertMutation.isSuccess ? (
         <div className="space-y-4">
@@ -91,11 +91,11 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              <h3 className="font-semibold text-white">Demo Alert Enqueued!</h3>
+              <h3 className="font-semibold text-white">Sample Alert Sent!</h3>
             </div>
             <p className="text-sm mt-1">
-              The BullMQ job was enqueued and dispatched via Resend transactional email to{' '}
-              <strong className="text-white">{email}</strong>.
+              We've sent a preview weekend closure briefing to{' '}
+              <strong className="text-white">{email}</strong>. Check your inbox in a few moments.
             </p>
           </div>
 
