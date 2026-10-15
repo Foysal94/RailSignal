@@ -1,35 +1,24 @@
-import type { FastifyInstance } from 'fastify';
-import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { buildApp } from '../../src/app.js';
-import { prisma } from '../../src/db.js';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { createTestContext, type TestContext } from '../support/testContext.js';
 
 describe('GET /api/lines/weekend-status', () => {
-  let app: FastifyInstance;
+  let context: TestContext;
   const weekendDate = '2026-10-16';
 
-  beforeEach(async () => {
-    await prisma.weekendDisruption.deleteMany({
-      where: { weekendDate },
-    });
+  beforeAll(async () => {
+    context = await createTestContext();
   });
 
-  afterEach(async () => {
-    if (app) {
-      await app.close();
-    }
+  beforeEach(async () => {
+    await context.resetDatabase();
   });
 
   afterAll(async () => {
-    await prisma.weekendDisruption.deleteMany({
-      where: { weekendDate },
-    });
-    await prisma.$disconnect();
+    await context.close();
   });
 
   it('Should_return_all_tfl_lines_with_good_service_when_no_disruptions_exist', async () => {
-    app = buildApp();
-
-    const response = await app.inject({
+    const response = await context.app.inject({
       method: 'GET',
       url: `/api/lines/weekend-status?referenceDate=${weekendDate}`,
     });
@@ -41,7 +30,6 @@ describe('GET /api/lines/weekend-status', () => {
     expect(body.weekendDate).toBe(weekendDate);
     expect(body.lines).toHaveLength(19);
 
-    // When clear, all lines should report No Planned Closures
     for (const line of body.lines) {
       expect(line.hasDisruption).toBe(false);
       expect(line.statusSeverityDescription).toBe('No Planned Closures');
@@ -50,8 +38,7 @@ describe('GET /api/lines/weekend-status', () => {
   });
 
   it('Should_prioritize_disrupted_lines_at_top_when_disruptions_exist', async () => {
-    // Seed test disruption for Central and Victoria lines
-    await prisma.weekendDisruption.createMany({
+    await context.prisma.weekendDisruption.createMany({
       data: [
         {
           lineId: 'central',
@@ -78,9 +65,7 @@ describe('GET /api/lines/weekend-status', () => {
       ],
     });
 
-    app = buildApp();
-
-    const response = await app.inject({
+    const response = await context.app.inject({
       method: 'GET',
       url: `/api/lines/weekend-status?referenceDate=${weekendDate}`,
     });
@@ -88,7 +73,6 @@ describe('GET /api/lines/weekend-status', () => {
     expect(response.statusCode).toBe(200);
     const body = response.json();
 
-    // Disrupted lines should be placed first
     const firstLine = body.lines[0];
     const secondLine = body.lines[1];
 
@@ -97,7 +81,6 @@ describe('GET /api/lines/weekend-status', () => {
     expect(['central', 'victoria']).toContain(firstLine.lineId);
     expect(['central', 'victoria']).toContain(secondLine.lineId);
 
-    // Remaining lines should report No Planned Closures
     const nonDisrupted = body.lines.slice(2);
     for (const line of nonDisrupted) {
       expect(line.hasDisruption).toBe(false);

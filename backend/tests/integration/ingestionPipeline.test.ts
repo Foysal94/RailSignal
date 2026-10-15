@@ -9,46 +9,14 @@ import type {
 } from '../../src/queues/queues.js';
 import { processIngestionJob } from '../../src/workers/ingestion/processor.js';
 import { createIngestionWorkerHandler } from '../../src/workers/ingestionWorker.js';
-
-interface EnqueuedNotificationJob {
-  name: string;
-  data: NotificationJobData;
-  opts?: { jobId?: string };
-}
-
-/**
- * In-memory BullMQ Queue double simulating Redis queue persistence and job enqueuing.
- */
-class InMemoryQueueDouble {
-  public readonly jobs: EnqueuedNotificationJob[] = [];
-
-  public async add(
-    name: string,
-    data: NotificationJobData,
-    opts?: { jobId?: string },
-  ): Promise<{ id: string; name: string; data: NotificationJobData }> {
-    const jobEntry = { name, data, opts };
-    this.jobs.push(jobEntry);
-    return {
-      id: opts?.jobId ?? `mock-job-${this.jobs.length}`,
-      name,
-      data,
-    };
-  }
-
-  public clear(): void {
-    this.jobs.length = 0;
-  }
-}
+import { InMemoryQueueDouble } from '../support/inMemoryQueueDouble.js';
 
 describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma SQLite)', () => {
-  let notificationQueueDouble: InMemoryQueueDouble;
+  let notificationQueueDouble: InMemoryQueueDouble<NotificationJobData, void>;
 
   beforeEach(async () => {
-    notificationQueueDouble = new InMemoryQueueDouble();
-    await prisma.weekendDisruption.deleteMany({
-      where: { lineId: { startsWith: 'pipeline-' } },
-    });
+    notificationQueueDouble = new InMemoryQueueDouble<NotificationJobData, void>();
+    await prisma.weekendDisruption.deleteMany();
   });
 
   afterAll(async () => {

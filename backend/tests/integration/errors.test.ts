@@ -1,21 +1,39 @@
 import { Type } from '@sinclair/typebox';
-import type { FastifyInstance } from 'fastify';
-import { afterEach, describe, expect, it } from 'vitest';
-import { buildApp } from '../../src/app.js';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createTestContext, type TestContext } from '../support/testContext.js';
 
 describe('RFC 9457 Problem Details Error Handling', () => {
-  let app: FastifyInstance;
+  let context: TestContext;
 
-  afterEach(async () => {
-    if (app) {
-      await app.close();
-    }
+  beforeAll(async () => {
+    context = await createTestContext({
+      configure: (app) => {
+        // Register synthetic routes before Fastify seals route table on ready()
+        app.post(
+          '/api/test-validation',
+          {
+            schema: {
+              body: Type.Object({
+                email: Type.String({ format: 'email' }),
+              }),
+            },
+          },
+          async () => ({ ok: true }),
+        );
+
+        app.get('/api/test-internal-error', async () => {
+          throw new Error('Database password failed: supersecret123');
+        });
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await context.close();
   });
 
   it('Should_return_rfc_9457_problem_details_when_route_is_not_found', async () => {
-    app = buildApp();
-
-    const response = await app.inject({
+    const response = await context.app.inject({
       method: 'GET',
       url: '/api/not-a-real-route?token=secret123',
     });
@@ -35,21 +53,7 @@ describe('RFC 9457 Problem Details Error Handling', () => {
   });
 
   it('Should_return_rfc_9457_problem_details_with_invalid_params_when_validation_fails', async () => {
-    app = buildApp();
-
-    app.post(
-      '/api/test-validation',
-      {
-        schema: {
-          body: Type.Object({
-            email: Type.String({ format: 'email' }),
-          }),
-        },
-      },
-      async () => ({ ok: true }),
-    );
-
-    const response = await app.inject({
+    const response = await context.app.inject({
       method: 'POST',
       url: '/api/test-validation',
       payload: { email: 'not-an-email' },
@@ -70,13 +74,7 @@ describe('RFC 9457 Problem Details Error Handling', () => {
   });
 
   it('Should_return_sanitized_rfc_9457_problem_details_when_internal_error_occurs', async () => {
-    app = buildApp();
-
-    app.get('/api/test-internal-error', async () => {
-      throw new Error('Database password failed: supersecret123');
-    });
-
-    const response = await app.inject({
+    const response = await context.app.inject({
       method: 'GET',
       url: '/api/test-internal-error',
     });
