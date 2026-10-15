@@ -2,7 +2,6 @@ import { TFL_LINES } from '@railsignal/shared';
 import { type FormEvent, useState } from 'react';
 import { useSendTestAlert } from '../../hooks/useSendTestAlert';
 import { Dialog } from '../common/Dialog';
-import { useToast } from '../common/Toast';
 
 export interface TestAlertModalProps {
   open: boolean;
@@ -11,7 +10,6 @@ export interface TestAlertModalProps {
 }
 
 export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAlertModalProps) {
-  const { showToast } = useToast();
   const sendAlertMutation = useSendTestAlert();
 
   const [email, setEmail] = useState('');
@@ -49,20 +47,9 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
         email: trimmedEmail,
         ...(selectedLines.length > 0 ? { lineIds: selectedLines } : {}),
       });
-
-      showToast({
-        type: 'success',
-        title: 'Sample Alert Sent',
-        message: `Preview closure briefing sent to ${trimmedEmail}`,
-      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to send sample alert';
       setLocalError(msg);
-      showToast({
-        type: 'error',
-        title: 'Unable to Send Alert',
-        message: msg,
-      });
     }
   };
 

@@ -2,7 +2,6 @@ import { TFL_LINE_IDS, TFL_LINES } from '@railsignal/shared';
 import { type FormEvent, useState } from 'react';
 import { useCreateSubscription } from '../../hooks/useCreateSubscription';
 import { Dialog } from '../common/Dialog';
-import { useToast } from '../common/Toast';
 
 export interface SubscriptionModalProps {
   open: boolean;
@@ -10,7 +9,6 @@ export interface SubscriptionModalProps {
 }
 
 export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps) {
-  const { showToast } = useToast();
   const subscriptionMutation = useCreateSubscription();
 
   const [email, setEmail] = useState('');
@@ -65,20 +63,9 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
         email: trimmedEmail,
         lineIds: selectedLines,
       });
-
-      showToast({
-        type: 'success',
-        title: 'Subscription Active',
-        message: `Friday closure alerts active for ${trimmedEmail}`,
-      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save subscription';
       setLocalError(msg);
-      showToast({
-        type: 'error',
-        title: 'Subscription Error',
-        message: msg,
-      });
     }
   };
 
