@@ -1,6 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../../../../src/db.js';
-import type { ResendEmailClient } from '../../../../src/email/resendClient.js';
 import { processNotificationJob } from '../../../../src/workers/notifications/processor.js';
 
 describe('Notification Processor Idempotency & Dispatch Tests', () => {
@@ -52,7 +51,7 @@ describe('Notification Processor Idempotency & Dispatch Tests', () => {
       },
     });
 
-    const mockEmailClient: Pick<ResendEmailClient, 'sendDisruptionDigest'> = {
+    const mockEmailClient = {
       sendDisruptionDigest: vi.fn().mockResolvedValue({
         id: 'msg-123',
         delivered: true,
@@ -125,7 +124,7 @@ describe('Notification Processor Idempotency & Dispatch Tests', () => {
       },
     });
 
-    const mockEmailClient: Pick<ResendEmailClient, 'sendDisruptionDigest'> = {
+    const mockEmailClient = {
       sendDisruptionDigest: vi.fn(),
     };
 
@@ -176,7 +175,7 @@ describe('Notification Processor Idempotency & Dispatch Tests', () => {
       },
     });
 
-    const mockEmailClient: Pick<ResendEmailClient, 'sendDisruptionDigest'> = {
+    const mockEmailClient = {
       sendDisruptionDigest: vi.fn().mockRejectedValue(new Error('Resend upstream timeout')),
     };
 
@@ -229,7 +228,7 @@ describe('Notification Processor Idempotency & Dispatch Tests', () => {
       },
     });
 
-    const mockEmailClient: Pick<ResendEmailClient, 'sendDisruptionDigest'> = {
+    const mockEmailClient = {
       sendDisruptionDigest: vi.fn().mockResolvedValue({
         id: 'msg-sub-b',
         delivered: true,

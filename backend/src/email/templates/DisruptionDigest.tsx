@@ -1,4 +1,4 @@
-import { getTflLineById, type LineMode } from '@railsignal/shared';
+import { getTflLineById } from '@railsignal/shared';
 import {
   Body,
   Container,
@@ -12,28 +12,11 @@ import {
   Text,
 } from '@react-email/components';
 import type React from 'react';
+import type { DisruptionDigestItem, DisruptionDigestProps } from '../types.js';
 import { SAMPLE_DISRUPTION_DIGEST_PROPS } from './sampleData.js';
 import { emailStyles } from './styles.js';
 
-export interface DisruptionDigestItem {
-  lineId: string;
-  lineName: string;
-  mode?: LineMode;
-  color?: string;
-  contrastBorder?: boolean;
-  statusSeverityDescription: string;
-  corridorDescription: string;
-}
-
-export interface DisruptionDigestProps {
-  recipientEmail?: string;
-  weekendDate?: string;
-  weekendWindowDescription?: string;
-  disruptions?: DisruptionDigestItem[];
-  unsubscribeToken?: string;
-  unsubscribeUrl?: string;
-}
-
+export type { DisruptionDigestItem, DisruptionDigestProps };
 export { SAMPLE_DISRUPTION_DIGEST_PROPS };
 
 export default function DisruptionDigest(props: DisruptionDigestProps = {}): React.JSX.Element {

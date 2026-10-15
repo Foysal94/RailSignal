@@ -1,10 +1,29 @@
+import type { LineMode } from '@railsignal/shared';
 import type React from 'react';
-import type { DisruptionDigestProps } from './templates/DisruptionDigest.js';
 
 export interface Logger {
   info(message: string, ...args: unknown[]): void;
   warn(message: string, ...args: unknown[]): void;
   error(message: string, ...args: unknown[]): void;
+}
+
+export interface DisruptionDigestItem {
+  lineId: string;
+  lineName: string;
+  mode?: LineMode;
+  color?: string;
+  contrastBorder?: boolean;
+  statusSeverityDescription: string;
+  corridorDescription: string;
+}
+
+export interface DisruptionDigestProps {
+  recipientEmail?: string;
+  weekendDate?: string;
+  weekendWindowDescription?: string;
+  disruptions?: DisruptionDigestItem[];
+  unsubscribeToken?: string;
+  unsubscribeUrl?: string;
 }
 
 export interface SendEmailOptions {

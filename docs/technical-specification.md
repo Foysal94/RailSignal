@@ -81,7 +81,13 @@ RailSignal/
 │   │   ├── domain/                     # Core domain business rules
 │   │   │   └── temporal.ts             # Europe/London weekend operational window calculator
 │   │   ├── email/                      # Email notifications
-│   │   │   ├── resendClient.ts         # Resend SDK wrapper with local console mock fallback
+│   │   │   ├── client.ts               # Deep EmailClient module (Resend SDK, retries, console mock)
+│   │   │   ├── digest.ts               # Domain email dispatcher (DisruptionDigest coordination)
+│   │   │   ├── headers.ts              # RFC 8058 one-click list-unsubscribe headers
+│   │   │   ├── renderer.ts             # React Email pure JSX compilation
+│   │   │   ├── resilience.ts           # Cockatiel exponential backoff retry policy
+│   │   │   ├── types.ts                # Email and digest payload types
+│   │   │   ├── index.ts                # Narrow barrel exports (EmailClient & payload types)
 │   │   │   └── templates/              # @react-email templates
 │   │   │       └── DisruptionDigest.tsx# Responsive JSX email template
 │   │   └── jobs/                       # Standalone CLI job runner
@@ -208,9 +214,12 @@ model WeekendDisruption {
   - Decoupled from third-party client code, serving both TfL ingestion filtering and future scheduling/digest jobs. Accurately resolves GMT/BST boundaries.
 
 ### 5.2 Transactional Email Dispatcher (`src/email/`)
+* **Architecture**: Deep `EmailClient` transport module (`client.ts`) collapsing Resend SDK dispatch, JSX compilation, console mock fallback, and Cockatiel retries into `sendEmail`, decoupled from the domain email dispatcher (`digest.ts`) exposing `sendDisruptionDigest` with internal pure helpers for JSX rendering (`renderer.ts`), retry policies (`resilience.ts`), and RFC 8058 unsubscribe header generation (`headers.ts`).
 * **Provider**: Resend API (free tier: 3,000 emails/month).
 * **Templates**: Built with `@react-email/components` (`templates/DisruptionDigest.tsx`). Produces accessible, bulletproof HTML with inline CSS compatible with Outlook and mobile clients.
-* **Local Development Preview**: Local preview server via `npx email dev` ensures zero Resend API quota is consumed during template styling.
+* **Deliverability & Spam Compliance**: Automatic RFC 8058 one-click list-unsubscribe headers (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`) to satisfy Gmail and Yahoo bulk sender requirements.
+* **Resilience**: Cockatiel exponential backoff retry policy with decorrelated jitter (ADR 0004) absorbing Resend rate limits (429) and network stalls.
+* **Local Development Preview**: Local preview server via `npm run email:dev` ensures zero Resend API quota is consumed during template styling.
 * **Mock Fallback**: In local dev, if `RESEND_API_KEY` is omitted, the client logs rendered email output to the console instead of failing.
 
 ### 5.3 Shared Contracts & Validation (`packages/shared`)
@@ -290,6 +299,7 @@ See [ADR 0006](file:///Users/foysalahmed/Code/RailSignal/docs/adr/0006-frontend-
 * **Phase 2: External Adapters**
   * **Phase 2A: Resilient TfL API Client**: Typed TfL client with `cockatiel` resilience and `date-fns` London weekend filter.
   * **Phase 2B: Transactional Email Client & Templates**: `@react-email` templates and Resend client with local mock fallback.
+  * **Phase 2B.2: Email Subsystem Deepening & Pipeline Collapse (Architecture Refactoring)**: Deepen the email delivery pipeline by merging `ResendEmailClient`, `buildDigestEmailPayload`, and `ResendTransportClient` into a single deep `EmailClient` module, isolating internal seams, narrowing barrel exports, and resolving template type cycles (ADR 0007).
 * **Phase 3: Queue Pipeline & Background Workers**
   * **Phase 3A: BullMQ Upstash Pipeline & Ingestion Worker**: Redis connection factory (TLS, `drainDelay: 60s`), `ingestionWorker.ts` with idempotent Prisma upserts.
   * **Phase 3B: Notification & Demo Dispatch Worker**: `notificationWorker.ts` with `lastNotifiedWeekendDate` deduplication, and `demoAlertWorker.ts`.

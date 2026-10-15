@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import type { Job } from 'bullmq';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../../src/db.js';
-import type { ResendEmailClient, SendDisruptionDigestOptions } from '../../src/email/index.js';
+import type { SendDisruptionDigestOptions } from '../../src/email/index.js';
 import type { DemoAlertJobData, NotificationJobData } from '../../src/queues/queues.js';
 import {
   closeAllWorkers,
@@ -90,7 +90,7 @@ describe('Notification & Demo Pipeline Integration Tests', () => {
     });
 
     const sentEmails: SendDisruptionDigestOptions[] = [];
-    const mockEmailClient: Pick<ResendEmailClient, 'sendDisruptionDigest'> = {
+    const mockEmailClient = {
       sendDisruptionDigest: vi
         .fn()
         .mockImplementation(async (options: SendDisruptionDigestOptions) => {
@@ -171,7 +171,7 @@ describe('Notification & Demo Pipeline Integration Tests', () => {
       },
     });
 
-    const mockEmailClient: Pick<ResendEmailClient, 'sendDisruptionDigest'> = {
+    const mockEmailClient = {
       sendDisruptionDigest: vi
         .fn()
         .mockResolvedValue({ id: 'mock-1', delivered: true, mocked: false }),
@@ -220,7 +220,7 @@ describe('Notification & Demo Pipeline Integration Tests', () => {
       },
     });
 
-    const mockEmailClient: Pick<ResendEmailClient, 'sendDisruptionDigest'> = {
+    const mockEmailClient = {
       sendDisruptionDigest: vi
         .fn()
         .mockResolvedValue({ id: 'demo-msg', delivered: true, mocked: false }),

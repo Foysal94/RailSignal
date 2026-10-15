@@ -6,7 +6,7 @@ import { renderEmail } from './renderer.js';
 import { createResendRetryPolicy } from './resilience.js';
 import type { Logger, SendEmailOptions, SendEmailResult } from './types.js';
 
-export interface TransportClientOptions {
+export interface EmailClientOptions {
   resendApiKey?: string;
   nodeEnv?: string;
   fromEmail?: string;
@@ -15,14 +15,16 @@ export interface TransportClientOptions {
   retryPolicy?: IPolicy;
 }
 
-export class ResendTransportClient {
+// Transport client consolidating React template compilation, Cockatiel retries, dev-mode console fallback, and Resend delivery.
+// Decouples transport I/O from domain email templates to adhere to Single Responsibility.
+export class EmailClient {
   private readonly resend: Resend | null;
   private readonly nodeEnv: string;
   private readonly defaultFrom: string;
   private readonly logger: Logger;
   private readonly retryPolicy: IPolicy;
 
-  constructor(options: TransportClientOptions = {}) {
+  constructor(options: EmailClientOptions = {}) {
     this.nodeEnv = options.nodeEnv ?? config.nodeEnv;
     this.defaultFrom =
       options.fromEmail ?? config.emailFrom ?? 'RailSignal Alerts <alerts@railsignal.london>';
@@ -40,7 +42,7 @@ export class ResendTransportClient {
     }
   }
 
-  async send(options: SendEmailOptions): Promise<SendEmailResult> {
+  async sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
     let htmlContent: string;
     let textContent: string | undefined = options.text;
 
@@ -89,7 +91,9 @@ export class ResendTransportClient {
       });
 
       if (res.error) {
-        throw new Error(res.error.message);
+        const statusPrefix = res.error.statusCode ? `[${res.error.statusCode}] ` : '';
+        const namePrefix = res.error.name ? `${res.error.name}: ` : '';
+        throw new Error(`${statusPrefix}${namePrefix}${res.error.message}`);
       }
 
       return res;
@@ -106,3 +110,39 @@ export class ResendTransportClient {
     };
   }
 }
+
+let _defaultClient: EmailClient | null = null;
+
+export function createEmailClient(options?: EmailClientOptions): EmailClient {
+  return new EmailClient(options);
+}
+
+export function getEmailClient(): EmailClient {
+  if (!_defaultClient) {
+    _defaultClient = createEmailClient();
+  }
+  return _defaultClient;
+}
+
+export function resetEmailClient(): void {
+  _defaultClient = null;
+}
+
+// Lazy singleton proxy defers initialization until first method call so configuration
+// and environment variables are guaranteed to be populated, preserving prototypes, reflection, and method binding.
+export const emailClient = new Proxy(Object.create(EmailClient.prototype) as EmailClient, {
+  get(_target, prop) {
+    const instance = getEmailClient();
+    const value = Reflect.get(instance, prop, instance);
+    return typeof value === 'function' ? value.bind(instance) : value;
+  },
+  has(_target, prop) {
+    return prop in getEmailClient();
+  },
+  ownKeys(_target) {
+    return Reflect.ownKeys(getEmailClient());
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Reflect.getOwnPropertyDescriptor(getEmailClient(), prop);
+  },
+});

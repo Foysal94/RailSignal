@@ -1,6 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../../../../src/db.js';
-import type { ResendEmailClient } from '../../../../src/email/resendClient.js';
 import { processDemoAlertJob } from '../../../../src/workers/demo/processor.js';
 
 describe('Demo Alert Processor Unit Tests', () => {
@@ -36,7 +35,7 @@ describe('Demo Alert Processor Unit Tests', () => {
       },
     });
 
-    const mockEmailClient: Pick<ResendEmailClient, 'sendDisruptionDigest'> = {
+    const mockEmailClient = {
       sendDisruptionDigest: vi.fn().mockResolvedValue({
         id: 'msg-demo-1',
         delivered: true,
@@ -82,7 +81,7 @@ describe('Demo Alert Processor Unit Tests', () => {
   });
 
   it('Should_dispatch_clean_good_service_digest_when_no_disruptions_exist_for_selected_lines', async () => {
-    const mockEmailClient: Pick<ResendEmailClient, 'sendDisruptionDigest'> = {
+    const mockEmailClient = {
       sendDisruptionDigest: vi.fn().mockResolvedValue({
         id: 'msg-demo-clean',
         delivered: true,
@@ -112,7 +111,7 @@ describe('Demo Alert Processor Unit Tests', () => {
   });
 
   it('Should_propagate_email_client_errors_for_bullmq_retry', async () => {
-    const mockEmailClient: Pick<ResendEmailClient, 'sendDisruptionDigest'> = {
+    const mockEmailClient = {
       sendDisruptionDigest: vi.fn().mockRejectedValue(new Error('Resend rate limit')),
     };
 

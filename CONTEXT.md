@@ -24,7 +24,10 @@ The materialized read-model record stored in the database (`WeekendDisruption`) 
 A user record linking a verified email address to a set of monitored **TfL Line** IDs, containing an immutable `unsubscribeToken` and tracking `lastNotifiedWeekendDate` for alert idempotency.
 
 ### Weekly Digest
-A consolidated transactional email alert delivered on Friday morning to subscribers detailing all weekend disruptions on their monitored lines, rendered with `@react-email` and delivered via Resend.
+A consolidated transactional email alert delivered on Friday morning to subscribers detailing all weekend disruptions on their monitored lines, rendered with `@react-email` and delivered via Resend. Technically represented in the codebase as the **Disruption Digest**.
+
+### Disruption Digest
+The technical data model and template representation (`DisruptionDigestProps`, `DisruptionDigestItem`, and `@react-email` template) of the **Weekly Digest** dispatched to subscribers. Encapsulates affected transit corridors, line brand badges, weekend radar temporal boundaries, and RFC 8058 unsubscribe credentials.
 
 ### Demo Alert
 An on-demand test alert triggered through `POST /api/demo/send-test-digest` allowing portfolio visitors to receive an instant sample digest email without creating a persistent subscription.

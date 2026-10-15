@@ -1,9 +1,35 @@
+import type { IPolicy } from 'cockatiel';
 import React from 'react';
 import type { Resend } from 'resend';
 import { describe, expect, it, vi } from 'vitest';
-import { type Logger, ResendEmailClient } from '../../../src/email/resendClient.js';
+import {
+  createEmailClient,
+  EmailClient,
+  type EmailClientOptions,
+  emailClient,
+  getEmailClient,
+  resetEmailClient,
+} from '../../../src/email/client.js';
+import { createResendRetryPolicy } from '../../../src/email/resilience.js';
+import type { Logger } from '../../../src/email/types.js';
 
-describe('ResendEmailClient', () => {
+function createMockClient(
+  mockSend: ReturnType<typeof vi.fn>,
+  options: Partial<EmailClientOptions> = {},
+): EmailClient {
+  return new EmailClient({
+    nodeEnv: 'production',
+    resendApiKey: 're_live_key',
+    resendInstance: {
+      emails: {
+        send: mockSend,
+      },
+    } as unknown as Resend,
+    ...options,
+  });
+}
+
+describe('EmailClient', () => {
   it('Should_use_mock_fallback_and_log_html_when_resend_api_key_is_omitted_in_development', async () => {
     const loggedMessages: string[] = [];
     const mockLogger: Logger = {
@@ -12,7 +38,7 @@ describe('ResendEmailClient', () => {
       error: (msg: string) => loggedMessages.push(msg),
     };
 
-    const client = new ResendEmailClient({
+    const client = new EmailClient({
       nodeEnv: 'development',
       logger: mockLogger,
     });
@@ -31,7 +57,7 @@ describe('ResendEmailClient', () => {
   });
 
   it('Should_throw_an_error_when_api_key_is_omitted_in_production', async () => {
-    const client = new ResendEmailClient({
+    const client = new EmailClient({
       nodeEnv: 'production',
       resendApiKey: undefined,
     });
@@ -46,7 +72,7 @@ describe('ResendEmailClient', () => {
   });
 
   it('Should_throw_an_error_when_neither_react_element_nor_html_string_is_provided', async () => {
-    const client = new ResendEmailClient({
+    const client = new EmailClient({
       nodeEnv: 'development',
     });
 
@@ -64,14 +90,9 @@ describe('ResendEmailClient', () => {
       error: null,
     });
 
-    const client = new ResendEmailClient({
+    const client = createMockClient(mockSend, {
       nodeEnv: 'development',
       resendApiKey: 're_test_key_abc',
-      resendInstance: {
-        emails: {
-          send: mockSend,
-        },
-      } as unknown as Resend,
     });
 
     const result = await client.sendEmail({
@@ -103,15 +124,7 @@ describe('ResendEmailClient', () => {
       },
     });
 
-    const client = new ResendEmailClient({
-      nodeEnv: 'production',
-      resendApiKey: 're_live_key',
-      resendInstance: {
-        emails: {
-          send: mockSend,
-        },
-      } as unknown as Resend,
-    });
+    const client = createMockClient(mockSend);
 
     await expect(
       client.sendEmail({
@@ -131,14 +144,8 @@ describe('ResendEmailClient', () => {
         error: null,
       });
 
-    const client = new ResendEmailClient({
-      nodeEnv: 'production',
-      resendApiKey: 're_live_key',
-      resendInstance: {
-        emails: {
-          send: mockSend,
-        },
-      } as unknown as Resend,
+    const client = createMockClient(mockSend, {
+      retryPolicy: createResendRetryPolicy(3, 0),
     });
 
     const result = await client.sendEmail({
@@ -152,49 +159,59 @@ describe('ResendEmailClient', () => {
     expect(mockSend).toHaveBeenCalledTimes(2);
   });
 
-  it('Should_send_disruption_digest_with_rfc_8058_unsubscribe_headers', async () => {
+  it('Should_accept_custom_retry_policy_in_constructor_options_for_test_isolation', async () => {
     const mockSend = vi.fn().mockResolvedValue({
-      data: { id: 'email_digest_789' },
+      data: { id: 'email_custom_policy_111' },
       error: null,
     });
 
-    const client = new ResendEmailClient({
-      nodeEnv: 'production',
-      resendApiKey: 're_live_key',
-      resendInstance: {
-        emails: {
-          send: mockSend,
-        },
-      } as unknown as Resend,
+    const executedPolicySpies: string[] = [];
+    const customPolicy: IPolicy = {
+      execute: async (fn) => {
+        executedPolicySpies.push('custom_policy_executed');
+        return fn({ attempt: 1 } as never);
+      },
+    } as unknown as IPolicy;
+
+    const client = createMockClient(mockSend, {
+      retryPolicy: customPolicy,
     });
 
-    const result = await client.sendDisruptionDigest({
-      to: 'subscriber@example.com',
-      digest: {
-        recipientEmail: 'subscriber@example.com',
-        weekendDate: '2026-10-16',
-        disruptions: [
-          {
-            lineId: 'central',
-            lineName: 'Central',
-            mode: 'tube',
-            color: '#E32017',
-            statusSeverityDescription: 'Part Closure',
-            corridorDescription: 'No service between White City and West Ruislip.',
-          },
-        ],
-        unsubscribeToken: 'token_123',
-        unsubscribeUrl: 'https://railsignal.london/unsubscribe?token=token_123',
-      },
+    const result = await client.sendEmail({
+      to: 'commuter@example.com',
+      subject: 'Custom policy test',
+      html: '<p>Custom policy</p>',
     });
 
     expect(result.delivered).toBe(true);
-    const callArgs = mockSend.mock.calls[0]?.[0];
-    expect(callArgs.headers['List-Unsubscribe']).toBe(
-      '<https://railsignal.london/unsubscribe?token=token_123>',
-    );
-    expect(callArgs.headers['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click');
-    expect(callArgs.html).toContain('Central');
-    expect(callArgs.text).toContain('Central');
+    expect(executedPolicySpies).toContain('custom_policy_executed');
+  });
+
+  it('Should_instantiate_via_createEmailClient_factory', () => {
+    const client = createEmailClient({ nodeEnv: 'development' });
+    expect(client).toBeInstanceOf(EmailClient);
+  });
+
+  it('Should_delegate_calls_via_lazy_emailClient_proxy_singleton', async () => {
+    expect('sendEmail' in emailClient).toBe(true);
+    expect(emailClient).toBeInstanceOf(EmailClient);
+
+    const result = await emailClient.sendEmail({
+      to: 'lazy@example.com',
+      subject: 'Lazy proxy test',
+      html: '<p>Lazy</p>',
+    });
+
+    expect(result.mocked).toBe(true);
+    expect(result.delivered).toBe(false);
+  });
+
+  it('Should_reset_singleton_instance_via_resetEmailClient', () => {
+    const client1 = getEmailClient();
+    expect(client1).toBeInstanceOf(EmailClient);
+    resetEmailClient();
+    const client2 = getEmailClient();
+    expect(client2).toBeInstanceOf(EmailClient);
+    expect(client2).not.toBe(client1);
   });
 });

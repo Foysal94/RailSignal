@@ -1,4 +1,4 @@
-import type { DisruptionDigestProps } from './DisruptionDigest.js';
+import type { DisruptionDigestProps } from '../types.js';
 
 export const SAMPLE_DISRUPTION_DIGEST_PROPS: Required<DisruptionDigestProps> = {
   recipientEmail: 'commuter@example.com',
