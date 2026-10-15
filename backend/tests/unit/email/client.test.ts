@@ -5,11 +5,29 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createEmailClient,
   EmailClient,
+  type EmailClientOptions,
   emailClient,
   getEmailClient,
   resetEmailClient,
 } from '../../../src/email/client.js';
+import { createResendRetryPolicy } from '../../../src/email/resilience.js';
 import type { Logger } from '../../../src/email/types.js';
+
+function createMockClient(
+  mockSend: ReturnType<typeof vi.fn>,
+  options: Partial<EmailClientOptions> = {},
+): EmailClient {
+  return new EmailClient({
+    nodeEnv: 'production',
+    resendApiKey: 're_live_key',
+    resendInstance: {
+      emails: {
+        send: mockSend,
+      },
+    } as unknown as Resend,
+    ...options,
+  });
+}
 
 describe('EmailClient', () => {
   it('Should_use_mock_fallback_and_log_html_when_resend_api_key_is_omitted_in_development', async () => {
@@ -72,14 +90,9 @@ describe('EmailClient', () => {
       error: null,
     });
 
-    const client = new EmailClient({
+    const client = createMockClient(mockSend, {
       nodeEnv: 'development',
       resendApiKey: 're_test_key_abc',
-      resendInstance: {
-        emails: {
-          send: mockSend,
-        },
-      } as unknown as Resend,
     });
 
     const result = await client.sendEmail({
@@ -111,15 +124,7 @@ describe('EmailClient', () => {
       },
     });
 
-    const client = new EmailClient({
-      nodeEnv: 'production',
-      resendApiKey: 're_live_key',
-      resendInstance: {
-        emails: {
-          send: mockSend,
-        },
-      } as unknown as Resend,
-    });
+    const client = createMockClient(mockSend);
 
     await expect(
       client.sendEmail({
@@ -139,14 +144,8 @@ describe('EmailClient', () => {
         error: null,
       });
 
-    const client = new EmailClient({
-      nodeEnv: 'production',
-      resendApiKey: 're_live_key',
-      resendInstance: {
-        emails: {
-          send: mockSend,
-        },
-      } as unknown as Resend,
+    const client = createMockClient(mockSend, {
+      retryPolicy: createResendRetryPolicy(3, 0),
     });
 
     const result = await client.sendEmail({
@@ -174,15 +173,8 @@ describe('EmailClient', () => {
       },
     } as unknown as IPolicy;
 
-    const client = new EmailClient({
-      nodeEnv: 'production',
-      resendApiKey: 're_live_key',
+    const client = createMockClient(mockSend, {
       retryPolicy: customPolicy,
-      resendInstance: {
-        emails: {
-          send: mockSend,
-        },
-      } as unknown as Resend,
     });
 
     const result = await client.sendEmail({
