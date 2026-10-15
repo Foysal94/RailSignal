@@ -31,23 +31,24 @@ Adopt **Option 1: Clean Transit Radar (Concept A with Dual Action Bar)** as the 
      * DLR: `#00A4A7`
    * **Status Badges**:
      * `Planned Closure`: Red (`bg-red-950/80 text-red-300 border border-red-800`).
-     * `Part Closure`: Amber (`bg-amber-950/80 text-amber-300 border border-amber-800`).
-     * `Good Service`: Emerald (`bg-emerald-950/80 text-emerald-300 border border-emerald-800`).
+     * `Part Closure` / `Minor Delays`: Amber (`bg-amber-950/80 text-amber-300 border border-amber-800`).
+     * `No Planned Closures` (formerly `Good Service`): Emerald (`bg-emerald-950/80 text-emerald-300 border border-emerald-800`). Replaces the ambiguous "Good Service" tag to explicitly communicate planned maintenance radar status rather than live train operations.
 
 2. **Header & Dual Action Bar**:
-   * **Branding**: RailSignal logo and subtitle *"Weekend Closure Radar"*.
-   * **Temporal Window Badge**: Clear indicator displaying `"This Weekend: Friday 19:00 - Monday 04:30 London Time"`.
+   * **Branding**: `RailSignal` logo with live pulsing status indicator.
    * **Dual Top-Right CTAs**:
      * Primary CTA: `[Send Test Alert]` (solid blue accent `#2563EB`) triggering `TestAlertModal` for instant demo alerts.
      * Secondary CTA: `[Friday Alerts]` (outline button) triggering `SubscriptionModal` for weekly digests.
 
-3. **Information Architecture & Sorting**:
-   * Single-column vertical stream.
+3. **Hero Subheader & Information Architecture**:
+   * **Hero Subheader**: Prominently anchors the forecasted operational window (e.g. `Weekend Disruption Radar` — `Friday 16 Oct, 19:00 – Monday 19 Oct, 04:30 (UK Local Time)`) directly above the radar stream.
+   * **Stream Summary Counter**: Summarizes `{count} Planned Closures This Weekend` (or `No planned closures this weekend`) and `{count} lines evaluated`.
    * **Disruptions First**: Lines with `Planned Closure`, `Part Closure`, or `Part Suspended` automatically sort to the top with visible corridor disruption text (*"No service between Victoria and Brixton"*).
-   * **Normal Service Below**: Lines with `Good Service` appear below with clean status pills, eliminating the need to hunt for disruptions.
+   * **Normal Service Below**: Lines with `No Planned Closures` appear below with clean status pills, eliminating the need to hunt for disruptions.
 
 4. **Component Primitives & Accessibility**:
    * Modals built with `@radix-ui/react-dialog` for focus trapping, keyboard navigation (`Escape` to close), and screen reader accessibility.
+   * Self-contained in-modal confirmation screens upon successful submission, avoiding disruptive auto-closing or redundant toast notifications.
    * All touch targets meet the `min-h-[44px]` threshold for mobile ergonomics.
    * Server state managed by TanStack Query v5 with loading skeletons gated on `isFetching`.
 

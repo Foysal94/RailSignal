@@ -242,20 +242,24 @@ See [ADR 0006](file:///Users/foysalahmed/Code/RailSignal/docs/adr/0006-frontend-
 * **Northern Line Accessibility**: Black stripe (`#000000`) rendered with a 1px `border-neutral-500` outline to guarantee 4.5:1 contrast against dark card surfaces.
 * **Status Badges**:
   * `Planned Closure`: Red (`bg-red-950/80 text-red-300 border border-red-800`).
-  * `Part Closure`: Amber (`bg-amber-950/80 text-amber-300 border border-amber-800`).
-  * `Good Service`: Emerald (`bg-emerald-950/80 text-emerald-300 border border-emerald-800`).
+  * `Part Closure` / `Minor Delays`: Amber (`bg-amber-950/80 text-amber-300 border border-amber-800`).
+  * `No Planned Closures` (formerly `Good Service`): Emerald (`bg-emerald-950/80 text-emerald-300 border border-emerald-800`). Updated copy explicitly clarifies that the system is an early-warning engineering works radar rather than live mid-week running telemetry.
 
 ### 7.2 Header & Dual Action Bar
-* **Branding**: `RailSignal` logo with subtitle *"Weekend Closure Radar"*.
-* **Temporal Indicator**: Badge displaying `"This Weekend: Friday 19:00 - Monday 04:30 London Time"`.
+* **Branding**: `RailSignal` logo with live pulsing status indicator.
 * **Top-Right CTAs**:
   * `[Send Test Alert]`: Solid blue accent button (`bg-blue-600 hover:bg-blue-500 text-white min-h-[44px]`). Opens `TestAlertModal`.
   * `[Friday Alerts]`: Outline button (`border border-slate-700 hover:bg-slate-800 text-slate-200 min-h-[44px]`). Opens `SubscriptionModal`.
 
-### 7.3 Information Architecture & Priority Sorting
-* **Feed Layout**: Single-column vertical card list.
-* **Disruption Priority**: Lines with closures (`Planned Closure`, `Part Closure`, `Part Suspended`) automatically sort to the top with visible corridor disruption descriptions (*"No service between Victoria and Brixton during maintenance"*).
-* **Normal Service**: Lines with `Good Service` appear below with compact status pills, eliminating unnecessary scrolling for commuters.
+### 7.3 Hero & Information Architecture
+* **Hero Subheader**: Positioned directly above the disruption cards to prominently anchor the upcoming operational window (e.g., `Weekend Disruption Radar` — `Friday 16 Oct, 19:00 – Monday 19 Oct, 04:30 (UK Local Time)`). Prevents commuters scanning the feed from mistaking forecasted weekend closures for today's live train status.
+* **Stream Summary Counter**: Displays `{count} Planned Closures This Weekend` (or `No planned closures this weekend`) alongside `{count} lines evaluated`.
+* **Priority Sorting**: Lines with planned closures automatically sort to the top with visible corridor disruption descriptions (*"No service between Victoria and Brixton during maintenance"*).
+* **Normal Service**: Lines with `No Planned Closures` sort alphabetically below.
+
+### 7.4 Modal Interaction & Submission Flow
+* **Headless Primitives**: Powered by `@radix-ui/react-dialog` with backdrop blur, focus trapping, and `Escape` key handlers.
+* **Self-Contained Confirmation**: Submitting either modal (`TestAlertModal` or `SubscriptionModal`) replaces the form with a rich, in-dialog success confirmation card with clear action buttons ("Send Another" / "Close"). The dialog remains open so commuters can read next steps without jarring auto-dismissal or redundant floating toast popups.
 
 ---
 
