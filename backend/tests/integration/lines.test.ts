@@ -80,6 +80,9 @@ describe('GET /api/lines/weekend-status', () => {
     expect(secondLine.hasDisruption).toBe(true);
     expect(['central', 'victoria']).toContain(firstLine.lineId);
     expect(['central', 'victoria']).toContain(secondLine.lineId);
+    expect(firstLine.notices).toBeDefined();
+    expect(firstLine.notices?.length).toBeGreaterThanOrEqual(1);
+    expect(firstLine.disruptions[0]?.notices).toBeDefined();
 
     const nonDisrupted = body.lines.slice(2);
     for (const line of nonDisrupted) {

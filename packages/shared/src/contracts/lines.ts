@@ -17,6 +17,23 @@ export const TflLineSchema = Type.Object({
 });
 export type TflLine = Static<typeof TflLineSchema>;
 
+export const ReplacementBusRouteSchema = Type.Object({
+  serviceName: Type.String(),
+  stops: Type.Array(Type.String()),
+  summary: Type.String(),
+  rawRoute: Type.String(),
+});
+export type ReplacementBusRoute = Static<typeof ReplacementBusRouteSchema>;
+
+export const DisruptionNoticeSchema = Type.Object({
+  headline: Type.String(),
+  timeframe: Type.Optional(Type.String()),
+  busRoute: Type.Optional(ReplacementBusRouteSchema),
+  details: Type.Optional(Type.Array(Type.String())),
+  rawFallback: Type.Optional(Type.String()),
+});
+export type DisruptionNotice = Static<typeof DisruptionNoticeSchema>;
+
 export const WeekendDisruptionSchema = Type.Object({
   id: Type.String(),
   lineId: Type.String(),
@@ -24,6 +41,7 @@ export const WeekendDisruptionSchema = Type.Object({
   mode: LineModeSchema,
   statusSeverityDescription: Type.String(),
   corridorDescription: Type.String(),
+  notices: Type.Optional(Type.Array(DisruptionNoticeSchema)),
   weekendDate: Type.String(),
   validFrom: Type.String(),
   validTo: Type.String(),
@@ -40,6 +58,7 @@ export const WeekendStatusItemSchema = Type.Object({
   contrastBorder: Type.Optional(Type.Boolean()),
   statusSeverityDescription: Type.String(),
   corridorDescription: Type.Optional(Type.String()),
+  notices: Type.Optional(Type.Array(DisruptionNoticeSchema)),
   hasDisruption: Type.Boolean(),
   disruptions: Type.Array(WeekendDisruptionSchema),
 });

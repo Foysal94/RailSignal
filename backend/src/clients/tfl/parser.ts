@@ -1,4 +1,4 @@
-import { TFL_LINES, TFL_LINES_BY_ID, type TflLine } from '@railsignal/shared';
+import { cleanLinePrefix, TFL_LINES, TFL_LINES_BY_ID, type TflLine } from '@railsignal/shared';
 import { isDisruptionInWindow } from '../../domain/temporal.js';
 import type { ParsedDisruption, ParseTflDisruptionsOptions, RawTflLineStatus } from './types.js';
 
@@ -106,12 +106,9 @@ export function resolveStatusSeverityDescription(
   return 'Planned Closure';
 }
 
-// Strips repetitive line name prefixes from description text (e.g. "Northern line: No service...").
+// Strips repetitive line and mode name prefixes from description text (e.g. "Northern line: No service...").
 export function cleanCorridorDescription(description: string, lineName?: string): string {
-  if (!lineName) return description.trim();
-  const escapedLineName = lineName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const prefixRegex = new RegExp(`^${escapedLineName}(\\s+line)?\\s*:\\s*`, 'i');
-  return description.replace(prefixRegex, '').trim() || description.trim();
+  return cleanLinePrefix(description, lineName);
 }
 
 // Maps date-scoped raw TfL line statuses into normalized domain disruptions

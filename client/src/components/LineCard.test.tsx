@@ -1,5 +1,6 @@
 import type { WeekendStatusItem } from '@railsignal/shared';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { LineCard } from './LineCard';
 
@@ -179,5 +180,96 @@ describe('LineCard Component', () => {
     const badge = screen.getByText('Part Closed');
     expect(badge.className).toContain('text-amber-300');
     expect(badge.className).not.toContain('text-red-300');
+  });
+
+  it('Should_render_structured_notices_with_station_first_headline_and_timeframe', () => {
+    const item: WeekendStatusItem = {
+      lineId: 'mildmay',
+      lineName: 'Mildmay line',
+      mode: 'overground',
+      color: '#EF7B10',
+      statusSeverityDescription: 'Part Closure',
+      hasDisruption: true,
+      notices: [
+        {
+          headline: 'Gospel Oak ↔ Stratford: No service',
+          timeframe: 'Sunday · Until 11:15',
+        },
+        {
+          headline: 'Camden Road ↔ Stratford: No service',
+          timeframe: 'Sunday · After 22:15',
+        },
+      ],
+      disruptions: [],
+    };
+
+    render(<LineCard line={item} />);
+
+    expect(screen.getByText('Gospel Oak ↔ Stratford: No service')).toBeInTheDocument();
+    expect(screen.getByText('Sunday · Until 11:15')).toBeInTheDocument();
+    expect(screen.getByText('Camden Road ↔ Stratford: No service')).toBeInTheDocument();
+    expect(screen.getByText('Sunday · After 22:15')).toBeInTheDocument();
+  });
+
+  it('Should_toggle_replacement_bus_accordion_with_accessible_attributes', async () => {
+    const item: WeekendStatusItem = {
+      lineId: 'mildmay',
+      lineName: 'Mildmay line',
+      mode: 'overground',
+      color: '#EF7B10',
+      statusSeverityDescription: 'Part Closure',
+      hasDisruption: true,
+      notices: [
+        {
+          headline: 'Gospel Oak ↔ Stratford: No service',
+          timeframe: 'Sunday · Until 11:15',
+          busRoute: {
+            serviceName: 'Replacement Bus Service S',
+            stops: ['Gospel Oak', 'Camden Road', 'Stratford'],
+            summary: '3 stops',
+            rawRoute: 'Gospel Oak - Camden Road - Stratford',
+          },
+        },
+      ],
+      disruptions: [],
+    };
+
+    render(<LineCard line={item} />);
+
+    const user = userEvent.setup();
+    const button = screen.getByRole('button', { name: /Replacement Bus Service S/i });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText(/Gospel Oak ↔ Camden Road/)).not.toBeInTheDocument();
+
+    await user.click(button);
+
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Camden Road')).toBeInTheDocument();
+
+    await user.click(button);
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('Should_display_uppercase_DLR_mode_acronym', () => {
+    const item: WeekendStatusItem = {
+      lineId: 'dlr',
+      lineName: 'DLR',
+      mode: 'dlr',
+      color: '#00A4A7',
+      statusSeverityDescription: 'Part Closure',
+      hasDisruption: true,
+      notices: [
+        {
+          headline: 'Shadwell ↔ Tower Gateway: No service',
+          timeframe: 'Sunday 18 October',
+        },
+      ],
+      disruptions: [],
+    };
+
+    render(<LineCard line={item} />);
+
+    expect(screen.getByText('DLR', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.queryByText('Dlr')).not.toBeInTheDocument();
   });
 });
