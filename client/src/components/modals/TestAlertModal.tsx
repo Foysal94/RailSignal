@@ -1,5 +1,5 @@
-import { TFL_LINES } from '@railsignal/shared';
-import { type FormEvent, useState } from 'react';
+import { TFL_LINE_IDS, TFL_LINES } from '@railsignal/shared';
+import { type FormEvent, useRef, useState } from 'react';
 import { useSendTestAlert } from '../../hooks/useSendTestAlert';
 import { Dialog } from '../common/Dialog';
 
@@ -10,9 +10,12 @@ export interface TestAlertModalProps {
 }
 
 export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAlertModalProps) {
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const sendAlertMutation = useSendTestAlert();
 
   const [email, setEmail] = useState('');
+  const [touchedEmail, setTouchedEmail] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [selectedLines, setSelectedLines] = useState<string[]>(() => {
     if (disruptedLineIds && disruptedLineIds.length > 0) {
       return disruptedLineIds.slice(0, 2);
@@ -21,7 +24,37 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
   });
   const [localError, setLocalError] = useState<string | null>(null);
 
+  const trimmedEmail = email.trim();
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+
+  let emailError: string | null = null;
+  if (touchedEmail || submitted) {
+    if (trimmedEmail.length === 0) {
+      if (submitted) {
+        emailError = 'Please enter a recipient email address.';
+      }
+    } else if (!isEmailValid) {
+      emailError = 'Please enter a valid email address (e.g. commuter@example.com).';
+    }
+  }
+
+  const allSelected = selectedLines.length === TFL_LINES.length;
+
+  const handleSelectAllToggle = () => {
+    if (localError === 'At least one line must be selected.') {
+      setLocalError(null);
+    }
+    if (allSelected) {
+      setSelectedLines([]);
+    } else {
+      setSelectedLines([...TFL_LINE_IDS]);
+    }
+  };
+
   const toggleLine = (lineId: string) => {
+    if (localError === 'At least one line must be selected.') {
+      setLocalError(null);
+    }
     setSelectedLines((prev) =>
       prev.includes(lineId) ? prev.filter((id) => id !== lineId) : [...prev, lineId],
     );
@@ -29,23 +62,23 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setSubmitted(true);
     setLocalError(null);
 
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setLocalError('Please enter a recipient email address.');
+    const validEmail = email.trim();
+    if (!validEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(validEmail)) {
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setLocalError('Please enter a valid email address.');
+    if (selectedLines.length === 0) {
+      setLocalError('At least one line must be selected.');
       return;
     }
 
     try {
       await sendAlertMutation.mutateAsync({
-        email: trimmedEmail,
-        ...(selectedLines.length > 0 ? { lineIds: selectedLines } : {}),
+        email: validEmail,
+        lineIds: selectedLines,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to send sample alert';
@@ -57,6 +90,7 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
+      initialFocusRef={emailInputRef}
       title="Send Sample Alert"
       description="Preview a weekend closure briefing sent directly to your inbox."
     >
@@ -124,20 +158,45 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
               Recipient Email
             </label>
             <input
+              ref={emailInputRef}
               id="test-alert-email"
               type="email"
+              autoFocus
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => setTouchedEmail(true)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (localError) setLocalError(null);
+              }}
               placeholder="commuter@example.com"
               required
+              aria-invalid={Boolean(emailError)}
+              aria-describedby={emailError ? 'test-alert-email-error' : undefined}
               className="w-full min-h-[44px] rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+            {emailError && (
+              <p id="test-alert-email-error" role="alert" className="mt-1 text-xs text-amber-400">
+                {emailError}
+              </p>
+            )}
           </div>
 
           <div>
-            <span className="block text-sm font-medium text-slate-300 mb-1">
-              Included Transit Lines
-            </span>
+            <div className="flex items-center justify-between mb-2">
+              <span className="block text-sm font-medium text-slate-300">
+                Included Transit Lines ({selectedLines.length}/{TFL_LINES.length} lines selected)
+              </span>
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-blue-400 hover:text-blue-300 select-none min-h-[44px]">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={handleSelectAllToggle}
+                  aria-label="Select all lines"
+                  className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900"
+                />
+                <span>Select All</span>
+              </label>
+            </div>
             <p className="text-xs text-slate-400 mb-2">
               Pre-selected active closures or priority lines for immediate demo:
             </p>
