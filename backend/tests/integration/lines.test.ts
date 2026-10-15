@@ -1,35 +1,24 @@
-import type { FastifyInstance } from 'fastify';
-import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { buildApp } from '../../src/app.js';
-import { prisma } from '../../src/db.js';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { WebApplicationFactory } from './webApplicationFactory.js';
 
 describe('GET /api/lines/weekend-status', () => {
-  let app: FastifyInstance;
+  let factory: WebApplicationFactory;
   const weekendDate = '2026-10-16';
 
-  beforeEach(async () => {
-    await prisma.weekendDisruption.deleteMany({
-      where: { weekendDate },
-    });
+  beforeAll(async () => {
+    factory = await WebApplicationFactory.create();
   });
 
-  afterEach(async () => {
-    if (app) {
-      await app.close();
-    }
+  beforeEach(async () => {
+    await factory.resetDatabase();
   });
 
   afterAll(async () => {
-    await prisma.weekendDisruption.deleteMany({
-      where: { weekendDate },
-    });
-    await prisma.$disconnect();
+    await factory.close();
   });
 
   it('Should_return_all_tfl_lines_with_good_service_when_no_disruptions_exist', async () => {
-    app = buildApp();
-
-    const response = await app.inject({
+    const response = await factory.inject({
       method: 'GET',
       url: `/api/lines/weekend-status?referenceDate=${weekendDate}`,
     });
@@ -50,8 +39,8 @@ describe('GET /api/lines/weekend-status', () => {
   });
 
   it('Should_prioritize_disrupted_lines_at_top_when_disruptions_exist', async () => {
-    // Seed test disruption for Central and Victoria lines
-    await prisma.weekendDisruption.createMany({
+    // Seed test disruptions in SQLite via factory.prisma
+    await factory.prisma.weekendDisruption.createMany({
       data: [
         {
           lineId: 'central',
@@ -78,9 +67,7 @@ describe('GET /api/lines/weekend-status', () => {
       ],
     });
 
-    app = buildApp();
-
-    const response = await app.inject({
+    const response = await factory.inject({
       method: 'GET',
       url: `/api/lines/weekend-status?referenceDate=${weekendDate}`,
     });
@@ -88,7 +75,7 @@ describe('GET /api/lines/weekend-status', () => {
     expect(response.statusCode).toBe(200);
     const body = response.json();
 
-    // Disrupted lines should be placed first
+    // Disrupted lines must be placed first
     const firstLine = body.lines[0];
     const secondLine = body.lines[1];
 

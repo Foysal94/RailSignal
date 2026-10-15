@@ -5,7 +5,12 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
-    // Sequential test execution avoids SQLite file locking and concurrent mutation races on railsignal.db
+    env: {
+      NODE_ENV: 'test',
+      DATABASE_URL: 'file:./test.db',
+    },
+    globalSetup: ['./tests/setup/globalSetup.ts'],
+    // Sequential test execution avoids SQLite file locking and concurrent mutation races on test.db
     fileParallelism: false,
     coverage: {
       provider: 'v8',

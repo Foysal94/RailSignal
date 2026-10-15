@@ -1,28 +1,23 @@
-import type { Queue } from 'bullmq';
-import type { FastifyInstance } from 'fastify';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildApp } from '../../src/app.js';
-import type { DemoAlertJobData } from '../../src/queues/queues.js';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { WebApplicationFactory } from './webApplicationFactory.js';
 
 describe('POST /api/demo/send-test-digest', () => {
-  let app: FastifyInstance;
+  let factory: WebApplicationFactory;
 
-  afterEach(async () => {
-    if (app) {
-      await app.close();
-    }
+  beforeAll(async () => {
+    factory = await WebApplicationFactory.create();
+  });
+
+  beforeEach(() => {
+    factory.demoAlertQueue.clear();
+  });
+
+  afterAll(async () => {
+    await factory.close();
   });
 
   it('Should_enqueue_demo_alert_and_return_202_accepted_when_payload_is_valid', async () => {
-    const mockQueue = {
-      add: vi.fn().mockResolvedValue({ id: 'job-demo-123' }),
-    } as unknown as Queue<DemoAlertJobData, void, string>;
-
-    app = buildApp({
-      demoAlertQueue: mockQueue,
-    });
-
-    const response = await app.inject({
+    const response = await factory.inject({
       method: 'POST',
       url: '/api/demo/send-test-digest',
       payload: {
@@ -37,22 +32,18 @@ describe('POST /api/demo/send-test-digest', () => {
     const body = response.json();
     expect(body.status).toBe('queued');
 
-    expect(mockQueue.add).toHaveBeenCalledWith(expect.stringMatching(/demo/i), {
+    // Verify in-memory BullMQ double captured job payload with zero Redis dependency
+    expect(factory.demoAlertQueue.jobs).toHaveLength(1);
+    const enqueuedJob = factory.demoAlertQueue.jobs[0];
+    expect(enqueuedJob.name).toMatch(/demo/i);
+    expect(enqueuedJob.data).toEqual({
       email: 'portfolio-visitor@example.com',
       lines: ['bakerloo', 'victoria'],
     });
   });
 
   it('Should_fallback_to_all_lines_when_line_selection_is_omitted', async () => {
-    const mockQueue = {
-      add: vi.fn().mockResolvedValue({ id: 'job-demo-456' }),
-    } as unknown as Queue<DemoAlertJobData, void, string>;
-
-    app = buildApp({
-      demoAlertQueue: mockQueue,
-    });
-
-    const response = await app.inject({
+    const response = await factory.inject({
       method: 'POST',
       url: '/api/demo/send-test-digest',
       payload: {
@@ -64,19 +55,16 @@ describe('POST /api/demo/send-test-digest', () => {
     const body = response.json();
     expect(body.status).toBe('queued');
 
-    expect(mockQueue.add).toHaveBeenCalledWith(
-      expect.stringMatching(/demo/i),
-      expect.objectContaining({
-        email: 'portfolio-visitor@example.com',
-        lines: expect.arrayContaining(['bakerloo', 'central', 'dlr', 'elizabeth']),
-      }),
+    expect(factory.demoAlertQueue.jobs).toHaveLength(1);
+    const enqueuedJob = factory.demoAlertQueue.jobs[0];
+    expect(enqueuedJob.data.email).toBe('portfolio-visitor@example.com');
+    expect(enqueuedJob.data.lines).toEqual(
+      expect.arrayContaining(['bakerloo', 'central', 'dlr', 'elizabeth']),
     );
   });
 
   it('Should_reject_with_rfc_9457_when_email_is_malformed', async () => {
-    app = buildApp();
-
-    const response = await app.inject({
+    const response = await factory.inject({
       method: 'POST',
       url: '/api/demo/send-test-digest',
       payload: {
@@ -89,12 +77,11 @@ describe('POST /api/demo/send-test-digest', () => {
     const body = response.json();
     expect(body.title).toBe('Bad Request');
     expect(body.invalidParams).toBeDefined();
+    expect(factory.demoAlertQueue.jobs).toHaveLength(0);
   });
 
   it('Should_reject_with_rfc_9457_when_lineIds_contains_unknown_line', async () => {
-    app = buildApp();
-
-    const response = await app.inject({
+    const response = await factory.inject({
       method: 'POST',
       url: '/api/demo/send-test-digest',
       payload: {
@@ -109,5 +96,6 @@ describe('POST /api/demo/send-test-digest', () => {
     expect(body.title).toBe('Bad Request');
     expect(body.invalidParams).toBeDefined();
     expect(body.invalidParams[0].name).toBe('lineIds');
+    expect(factory.demoAlertQueue.jobs).toHaveLength(0);
   });
 });

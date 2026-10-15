@@ -1,36 +1,25 @@
-import type { FastifyInstance } from 'fastify';
-import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { buildApp } from '../../src/app.js';
-import { prisma } from '../../src/db.js';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { WebApplicationFactory } from './webApplicationFactory.js';
 
 describe('Subscriptions API Endpoints', () => {
-  let app: FastifyInstance;
+  let factory: WebApplicationFactory;
   const testEmail = 'subscriber-test@example.com';
 
-  beforeEach(async () => {
-    await prisma.subscription.deleteMany({
-      where: { email: { contains: 'test@example.com' } },
-    });
+  beforeAll(async () => {
+    factory = await WebApplicationFactory.create();
   });
 
-  afterEach(async () => {
-    if (app) {
-      await app.close();
-    }
+  beforeEach(async () => {
+    await factory.resetDatabase();
   });
 
   afterAll(async () => {
-    await prisma.subscription.deleteMany({
-      where: { email: { contains: 'test@example.com' } },
-    });
-    await prisma.$disconnect();
+    await factory.close();
   });
 
   describe('POST /api/subscriptions', () => {
     it('Should_create_new_subscription_and_lines_when_valid_payload_provided', async () => {
-      app = buildApp();
-
-      const response = await app.inject({
+      const response = await factory.inject({
         method: 'POST',
         url: '/api/subscriptions',
         payload: {
@@ -48,8 +37,8 @@ describe('Subscriptions API Endpoints', () => {
       expect(body.subscribedLineIds).toEqual(expect.arrayContaining(['bakerloo', 'victoria']));
       expect(body.createdAt).toBeDefined();
 
-      // Verify observable database state
-      const dbRecord = await prisma.subscription.findUnique({
+      // Verify observable SQLite database state via factory.prisma
+      const dbRecord = await factory.prisma.subscription.findUnique({
         where: { email: testEmail },
         include: { lines: true },
       });
@@ -60,10 +49,8 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_update_existing_subscription_idempotently_when_same_email_subscribes_again', async () => {
-      app = buildApp();
-
-      // Initial create
-      const firstResponse = await app.inject({
+      // Initial subscription creation
+      const firstResponse = await factory.inject({
         method: 'POST',
         url: '/api/subscriptions',
         payload: {
@@ -74,8 +61,8 @@ describe('Subscriptions API Endpoints', () => {
       expect([200, 201]).toContain(firstResponse.statusCode);
       const firstBody = firstResponse.json();
 
-      // Second call updates lines
-      const updateResponse = await app.inject({
+      // Second submission with updated line preferences
+      const updateResponse = await factory.inject({
         method: 'POST',
         url: '/api/subscriptions',
         payload: {
@@ -94,9 +81,7 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_reject_with_rfc_9457_when_email_is_invalid', async () => {
-      app = buildApp();
-
-      const response = await app.inject({
+      const response = await factory.inject({
         method: 'POST',
         url: '/api/subscriptions',
         payload: {
@@ -113,9 +98,7 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_reject_with_rfc_9457_when_lineIds_is_empty', async () => {
-      app = buildApp();
-
-      const response = await app.inject({
+      const response = await factory.inject({
         method: 'POST',
         url: '/api/subscriptions',
         payload: {
@@ -129,9 +112,7 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_reject_with_rfc_9457_when_lineIds_contains_unknown_id', async () => {
-      app = buildApp();
-
-      const response = await app.inject({
+      const response = await factory.inject({
         method: 'POST',
         url: '/api/subscriptions',
         payload: {
@@ -150,10 +131,8 @@ describe('Subscriptions API Endpoints', () => {
 
   describe('DELETE /api/subscriptions/:id?token=...', () => {
     it('Should_cascade_delete_subscription_when_valid_id_and_token_provided', async () => {
-      app = buildApp();
-
-      // Seed subscription
-      const sub = await prisma.subscription.create({
+      // Seed subscription directly in SQLite via factory.prisma
+      const sub = await factory.prisma.subscription.create({
         data: {
           email: testEmail,
           lines: {
@@ -163,29 +142,27 @@ describe('Subscriptions API Endpoints', () => {
         include: { lines: true },
       });
 
-      const response = await app.inject({
+      const response = await factory.inject({
         method: 'DELETE',
         url: `/api/subscriptions/${sub.id}?token=${sub.unsubscribeToken}`,
       });
 
       expect([200, 204]).toContain(response.statusCode);
 
-      // Verify deletion in database
-      const foundSub = await prisma.subscription.findUnique({
+      // Verify cascading deletion in SQLite
+      const foundSub = await factory.prisma.subscription.findUnique({
         where: { id: sub.id },
       });
       expect(foundSub).toBeNull();
 
-      const foundLines = await prisma.subscriptionLine.findMany({
+      const foundLines = await factory.prisma.subscriptionLine.findMany({
         where: { subscriptionId: sub.id },
       });
       expect(foundLines).toHaveLength(0);
     });
 
     it('Should_return_403_when_unsubscribe_token_is_incorrect', async () => {
-      app = buildApp();
-
-      const sub = await prisma.subscription.create({
+      const sub = await factory.prisma.subscription.create({
         data: {
           email: testEmail,
           lines: {
@@ -194,7 +171,7 @@ describe('Subscriptions API Endpoints', () => {
         },
       });
 
-      const response = await app.inject({
+      const response = await factory.inject({
         method: 'DELETE',
         url: `/api/subscriptions/${sub.id}?token=invalid-wrong-token`,
       });
@@ -207,9 +184,7 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_return_404_when_subscription_id_does_not_exist', async () => {
-      app = buildApp();
-
-      const response = await app.inject({
+      const response = await factory.inject({
         method: 'DELETE',
         url: '/api/subscriptions/non-existent-uuid-1234?token=sample-token',
       });
@@ -219,9 +194,7 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_return_400_when_token_query_parameter_is_missing', async () => {
-      app = buildApp();
-
-      const response = await app.inject({
+      const response = await factory.inject({
         method: 'DELETE',
         url: '/api/subscriptions/some-uuid',
       });

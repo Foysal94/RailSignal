@@ -1,20 +1,19 @@
-import type { FastifyInstance } from 'fastify';
-import { afterEach, describe, expect, it } from 'vitest';
-import { buildApp } from '../../src/app.js';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { WebApplicationFactory } from './webApplicationFactory.js';
 
 describe('GET /api/health', () => {
-  let app: FastifyInstance;
+  let factory: WebApplicationFactory;
 
-  afterEach(async () => {
-    if (app) {
-      await app.close();
-    }
+  beforeAll(async () => {
+    factory = await WebApplicationFactory.create();
+  });
+
+  afterAll(async () => {
+    await factory.close();
   });
 
   it('Should_return_200_and_healthy_status_when_health_endpoint_is_called', async () => {
-    app = buildApp();
-
-    const response = await app.inject({
+    const response = await factory.inject({
       method: 'GET',
       url: '/api/health',
     });
