@@ -1,8 +1,8 @@
 import { TFL_LINES, TFL_LINES_BY_ID, type TflLine } from '@railsignal/shared';
 import { isDisruptionInWindow } from '../../domain/temporal.js';
-import type { ParsedDisruption, ParseTflDisruptionsOptions, RawTflDisruption } from './types.js';
+import type { ParsedDisruption, ParseTflDisruptionsOptions, RawTflLineStatus } from './types.js';
 
-export type { ParsedDisruption, ParseTflDisruptionsOptions, RawTflDisruption };
+export type { ParsedDisruption, ParseTflDisruptionsOptions, RawTflLineStatus };
 
 const LINE_ID_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   'hammersmith-and-city': 'hammersmith-city',
@@ -35,10 +35,21 @@ const DESCRIPTION_SEVERITY_PATTERNS: ReadonlyArray<{ pattern: RegExp; severity: 
   { pattern: /severe delays/i, severity: 'Severe Delays' },
 ];
 
-/**
- * Resolves a TfL line from either an affected route lineId or text heuristics in the description.
- * TfL API disruption records frequently omit the route entity or provide empty lineId fields.
- */
+const PLANNED_ENGINEERING_SEVERITIES: ReadonlySet<string> = new Set([
+  'part closure',
+  'planned closure',
+  'reduced service',
+  'part suspended',
+  'bus service',
+  'special service',
+]);
+
+const TRANSIENT_SEVERITY_DESCRIPTIONS: ReadonlySet<string> = new Set([
+  'minor delays',
+  'severe delays',
+]);
+
+// Resolves a TfL line from either an affected route lineId or text heuristics in the description.
 export function resolveTflLine(rawLineId?: string, description?: string): TflLine | undefined {
   if (rawLineId) {
     const normalized = rawLineId.toLowerCase().trim();
@@ -65,10 +76,7 @@ export function resolveTflLine(rawLineId?: string, description?: string): TflLin
   return undefined;
 }
 
-/**
- * Normalizes TfL disruption status strings into human-readable severity descriptions.
- * Structured closureText is evaluated first before falling back to description phrase matching.
- */
+// Normalizes TfL disruption status strings into human-readable severity descriptions.
 export function resolveStatusSeverityDescription(
   closureText?: string,
   description?: string,
@@ -86,125 +94,146 @@ export function resolveStatusSeverityDescription(
   return 'Planned Closure';
 }
 
-/**
- * Strips repetitive line name prefixes from description text (e.g. "Northern line: No service...").
- */
+// Strips repetitive line name prefixes from description text (e.g. "Northern line: No service...").
 export function cleanCorridorDescription(description: string, lineName?: string): string {
   if (!lineName) return description.trim();
-  const prefixRegex = new RegExp(`^${lineName}(\\s+line)?\\s*:\\s*`, 'i');
+  const escapedLineName = lineName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const prefixRegex = new RegExp(`^${escapedLineName}(\\s+line)?\\s*:\\s*`, 'i');
   return description.replace(prefixRegex, '').trim() || description.trim();
 }
 
-/**
- * Maps raw TfL disruptions into normalized domain disruptions filtered strictly to the weekend window.
- * Deduplicates multiple reports for the same line and corridor within the same weekend.
- */
-const TRANSIENT_SEVERITY_DESCRIPTIONS: ReadonlySet<string> = new Set([
-  'Minor Delays',
-  'Severe Delays',
-]);
-
-function normalizeTag(value?: string | null): string {
-  return value ? value.toLowerCase().replace(/[\s-_]/g, '') : '';
-}
-
-function isRealTimeDisruption(raw: RawTflDisruption): boolean {
-  const cat = normalizeTag(raw.category);
-  const catDesc = normalizeTag(raw.categoryDescription);
-  return cat === 'realtime' || catDesc === 'realtime';
-}
-
-function isPlannedWorkDisruption(raw: RawTflDisruption): boolean {
-  const cat = normalizeTag(raw.category);
-  const catDesc = normalizeTag(raw.categoryDescription);
-  const type = normalizeTag(raw.type);
-  if (cat === 'plannedwork' || catDesc === 'plannedwork' || type === 'plannedwork') {
-    return true;
-  }
-  if (raw.closureText && raw.closureText.toLowerCase().trim() in CLOSURE_TEXT_MAP) {
-    return true;
-  }
-  return false;
-}
-
+// Maps date-scoped raw TfL line statuses into normalized domain disruptions
+// filtered strictly to the target weekend operational window.
 export function parseTflDisruptions(options: ParseTflDisruptionsOptions): ParsedDisruption[] {
-  const { disruptions, weekendWindow } = options;
+  const { weekendWindow } = options;
+  const lines = options.lineStatuses ?? options.disruptions ?? [];
   const results: ParsedDisruption[] = [];
   const seenKeys = new Set<string>();
 
-  for (const raw of disruptions) {
-    // TfL returns real-time live incidents alongside planned works; live incidents must be discarded
-    if (isRealTimeDisruption(raw)) {
-      continue;
-    }
+  for (const rawLine of lines) {
+    const line = resolveTflLine(rawLine.id, rawLine.name);
+    if (!line) continue;
 
-    const isPlanned = isPlannedWorkDisruption(raw);
+    const lineStatuses = rawLine.lineStatuses ?? [];
+    for (const statusItem of lineStatuses) {
+      const severityDescription = statusItem.statusSeverityDescription?.trim() || '';
+      const severityLower = severityDescription.toLowerCase();
 
-    const routes =
-      raw.affectedRoutes && raw.affectedRoutes.length > 0 ? raw.affectedRoutes : [undefined];
-
-    for (const route of routes) {
-      const line = resolveTflLine(route?.lineId, raw.description);
-      if (!line) continue;
-
-      const hasExplicitValidTo = Boolean(route?.validTo);
-      const hasExplicitValidFrom = Boolean(route?.validFrom);
-
-      // TfL transient weekday incidents lack validTo dates and start before Friday 19:00.
-      // We must never default validToStr to Monday morning for midweek incidents.
-      const effectiveStartIso = route?.validFrom || (!isPlanned ? raw.created : undefined);
-      if (!hasExplicitValidTo) {
-        if (effectiveStartIso) {
-          const effectiveStartDate = new Date(effectiveStartIso);
-          if (
-            !Number.isNaN(effectiveStartDate.getTime()) &&
-            effectiveStartDate < weekendWindow.windowStart
-          ) {
-            continue;
-          }
-        }
-        if (!isPlanned) {
-          continue;
-        }
+      // 1. Skip normal service
+      if (severityLower === 'good service') {
+        continue;
       }
 
-      const validFromStr =
-        route?.validFrom ||
-        (isPlanned && !hasExplicitValidFrom
-          ? weekendWindow.windowStart.toISOString()
-          : raw.created || weekendWindow.windowStart.toISOString());
+      const disruption = statusItem.disruption;
+      const category = (disruption?.category ?? disruption?.categoryDescription ?? '')
+        .toLowerCase()
+        .replace(/[\s-_]/g, '');
 
-      const validToStr = route?.validTo || weekendWindow.windowEnd.toISOString();
+      // 2. Discard transient live delays
+      if (category === 'realtime') {
+        continue;
+      }
 
+      const isPlannedCategory = category === 'plannedwork';
+      const isPlannedSeverity = PLANNED_ENGINEERING_SEVERITIES.has(severityLower);
+      const isTransient = TRANSIENT_SEVERITY_DESCRIPTIONS.has(severityLower);
+
+      // Discard unaccompanied Minor Delays / Severe Delays not explicitly planned work
+      if (isTransient && !isPlannedCategory) {
+        continue;
+      }
+
+      // Accept planned engineering disruptions or disruptions classified as PlannedWork
+      if (!isPlannedSeverity && !isPlannedCategory) {
+        continue;
+      }
+
+      // 3. Extract validFrom and validTo from validityPeriods
+      const validityPeriods = statusItem.validityPeriods ?? [];
+      let validFromStr: string;
+      let validToStr: string;
+
+      if (validityPeriods.length > 0) {
+        const overlappingPeriods = validityPeriods.filter((vp) =>
+          isDisruptionInWindow({
+            validFrom: vp.fromDate,
+            validTo: vp.toDate,
+            window: weekendWindow,
+          }),
+        );
+
+        // If explicit validity periods are defined but none overlap the weekend, discard
+        if (overlappingPeriods.length === 0) {
+          continue;
+        }
+
+        const sortedFrom = overlappingPeriods
+          .map((p) => p.fromDate)
+          .filter((d): d is string => Boolean(d))
+          .sort();
+        const sortedTo = overlappingPeriods
+          .map((p) => p.toDate)
+          .filter((d): d is string => Boolean(d))
+          .sort();
+
+        validFromStr = sortedFrom[0] ?? weekendWindow.windowStart.toISOString();
+        validToStr = sortedTo[sortedTo.length - 1] ?? weekendWindow.windowEnd.toISOString();
+      } else {
+        // Fall back to weekendWindow bounds only when explicit planned work spans the weekend
+        validFromStr = weekendWindow.windowStart.toISOString();
+        validToStr = weekendWindow.windowEnd.toISOString();
+      }
+
+      // 4. Verify overlap with isDisruptionInWindow
       const overlaps = isDisruptionInWindow({
         validFrom: validFromStr,
         validTo: validToStr,
         window: weekendWindow,
       });
 
-      if (!overlaps) continue;
-
-      const severity = resolveStatusSeverityDescription(raw.closureText, raw.description);
-      if (TRANSIENT_SEVERITY_DESCRIPTIONS.has(severity) && (!isPlanned || !hasExplicitValidTo)) {
+      if (!overlaps) {
         continue;
       }
 
-      const corridor = cleanCorridorDescription(raw.description, line.name);
-      const dedupeKey = `${line.id}:${weekendWindow.weekendDate}:${corridor}`;
+      // 5. Clean corridorDescription from lineStatus.reason or disruption.description
+      const rawDescription =
+        statusItem.reason?.trim() ||
+        disruption?.description?.trim() ||
+        disruption?.summary?.trim() ||
+        line.name;
 
-      if (seenKeys.has(dedupeKey)) continue;
+      const corridor = cleanCorridorDescription(rawDescription, line.name);
+
+      // 6. Deduplicate by ${lineId}:${weekendDate}:${corridorDescription}
+      const dedupeKey = `${line.id}:${weekendWindow.weekendDate}:${corridor}`;
+      if (seenKeys.has(dedupeKey)) {
+        continue;
+      }
       seenKeys.add(dedupeKey);
+
+      let sourceLastUpdated =
+        disruption?.lastUpdate ||
+        disruption?.created ||
+        statusItem.modified ||
+        statusItem.created ||
+        rawLine.modified ||
+        rawLine.created ||
+        new Date().toISOString();
+
+      if (sourceLastUpdated.startsWith('0001-01-01')) {
+        sourceLastUpdated = new Date().toISOString();
+      }
 
       results.push({
         lineId: line.id,
         lineName: line.name,
         mode: line.mode,
-        statusSeverityDescription: severity,
+        statusSeverityDescription: severityDescription || 'Planned Closure',
         corridorDescription: corridor,
         weekendDate: weekendWindow.weekendDate,
-        validFrom: new Date(validFromStr).toISOString(),
-        validTo: new Date(validToStr).toISOString(),
-        sourceLastUpdated: raw.lastUpdate || raw.created || new Date().toISOString(),
+        validFrom: validFromStr,
+        validTo: validToStr,
+        sourceLastUpdated,
       });
     }
   }
