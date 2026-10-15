@@ -5,7 +5,6 @@ import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 import type { ReactElement } from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '../common/Toast';
 import { SubscriptionModal } from './SubscriptionModal';
 
 const server = setupServer();
@@ -18,11 +17,7 @@ function renderWithClient(component: ReactElement) {
     },
   });
 
-  return render(
-    <QueryClientProvider client={testClient}>
-      <ToastProvider>{component}</ToastProvider>
-    </QueryClientProvider>,
-  );
+  return render(<QueryClientProvider client={testClient}>{component}</QueryClientProvider>);
 }
 
 describe('SubscriptionModal Component', () => {
