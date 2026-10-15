@@ -44,6 +44,9 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
     if (localError === 'At least one line must be selected.') {
       setLocalError(null);
     }
+    if (sendAlertMutation.isError) {
+      sendAlertMutation.reset();
+    }
     if (allSelected) {
       setSelectedLines([]);
     } else {
@@ -54,6 +57,9 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
   const toggleLine = (lineId: string) => {
     if (localError === 'At least one line must be selected.') {
       setLocalError(null);
+    }
+    if (sendAlertMutation.isError) {
+      sendAlertMutation.reset();
     }
     setSelectedLines((prev) =>
       prev.includes(lineId) ? prev.filter((id) => id !== lineId) : [...prev, lineId],
@@ -161,12 +167,12 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
               ref={emailInputRef}
               id="test-alert-email"
               type="email"
-              autoFocus
               value={email}
               onBlur={() => setTouchedEmail(true)}
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (localError) setLocalError(null);
+                if (sendAlertMutation.isError) sendAlertMutation.reset();
               }}
               placeholder="commuter@example.com"
               required
@@ -181,11 +187,17 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
             )}
           </div>
 
-          <div>
+          <fieldset className="border-0 p-0 m-0">
+            <legend className="sr-only">Included Transit Lines</legend>
             <div className="flex items-center justify-between mb-2">
-              <span className="block text-sm font-medium text-slate-300">
-                Included Transit Lines ({selectedLines.length}/{TFL_LINES.length} lines selected)
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="block text-sm font-medium text-slate-300">
+                  Included Transit Lines
+                </span>
+                <span className="inline-flex items-center rounded-full bg-slate-800 border border-slate-700 px-2 py-0.5 text-xs font-medium text-slate-300">
+                  {selectedLines.length}/{TFL_LINES.length} lines selected
+                </span>
+              </div>
               <label className="flex items-center gap-2 cursor-pointer text-xs text-blue-400 hover:text-blue-300 select-none min-h-[44px]">
                 <input
                   type="checkbox"
@@ -225,7 +237,7 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
                 );
               })}
             </div>
-          </div>
+          </fieldset>
 
           <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
             <button

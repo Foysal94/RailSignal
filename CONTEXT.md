@@ -20,9 +20,6 @@ A service interruption payload ingested from the TfL Unified API (`/Line/Mode/{m
 ### Weekend Disruption Projection
 The materialized read-model record stored in the database (`WeekendDisruption`) representing the consolidated closure state of a line for a specific upcoming weekend.
 
-### Disruption Notice
-A parsed, structured domain segment of a raw TfL disruption description. Disentangles a raw narrative text block into a temporal timeframe (e.g., date or time window), a primary corridor impact statement (e.g., stations closed or section affected), and optional secondary guidance (such as replacement bus routes, alternative transit options, and station-specific advice).
-
 ### Subscription
 A user record linking a verified email address to a set of monitored **TfL Line** IDs, containing an immutable `unsubscribeToken` and tracking `lastNotifiedWeekendDate` for alert idempotency.
 

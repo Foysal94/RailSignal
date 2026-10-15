@@ -38,6 +38,9 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
     if (localError === 'At least one line must be selected.') {
       setLocalError(null);
     }
+    if (subscriptionMutation.isError) {
+      subscriptionMutation.reset();
+    }
     if (allSelected) {
       setSelectedLines([]);
     } else {
@@ -48,6 +51,9 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
   const toggleLine = (lineId: string) => {
     if (localError === 'At least one line must be selected.') {
       setLocalError(null);
+    }
+    if (subscriptionMutation.isError) {
+      subscriptionMutation.reset();
     }
     setSelectedLines((prev) =>
       prev.includes(lineId) ? prev.filter((id) => id !== lineId) : [...prev, lineId],
@@ -146,12 +152,12 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
               ref={emailInputRef}
               id="subscription-email"
               type="email"
-              autoFocus
               value={email}
               onBlur={() => setTouchedEmail(true)}
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (localError) setLocalError(null);
+                if (subscriptionMutation.isError) subscriptionMutation.reset();
               }}
               placeholder="commuter@example.com"
               required
@@ -166,11 +172,17 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
             )}
           </div>
 
-          <div>
+          <fieldset className="border-0 p-0 m-0">
+            <legend className="sr-only">Monitored London Lines</legend>
             <div className="flex items-center justify-between mb-2">
-              <span className="block text-sm font-medium text-slate-300">
-                Monitored London Lines ({selectedLines.length}/{TFL_LINES.length})
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="block text-sm font-medium text-slate-300">
+                  Monitored London Lines
+                </span>
+                <span className="inline-flex items-center rounded-full bg-slate-800 border border-slate-700 px-2 py-0.5 text-xs font-medium text-slate-300">
+                  {selectedLines.length}/{TFL_LINES.length} lines selected
+                </span>
+              </div>
               <label className="flex items-center gap-2 cursor-pointer text-xs text-blue-400 hover:text-blue-300 select-none min-h-[44px]">
                 <input
                   type="checkbox"
@@ -208,7 +220,7 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
                 );
               })}
             </div>
-          </div>
+          </fieldset>
 
           <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
             <button

@@ -10,7 +10,6 @@ export interface DialogProps {
   children: ReactNode;
   contentClassName?: string;
   initialFocusRef?: RefObject<HTMLElement | null>;
-  onOpenAutoFocus?: (event: Event) => void;
 }
 
 export function Dialog({
@@ -22,13 +21,8 @@ export function Dialog({
   children,
   contentClassName = '',
   initialFocusRef,
-  onOpenAutoFocus,
 }: DialogProps) {
   const handleOpenAutoFocus = (event: Event) => {
-    if (onOpenAutoFocus) {
-      onOpenAutoFocus(event);
-      return;
-    }
     if (initialFocusRef?.current) {
       event.preventDefault();
       initialFocusRef.current.focus();

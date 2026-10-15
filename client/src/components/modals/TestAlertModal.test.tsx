@@ -234,7 +234,6 @@ describe('TestAlertModal Component', () => {
     const emailInput = screen.getByLabelText(/recipient email/i);
     await user.type(emailInput, 'test@example.com');
 
-    // Deselect the single preselected line
     const centralCheckbox = screen.getByLabelText(/central/i);
     await user.click(centralCheckbox);
 
