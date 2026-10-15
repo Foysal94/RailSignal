@@ -1,24 +1,24 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { WebApplicationFactory } from './webApplicationFactory.js';
+import { createTestContext, type TestContext } from '../support/testContext.js';
 
 describe('GET /api/lines/weekend-status', () => {
-  let factory: WebApplicationFactory;
+  let context: TestContext;
   const weekendDate = '2026-10-16';
 
   beforeAll(async () => {
-    factory = await WebApplicationFactory.create();
+    context = await createTestContext();
   });
 
   beforeEach(async () => {
-    await factory.resetDatabase();
+    await context.resetDatabase();
   });
 
   afterAll(async () => {
-    await factory.close();
+    await context.close();
   });
 
   it('Should_return_all_tfl_lines_with_good_service_when_no_disruptions_exist', async () => {
-    const response = await factory.inject({
+    const response = await context.app.inject({
       method: 'GET',
       url: `/api/lines/weekend-status?referenceDate=${weekendDate}`,
     });
@@ -38,7 +38,7 @@ describe('GET /api/lines/weekend-status', () => {
   });
 
   it('Should_prioritize_disrupted_lines_at_top_when_disruptions_exist', async () => {
-    await factory.prisma.weekendDisruption.createMany({
+    await context.prisma.weekendDisruption.createMany({
       data: [
         {
           lineId: 'central',
@@ -65,7 +65,7 @@ describe('GET /api/lines/weekend-status', () => {
       ],
     });
 
-    const response = await factory.inject({
+    const response = await context.app.inject({
       method: 'GET',
       url: `/api/lines/weekend-status?referenceDate=${weekendDate}`,
     });

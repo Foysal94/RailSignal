@@ -1,26 +1,26 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { WebApplicationFactory } from './webApplicationFactory.js';
+import { createTestContext, type TestContext } from '../support/testContext.js';
 
 describe('POST /api/jobs/sync-weekend-disruptions', () => {
-  let factory: WebApplicationFactory;
+  let context: TestContext;
   const validSecret = 'super-secret-job-key-1234';
 
   beforeAll(async () => {
-    factory = await WebApplicationFactory.create({
+    context = await createTestContext({
       config: { jobSecret: validSecret },
     });
   });
 
   beforeEach(() => {
-    factory.ingestQueue.clear();
+    context.ingestQueue.clear();
   });
 
   afterAll(async () => {
-    await factory.close();
+    await context.close();
   });
 
   it('Should_return_401_problem_details_when_x_job_secret_header_is_missing', async () => {
-    const response = await factory.inject({
+    const response = await context.app.inject({
       method: 'POST',
       url: '/api/jobs/sync-weekend-disruptions',
       payload: {},
@@ -32,11 +32,11 @@ describe('POST /api/jobs/sync-weekend-disruptions', () => {
     const body = response.json();
     expect(body.title).toBe('Unauthorized');
     expect(body.status).toBe(401);
-    expect(factory.ingestQueue.jobs).toHaveLength(0);
+    expect(context.ingestQueue.jobs).toHaveLength(0);
   });
 
   it('Should_return_401_problem_details_when_x_job_secret_header_is_incorrect', async () => {
-    const response = await factory.inject({
+    const response = await context.app.inject({
       method: 'POST',
       url: '/api/jobs/sync-weekend-disruptions',
       headers: {
@@ -51,11 +51,11 @@ describe('POST /api/jobs/sync-weekend-disruptions', () => {
     const body = response.json();
     expect(body.title).toBe('Unauthorized');
     expect(body.status).toBe(401);
-    expect(factory.ingestQueue.jobs).toHaveLength(0);
+    expect(context.ingestQueue.jobs).toHaveLength(0);
   });
 
   it('Should_enqueue_ingestion_job_and_return_202_when_secret_is_valid', async () => {
-    const response = await factory.inject({
+    const response = await context.app.inject({
       method: 'POST',
       url: '/api/jobs/sync-weekend-disruptions',
       headers: {
@@ -74,8 +74,8 @@ describe('POST /api/jobs/sync-weekend-disruptions', () => {
     expect(body.status).toBe('queued');
     expect(body.jobId).toBeDefined();
 
-    expect(factory.ingestQueue.jobs).toHaveLength(1);
-    const enqueuedJob = factory.ingestQueue.jobs[0];
+    expect(context.ingestQueue.jobs).toHaveLength(1);
+    const enqueuedJob = context.ingestQueue.jobs[0];
     expect(enqueuedJob.name).toMatch(/sync|ingest/i);
     expect(enqueuedJob.data).toEqual({
       referenceDate: '2026-10-16',

@@ -1,25 +1,25 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { WebApplicationFactory } from './webApplicationFactory.js';
+import { createTestContext, type TestContext } from '../support/testContext.js';
 
 describe('Subscriptions API Endpoints', () => {
-  let factory: WebApplicationFactory;
+  let context: TestContext;
   const testEmail = 'subscriber-test@example.com';
 
   beforeAll(async () => {
-    factory = await WebApplicationFactory.create();
+    context = await createTestContext();
   });
 
   beforeEach(async () => {
-    await factory.resetDatabase();
+    await context.resetDatabase();
   });
 
   afterAll(async () => {
-    await factory.close();
+    await context.close();
   });
 
   describe('POST /api/subscriptions', () => {
     it('Should_create_new_subscription_and_lines_when_valid_payload_provided', async () => {
-      const response = await factory.inject({
+      const response = await context.app.inject({
         method: 'POST',
         url: '/api/subscriptions',
         payload: {
@@ -37,7 +37,7 @@ describe('Subscriptions API Endpoints', () => {
       expect(body.subscribedLineIds).toEqual(expect.arrayContaining(['bakerloo', 'victoria']));
       expect(body.createdAt).toBeDefined();
 
-      const dbRecord = await factory.prisma.subscription.findUnique({
+      const dbRecord = await context.prisma.subscription.findUnique({
         where: { email: testEmail },
         include: { lines: true },
       });
@@ -48,7 +48,7 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_update_existing_subscription_idempotently_when_same_email_subscribes_again', async () => {
-      const firstResponse = await factory.inject({
+      const firstResponse = await context.app.inject({
         method: 'POST',
         url: '/api/subscriptions',
         payload: {
@@ -59,7 +59,7 @@ describe('Subscriptions API Endpoints', () => {
       expect([200, 201]).toContain(firstResponse.statusCode);
       const firstBody = firstResponse.json();
 
-      const updateResponse = await factory.inject({
+      const updateResponse = await context.app.inject({
         method: 'POST',
         url: '/api/subscriptions',
         payload: {
@@ -78,7 +78,7 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_reject_with_rfc_9457_when_email_is_invalid', async () => {
-      const response = await factory.inject({
+      const response = await context.app.inject({
         method: 'POST',
         url: '/api/subscriptions',
         payload: {
@@ -95,7 +95,7 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_reject_with_rfc_9457_when_lineIds_is_empty', async () => {
-      const response = await factory.inject({
+      const response = await context.app.inject({
         method: 'POST',
         url: '/api/subscriptions',
         payload: {
@@ -109,7 +109,7 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_reject_with_rfc_9457_when_lineIds_contains_unknown_id', async () => {
-      const response = await factory.inject({
+      const response = await context.app.inject({
         method: 'POST',
         url: '/api/subscriptions',
         payload: {
@@ -128,7 +128,7 @@ describe('Subscriptions API Endpoints', () => {
 
   describe('DELETE /api/subscriptions/:id?token=...', () => {
     it('Should_cascade_delete_subscription_when_valid_id_and_token_provided', async () => {
-      const sub = await factory.prisma.subscription.create({
+      const sub = await context.prisma.subscription.create({
         data: {
           email: testEmail,
           lines: {
@@ -138,26 +138,26 @@ describe('Subscriptions API Endpoints', () => {
         include: { lines: true },
       });
 
-      const response = await factory.inject({
+      const response = await context.app.inject({
         method: 'DELETE',
         url: `/api/subscriptions/${sub.id}?token=${sub.unsubscribeToken}`,
       });
 
       expect([200, 204]).toContain(response.statusCode);
 
-      const foundSub = await factory.prisma.subscription.findUnique({
+      const foundSub = await context.prisma.subscription.findUnique({
         where: { id: sub.id },
       });
       expect(foundSub).toBeNull();
 
-      const foundLines = await factory.prisma.subscriptionLine.findMany({
+      const foundLines = await context.prisma.subscriptionLine.findMany({
         where: { subscriptionId: sub.id },
       });
       expect(foundLines).toHaveLength(0);
     });
 
     it('Should_return_403_when_unsubscribe_token_is_incorrect', async () => {
-      const sub = await factory.prisma.subscription.create({
+      const sub = await context.prisma.subscription.create({
         data: {
           email: testEmail,
           lines: {
@@ -166,7 +166,7 @@ describe('Subscriptions API Endpoints', () => {
         },
       });
 
-      const response = await factory.inject({
+      const response = await context.app.inject({
         method: 'DELETE',
         url: `/api/subscriptions/${sub.id}?token=invalid-wrong-token`,
       });
@@ -179,7 +179,7 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_return_404_when_subscription_id_does_not_exist', async () => {
-      const response = await factory.inject({
+      const response = await context.app.inject({
         method: 'DELETE',
         url: '/api/subscriptions/non-existent-uuid-1234?token=sample-token',
       });
@@ -189,7 +189,7 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_return_400_when_token_query_parameter_is_missing', async () => {
-      const response = await factory.inject({
+      const response = await context.app.inject({
         method: 'DELETE',
         url: '/api/subscriptions/some-uuid',
       });

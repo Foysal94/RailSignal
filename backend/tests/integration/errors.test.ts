@@ -1,12 +1,12 @@
 import { Type } from '@sinclair/typebox';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { WebApplicationFactory } from './webApplicationFactory.js';
+import { createTestContext, type TestContext } from '../support/testContext.js';
 
 describe('RFC 9457 Problem Details Error Handling', () => {
-  let factory: WebApplicationFactory;
+  let context: TestContext;
 
   beforeAll(async () => {
-    factory = await WebApplicationFactory.create({
+    context = await createTestContext({
       configure: (app) => {
         // Register synthetic routes before Fastify seals route table on ready()
         app.post(
@@ -29,11 +29,11 @@ describe('RFC 9457 Problem Details Error Handling', () => {
   });
 
   afterAll(async () => {
-    await factory.close();
+    await context.close();
   });
 
   it('Should_return_rfc_9457_problem_details_when_route_is_not_found', async () => {
-    const response = await factory.inject({
+    const response = await context.app.inject({
       method: 'GET',
       url: '/api/not-a-real-route?token=secret123',
     });
@@ -53,7 +53,7 @@ describe('RFC 9457 Problem Details Error Handling', () => {
   });
 
   it('Should_return_rfc_9457_problem_details_with_invalid_params_when_validation_fails', async () => {
-    const response = await factory.inject({
+    const response = await context.app.inject({
       method: 'POST',
       url: '/api/test-validation',
       payload: { email: 'not-an-email' },
@@ -74,7 +74,7 @@ describe('RFC 9457 Problem Details Error Handling', () => {
   });
 
   it('Should_return_sanitized_rfc_9457_problem_details_when_internal_error_occurs', async () => {
-    const response = await factory.inject({
+    const response = await context.app.inject({
       method: 'GET',
       url: '/api/test-internal-error',
     });

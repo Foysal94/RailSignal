@@ -1,19 +1,19 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { WebApplicationFactory } from './webApplicationFactory.js';
+import { createTestContext, type TestContext } from '../support/testContext.js';
 
 describe('GET /api/health', () => {
-  let factory: WebApplicationFactory;
+  let context: TestContext;
 
   beforeAll(async () => {
-    factory = await WebApplicationFactory.create();
+    context = await createTestContext();
   });
 
   afterAll(async () => {
-    await factory.close();
+    await context.close();
   });
 
   it('Should_return_200_and_healthy_status_when_health_endpoint_is_called', async () => {
-    const response = await factory.inject({
+    const response = await context.app.inject({
       method: 'GET',
       url: '/api/health',
     });
