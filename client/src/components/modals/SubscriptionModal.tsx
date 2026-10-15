@@ -102,7 +102,7 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
             </p>
           </div>
 
-          <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 pt-3 pb-1 bg-radar-card">
+          <div className="flex items-center justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={() => onOpenChange(false)}

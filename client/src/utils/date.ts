@@ -45,12 +45,16 @@ export function formatUtcWeekendLabel(isoDate: string): string {
 }
 
 export function formatWeekendRadarBadge(isoFridayDate: string): string {
-  const { year, month, day } = parseUtcDateString(isoFridayDate);
-  const friday = new Date(Date.UTC(year, month - 1, day));
-  const monday = new Date(Date.UTC(year, month - 1, day + 3));
+  try {
+    const { year, month, day } = parseUtcDateString(isoFridayDate);
+    const friday = new Date(Date.UTC(year, month - 1, day));
+    const monday = new Date(Date.UTC(year, month - 1, day + 3));
 
-  const formattedFriday = WEEKEND_RADAR_FORMATTER.format(friday);
-  const formattedMonday = WEEKEND_RADAR_FORMATTER.format(monday);
+    const formattedFriday = WEEKEND_RADAR_FORMATTER.format(friday);
+    const formattedMonday = WEEKEND_RADAR_FORMATTER.format(monday);
 
-  return `Weekend Radar: ${formattedFriday} 19:00 \u2013 ${formattedMonday} 04:30`;
+    return `Weekend Radar: ${formattedFriday} 19:00 \u2013 ${formattedMonday} 04:30`;
+  } catch {
+    return 'This Weekend: Friday 19:00 - Monday 04:30 London Time';
+  }
 }

@@ -48,13 +48,13 @@ function formatMode(mode: string): string {
   if (mode.toLowerCase() === 'dlr') {
     return 'DLR';
   }
-  return mode.replace('-', ' ');
+  const formatted = mode.replaceAll('-', ' ');
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
 export function LineCard({ line }: LineCardProps) {
   const badgeClasses = getStatusBadgeClasses(line);
   const badgeText = !isDisrupted(line) ? 'No Planned Closures' : line.statusSeverityDescription;
-  const isDlr = line.mode.toLowerCase() === 'dlr';
 
   return (
     <article
@@ -72,9 +72,7 @@ export function LineCard({ line }: LineCardProps) {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-semibold text-slate-100">{line.lineName}</h3>
-            <span className={`text-xs text-slate-400 ${isDlr ? '' : 'capitalize'}`}>
-              {formatMode(line.mode)}
-            </span>
+            <span className="text-xs text-slate-400">{formatMode(line.mode)}</span>
           </div>
 
           {line.disruptions.length > 0 ? (

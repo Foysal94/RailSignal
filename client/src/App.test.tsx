@@ -20,7 +20,7 @@ function renderWithClient(component: ReactElement) {
 }
 
 const mockWeekendResponse: WeekendStatusResponse = {
-  weekendDate: '2026-10-17',
+  weekendDate: '2026-10-16',
   windowStart: '2026-10-16T19:00:00Z',
   windowEnd: '2026-10-19T04:30:00Z',
   lastUpdated: '2026-10-14T12:00:00Z',

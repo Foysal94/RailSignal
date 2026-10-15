@@ -29,5 +29,9 @@ describe('UTC Date Utility', () => {
     expect(formatWeekendRadarBadge('2026-10-30')).toBe(
       'Weekend Radar: Fri 30 Oct 19:00 \u2013 Mon 2 Nov 04:30',
     );
+    // Graceful fallback on invalid date string
+    expect(formatWeekendRadarBadge('not-a-date')).toBe(
+      'This Weekend: Friday 19:00 - Monday 04:30 London Time',
+    );
   });
 });
