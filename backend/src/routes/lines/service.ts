@@ -30,10 +30,49 @@ function mapDbDisruptionToContract(item: DbDisruption): WeekendDisruption {
   };
 }
 
-/**
- * Pure domain service querying the WeekendDisruption read model and assembling
- * the prioritized radar status board matching the target weekend window.
- */
+// Rank hierarchy: Planned Closure / Closed / Suspended > Part Closure / Part Suspended > Reduced Service > Special Service > Good Service
+const SEVERITY_RANK: Readonly<Record<string, number>> = Object.freeze({
+  'planned closure': 100,
+  closed: 100,
+  suspended: 100,
+  'service closed': 100,
+  'not running': 100,
+  'part closure': 80,
+  'part closed': 80,
+  'part suspended': 80,
+  'severe delays': 60,
+  'reduced service': 50,
+  'bus service': 40,
+  'special service': 30,
+  'minor delays': 20,
+  'good service': 0,
+});
+
+function getSeverityRank(description: string): number {
+  const normalized = description.trim().toLowerCase();
+  return SEVERITY_RANK[normalized] ?? 10;
+}
+
+export function pickHighestSeverityDescription(disruptions: readonly DbDisruption[]): string {
+  if (disruptions.length === 0) return 'Good Service';
+
+  let highest = disruptions[0];
+  let highestRank = getSeverityRank(highest.statusSeverityDescription);
+
+  for (let i = 1; i < disruptions.length; i++) {
+    const candidate = disruptions[i];
+    const candidateRank = getSeverityRank(candidate.statusSeverityDescription);
+    if (candidateRank > highestRank) {
+      highest = candidate;
+      highestRank = candidateRank;
+    }
+  }
+
+  return highest.statusSeverityDescription;
+}
+
+// Pure domain service querying the WeekendDisruption read model and assembling
+// the prioritized radar status board matching the target weekend window.
 export async function fetchWeekendStatus(
   options: FetchWeekendStatusOptions = {},
 ): Promise<WeekendStatusResponse> {
@@ -72,7 +111,7 @@ export async function fetchWeekendStatus(
         mode: line.mode,
         color: line.color,
         ...(line.contrastBorder !== undefined ? { contrastBorder: line.contrastBorder } : {}),
-        statusSeverityDescription: matched[0].statusSeverityDescription,
+        statusSeverityDescription: pickHighestSeverityDescription(matched),
         corridorDescription: matched.map((m) => m.corridorDescription).join('; '),
         hasDisruption: true,
         disruptions: matched.map(mapDbDisruptionToContract),

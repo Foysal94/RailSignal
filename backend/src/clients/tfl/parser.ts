@@ -42,12 +42,24 @@ const PLANNED_ENGINEERING_SEVERITIES: ReadonlySet<string> = new Set([
   'part suspended',
   'bus service',
   'special service',
+  'suspended',
+  'closed',
+  'part closed',
+  'not running',
+  'service closed',
 ]);
 
 const TRANSIENT_SEVERITY_DESCRIPTIONS: ReadonlySet<string> = new Set([
   'minor delays',
   'severe delays',
 ]);
+
+function hasWeekendRelevance(text?: string): boolean {
+  if (!text) return false;
+  return /\b(weekends?|saturdays?|sundays?|fri(days?)?\s*(evening|night)?|mon(days?)?\s*(morning)?)\b/i.test(
+    text,
+  );
+}
 
 // Resolves a TfL line from either an affected route lineId or text heuristics in the description.
 export function resolveTflLine(rawLineId?: string, description?: string): TflLine | undefined {
@@ -148,6 +160,13 @@ export function parseTflDisruptions(options: ParseTflDisruptionsOptions): Parsed
         continue;
       }
 
+      // Clean corridorDescription from lineStatus.reason or disruption.description
+      const rawDescription =
+        statusItem.reason?.trim() ||
+        disruption?.description?.trim() ||
+        disruption?.summary?.trim() ||
+        line.name;
+
       // 3. Extract validFrom and validTo from validityPeriods
       const validityPeriods = statusItem.validityPeriods ?? [];
       let validFromStr: string;
@@ -179,7 +198,10 @@ export function parseTflDisruptions(options: ParseTflDisruptionsOptions): Parsed
         validFromStr = sortedFrom[0] ?? weekendWindow.windowStart.toISOString();
         validToStr = sortedTo[sortedTo.length - 1] ?? weekendWindow.windowEnd.toISOString();
       } else {
-        // Fall back to weekendWindow bounds only when explicit planned work spans the weekend
+        // Fall back to weekendWindow bounds only when notice has weekend operational relevance
+        if (!hasWeekendRelevance(rawDescription)) {
+          continue;
+        }
         validFromStr = weekendWindow.windowStart.toISOString();
         validToStr = weekendWindow.windowEnd.toISOString();
       }
@@ -194,13 +216,6 @@ export function parseTflDisruptions(options: ParseTflDisruptionsOptions): Parsed
       if (!overlaps) {
         continue;
       }
-
-      // 5. Clean corridorDescription from lineStatus.reason or disruption.description
-      const rawDescription =
-        statusItem.reason?.trim() ||
-        disruption?.description?.trim() ||
-        disruption?.summary?.trim() ||
-        line.name;
 
       const corridor = cleanCorridorDescription(rawDescription, line.name);
 

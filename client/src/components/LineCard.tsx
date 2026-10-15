@@ -23,6 +23,10 @@ const SEVERE_DISRUPTION_KEYWORDS = [
 ] as const;
 
 function getStatusBadgeClasses(line: WeekendStatusItem): string {
+  if (!line.hasDisruption || isUndisruptedStatus(line.statusSeverityDescription)) {
+    return 'bg-emerald-950/80 text-emerald-300 border-emerald-800';
+  }
+
   const status = line.statusSeverityDescription.toLowerCase();
 
   if (PARTIAL_DISRUPTION_KEYWORDS.some((kw) => status.includes(kw))) {
@@ -33,11 +37,7 @@ function getStatusBadgeClasses(line: WeekendStatusItem): string {
     return 'bg-red-950/80 text-red-300 border-red-800';
   }
 
-  if (line.hasDisruption) {
-    return 'bg-amber-950/80 text-amber-300 border-amber-800';
-  }
-
-  return 'bg-emerald-950/80 text-emerald-300 border-emerald-800';
+  return 'bg-amber-950/80 text-amber-300 border-amber-800';
 }
 
 export function LineCard({ line }: LineCardProps) {

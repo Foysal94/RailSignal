@@ -90,4 +90,64 @@ describe('Disruption Projection Persistence', () => {
     });
     expect(count).toBe(1);
   });
+
+  it('Should_delete_stale_disruptions_for_weekendDate_when_not_in_incoming_payload', async () => {
+    // Initial projection with 1 disruption
+    await projectDisruptions({
+      prisma,
+      disruptions: [mockDisruption],
+      weekendDate: '2026-10-17',
+    });
+
+    const countBefore = await prisma.weekendDisruption.count({
+      where: { lineId: 'projection-northern', weekendDate: '2026-10-17' },
+    });
+    expect(countBefore).toBe(1);
+
+    // Re-project with an empty array for that weekend (works cancelled)
+    const reconcileResult = await projectDisruptions({
+      prisma,
+      disruptions: [],
+      weekendDate: '2026-10-17',
+    });
+
+    expect(reconcileResult.totalDeleted).toBe(1);
+    const countAfter = await prisma.weekendDisruption.count({
+      where: { lineId: 'projection-northern', weekendDate: '2026-10-17' },
+    });
+    expect(countAfter).toBe(0);
+  });
+
+  it('Should_purge_stale_transient_delay_records_from_database', async () => {
+    // Insert a transient Minor Delays record manually
+    await prisma.weekendDisruption.create({
+      data: {
+        lineId: 'projection-northern',
+        lineName: 'Northern',
+        mode: 'tube',
+        statusSeverityDescription: 'Minor Delays',
+        corridorDescription: 'Minor delays due to train cancellations',
+        weekendDate: '2026-10-17',
+        validFrom: new Date('2026-10-17T02:00:00.000Z'),
+        validTo: new Date('2026-10-19T03:30:00.000Z'),
+        sourceLastUpdated: new Date('2026-10-16T10:00:00.000Z'),
+      },
+    });
+
+    // Run projection
+    await projectDisruptions({
+      prisma,
+      disruptions: [mockDisruption],
+      weekendDate: '2026-10-17',
+    });
+
+    // Transient record should have been purged
+    const transientCount = await prisma.weekendDisruption.count({
+      where: {
+        lineId: 'projection-northern',
+        statusSeverityDescription: 'Minor Delays',
+      },
+    });
+    expect(transientCount).toBe(0);
+  });
 });

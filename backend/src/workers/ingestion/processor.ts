@@ -13,9 +13,7 @@ export interface ProcessIngestionJobOptions {
   logger?: WorkerLogger | undefined;
 }
 
-/**
- * Propagates TfL and database errors upward so BullMQ triggers its configured retry policy.
- */
+// Propagates TfL and database errors upward so BullMQ triggers its configured retry policy.
 export async function processIngestionJob(
   options: ProcessIngestionJobOptions = {},
 ): Promise<IngestJobResult> {
@@ -39,6 +37,7 @@ export async function processIngestionJob(
   const projectionResult = await projectDisruptions({
     prisma: db,
     disruptions,
+    weekendDate,
   });
 
   logger.info(

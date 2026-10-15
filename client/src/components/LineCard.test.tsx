@@ -97,4 +97,23 @@ describe('LineCard Component', () => {
     expect(stripe).toBeInTheDocument();
     expect(stripe.className).toContain('ring-neutral-500');
   });
+
+  it('Should_render_emerald_badge_when_statusSeverityDescription_is_explicitly_No_Planned_Closures', () => {
+    const item: WeekendStatusItem = {
+      lineId: 'jubilee',
+      lineName: 'Jubilee',
+      mode: 'tube',
+      color: '#A0A5A9',
+      statusSeverityDescription: 'No Planned Closures',
+      hasDisruption: false,
+      disruptions: [],
+    };
+
+    render(<LineCard line={item} />);
+
+    const badge = screen.getByText('No Planned Closures');
+    expect(badge).toBeInTheDocument();
+    expect(badge.className).toContain('text-emerald-300');
+    expect(badge.className).not.toContain('text-red-300');
+  });
 });

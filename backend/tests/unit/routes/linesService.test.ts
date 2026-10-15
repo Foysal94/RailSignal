@@ -75,4 +75,48 @@ describe('Lines Domain Service', () => {
 
     expect(result.lastUpdated).toBe('2026-10-16T12:10:00.000Z');
   });
+
+  it('Should_prioritize_highest_severity_when_a_line_has_multiple_disruptions', async () => {
+    const mockPrisma = {
+      weekendDisruption: {
+        findMany: async () => [
+          {
+            id: 'd-1',
+            lineId: 'district',
+            lineName: 'District',
+            mode: 'tube',
+            statusSeverityDescription: 'Reduced Service',
+            corridorDescription: 'A: Minor branch reduced service',
+            weekendDate: '2026-10-16',
+            validFrom: new Date('2026-10-16T19:00:00Z'),
+            validTo: new Date('2026-10-19T04:30:00Z'),
+            sourceLastUpdated: new Date('2026-10-16T12:00:00Z'),
+            projectedAt: new Date('2026-10-16T12:05:00Z'),
+          },
+          {
+            id: 'd-2',
+            lineId: 'district',
+            lineName: 'District',
+            mode: 'tube',
+            statusSeverityDescription: 'Part Closure',
+            corridorDescription: 'Z: Main branch closed between Turnham Green and Richmond',
+            weekendDate: '2026-10-16',
+            validFrom: new Date('2026-10-16T19:00:00Z'),
+            validTo: new Date('2026-10-19T04:30:00Z'),
+            sourceLastUpdated: new Date('2026-10-16T12:00:00Z'),
+            projectedAt: new Date('2026-10-16T12:10:00Z'),
+          },
+        ],
+      },
+    } as unknown as PrismaClient;
+
+    const result = await fetchWeekendStatus({
+      prisma: mockPrisma,
+      referenceDate: '2026-10-16',
+    });
+
+    const district = result.lines.find((l) => l.lineId === 'district');
+    expect(district).toBeDefined();
+    expect(district?.statusSeverityDescription).toBe('Part Closure');
+  });
 });

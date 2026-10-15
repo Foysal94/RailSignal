@@ -284,4 +284,85 @@ describe('TfL Parser - Date-Scoped Status Payload Normalization', () => {
     expect(parsed[0]?.validFrom).toBe(mockWeekendWindow.windowStart.toISOString());
     expect(parsed[0]?.validTo).toBe(mockWeekendWindow.windowEnd.toISOString());
   });
+
+  it('Should_discard_disruptions_with_empty_validity_periods_lacking_weekend_relevance', () => {
+    const rawStatusResponse: RawTflLineStatus[] = [
+      {
+        id: 'waterloo-city',
+        name: 'Waterloo & City',
+        modeName: 'tube',
+        lineStatuses: [
+          {
+            statusSeverityDescription: 'Planned Closure',
+            reason: 'Waterloo & City line: Planned maintenance on Wednesday afternoon.',
+            validityPeriods: [],
+            disruption: {
+              category: 'PlannedWork',
+              description: 'Waterloo & City line: Planned maintenance on Wednesday afternoon.',
+            },
+          },
+        ],
+      },
+    ];
+
+    const parsed = parseTflDisruptions({
+      disruptions: rawStatusResponse,
+      weekendWindow: mockWeekendWindow,
+    });
+
+    expect(parsed).toHaveLength(0);
+  });
+
+  it('Should_accept_expanded_severities_and_information_category_with_weekend_relevance', () => {
+    const rawStatusResponse: RawTflLineStatus[] = [
+      {
+        id: 'waterloo-city',
+        name: 'Waterloo & City',
+        modeName: 'tube',
+        lineStatuses: [
+          {
+            statusSeverityDescription: 'Service Closed',
+            reason:
+              'Waterloo & City line: service operates Monday to Friday only. There is no service on Saturdays and Sundays.',
+            validityPeriods: [],
+            disruption: {
+              category: 'Information',
+              categoryDescription: 'Information',
+              description:
+                'Waterloo & City line: service operates Monday to Friday only. There is no service on Saturdays and Sundays.',
+            },
+          },
+        ],
+      },
+      {
+        id: 'bakerloo',
+        name: 'Bakerloo',
+        modeName: 'tube',
+        lineStatuses: [
+          {
+            statusSeverityDescription: 'Part Closed',
+            reason:
+              'Bakerloo line: Part closed Saturday and Sunday between Queen’s Park and Harrow & Wealdstone.',
+            validityPeriods: [
+              {
+                fromDate: '2026-07-11T04:00:00Z',
+                toDate: '2026-07-12T22:00:00Z',
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const parsed = parseTflDisruptions({
+      disruptions: rawStatusResponse,
+      weekendWindow: mockWeekendWindow,
+    });
+
+    expect(parsed).toHaveLength(2);
+    expect(parsed[0]?.lineId).toBe('waterloo-city');
+    expect(parsed[0]?.statusSeverityDescription).toBe('Service Closed');
+    expect(parsed[1]?.lineId).toBe('bakerloo');
+    expect(parsed[1]?.statusSeverityDescription).toBe('Part Closed');
+  });
 });
