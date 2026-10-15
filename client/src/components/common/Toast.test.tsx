@@ -1,21 +1,32 @@
-import { act, render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ToastProvider, useToast } from './Toast';
 
-function TestConsumer() {
+function TestConsumer({ durationMs }: { durationMs?: number }) {
   const { showToast } = useToast();
   return (
     <div>
       <button
         type="button"
-        onClick={() => showToast({ type: 'success', message: 'Alert queued successfully!' })}
+        onClick={() =>
+          showToast({
+            type: 'success',
+            message: 'Alert queued successfully!',
+            durationMs,
+          })
+        }
       >
         Trigger Success Toast
       </button>
       <button
         type="button"
-        onClick={() => showToast({ type: 'error', message: 'Failed to process request.' })}
+        onClick={() =>
+          showToast({
+            type: 'error',
+            message: 'Failed to process request.',
+          })
+        }
       >
         Trigger Error Toast
       </button>
@@ -24,15 +35,8 @@ function TestConsumer() {
 }
 
 describe('Toast notification system', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it('Should_display_success_toast_when_triggered', async () => {
+    const user = userEvent.setup();
     render(
       <ToastProvider>
         <TestConsumer />
@@ -40,39 +44,35 @@ describe('Toast notification system', () => {
     );
 
     const triggerBtn = screen.getByRole('button', { name: /trigger success toast/i });
-    act(() => {
-      triggerBtn.click();
-    });
+    await user.click(triggerBtn);
 
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.getByText('Alert queued successfully!')).toBeInTheDocument();
   });
 
-  it('Should_dismiss_toast_automatically_after_timeout', () => {
+  it('Should_dismiss_toast_automatically_after_timeout', async () => {
+    const user = userEvent.setup();
     render(
       <ToastProvider>
-        <TestConsumer />
+        <TestConsumer durationMs={80} />
       </ToastProvider>,
     );
 
     const triggerBtn = screen.getByRole('button', { name: /trigger success toast/i });
-    act(() => {
-      triggerBtn.click();
-    });
+    await user.click(triggerBtn);
 
     expect(screen.getByText('Alert queued successfully!')).toBeInTheDocument();
 
-    act(() => {
-      vi.advanceTimersByTime(5000);
-    });
-
-    expect(screen.queryByText('Alert queued successfully!')).not.toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.queryByText('Alert queued successfully!')).not.toBeInTheDocument();
+      },
+      { timeout: 1000 },
+    );
   });
 
   it('Should_allow_manual_dismissal_via_close_button', async () => {
-    vi.useRealTimers();
     const user = userEvent.setup();
-
     render(
       <ToastProvider>
         <TestConsumer />

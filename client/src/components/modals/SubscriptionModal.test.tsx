@@ -41,7 +41,6 @@ describe('SubscriptionModal Component', () => {
     expect(screen.getByLabelText(/select all lines/i)).toBeInTheDocument();
 
     const checkboxes = screen.getAllByRole('checkbox');
-    // 1 "Select All" + 19 London lines = 20 checkboxes
     expect(checkboxes).toHaveLength(20);
   });
 
@@ -52,17 +51,26 @@ describe('SubscriptionModal Component', () => {
     const selectAllCheckbox = screen.getByLabelText(/select all lines/i) as HTMLInputElement;
     expect(selectAllCheckbox.checked).toBe(true);
 
-    // Uncheck all
     await user.click(selectAllCheckbox);
     expect(selectAllCheckbox.checked).toBe(false);
 
     const bakerlooCheckbox = screen.getByLabelText(/bakerloo/i) as HTMLInputElement;
     expect(bakerlooCheckbox.checked).toBe(false);
 
-    // Re-check all
     await user.click(selectAllCheckbox);
     expect(selectAllCheckbox.checked).toBe(true);
     expect(bakerlooCheckbox.checked).toBe(true);
+  });
+
+  it('Should_display_real_time_email_validation_feedback_on_blur', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<SubscriptionModal open={true} onOpenChange={vi.fn()} />);
+
+    const emailInput = screen.getByLabelText(/email address/i);
+    await user.type(emailInput, 'invalid-email');
+    await user.tab();
+
+    expect(screen.getByText(/please enter a valid email address/i)).toBeInTheDocument();
   });
 
   it('Should_submit_subscription_and_display_success_feedback', async () => {
@@ -109,7 +117,6 @@ describe('SubscriptionModal Component', () => {
     const emailInput = screen.getByLabelText(/email address/i);
     await user.type(emailInput, 'sub@example.com');
 
-    // Deselect all lines
     const selectAllCheckbox = screen.getByLabelText(/select all lines/i);
     await user.click(selectAllCheckbox);
 
@@ -117,5 +124,35 @@ describe('SubscriptionModal Component', () => {
     await user.click(submitBtn);
 
     expect(screen.getByRole('alert')).toHaveTextContent(/at least one line must be selected/i);
+  });
+
+  it('Should_display_server_error_when_subscription_mutation_fails', async () => {
+    server.use(
+      http.post('/api/subscriptions', () => {
+        return HttpResponse.json(
+          {
+            type: 'https://datatracker.ietf.org/doc/html/rfc9457',
+            title: 'Bad Request',
+            status: 400,
+            detail: 'Database unreachable',
+          },
+          { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithClient(<SubscriptionModal open={true} onOpenChange={vi.fn()} />);
+
+    const emailInput = screen.getByLabelText(/email address/i);
+    await user.type(emailInput, 'sub@example.com');
+
+    const submitBtn = screen.getByRole('button', { name: /subscribe to friday alerts/i });
+    await user.click(submitBtn);
+
+    await waitFor(() => {
+      const alerts = screen.getAllByRole('alert');
+      expect(alerts.some((el) => el.textContent?.includes('Database unreachable'))).toBe(true);
+    });
   });
 });

@@ -1,5 +1,5 @@
 import { TFL_LINES } from '@railsignal/shared';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { useSendTestAlert } from '../../hooks/useSendTestAlert';
 import { Dialog } from '../common/Dialog';
 import { useToast } from '../common/Toast';
@@ -15,24 +15,13 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
   const sendAlertMutation = useSendTestAlert();
 
   const [email, setEmail] = useState('');
-  const [selectedLines, setSelectedLines] = useState<string[]>([]);
-  const [localError, setLocalError] = useState<string | null>(null);
-
-  const { reset } = sendAlertMutation;
-
-  // Initialize pre-selected lines when modal opens
-  useEffect(() => {
-    if (open) {
-      if (disruptedLineIds && disruptedLineIds.length > 0) {
-        setSelectedLines(disruptedLineIds.slice(0, 2));
-      } else {
-        setSelectedLines([TFL_LINES[0]?.id ?? 'bakerloo']);
-      }
-      setEmail('');
-      setLocalError(null);
-      reset();
+  const [selectedLines, setSelectedLines] = useState<string[]>(() => {
+    if (disruptedLineIds && disruptedLineIds.length > 0) {
+      return disruptedLineIds.slice(0, 2);
     }
-  }, [open, disruptedLineIds, reset]);
+    return [TFL_LINES[0]?.id ?? 'bakerloo'];
+  });
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const toggleLine = (lineId: string) => {
     setSelectedLines((prev) =>
@@ -130,7 +119,7 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form noValidate onSubmit={handleSubmit} className="space-y-4">
           {(localError || sendAlertMutation.isError) && (
             <div
               role="alert"

@@ -66,6 +66,33 @@ describe('TestAlertModal Component', () => {
     expect(centralCheckbox.checked).toBe(true);
   });
 
+  it('Should_display_validation_error_when_invalid_email_format_is_submitted', async () => {
+    const user = userEvent.setup();
+    renderWithClient(
+      <TestAlertModal open={true} onOpenChange={vi.fn()} disruptedLineIds={['central']} />,
+    );
+
+    const emailInput = screen.getByLabelText(/recipient email/i);
+    await user.type(emailInput, 'not-an-email');
+
+    const submitBtn = screen.getByRole('button', { name: /dispatch test alert/i });
+    await user.click(submitBtn);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/please enter a valid email address/i);
+  });
+
+  it('Should_handle_escape_key_to_close_dialog', async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+
+    renderWithClient(
+      <TestAlertModal open={true} onOpenChange={onOpenChange} disruptedLineIds={['central']} />,
+    );
+
+    await user.keyboard('{Escape}');
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it('Should_submit_form_via_mutation_and_display_success_confirmation', async () => {
     let capturedBody: unknown;
     server.use(

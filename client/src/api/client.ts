@@ -55,52 +55,50 @@ export async function fetchWeekendStatus(
   return handleResponse<WeekendStatusResponse>(response);
 }
 
-export async function sendTestDigest(
+async function postJson<TReq, TRes>(
+  path: string,
+  body: TReq,
+  options?: ApiClientOptions,
+): Promise<TRes> {
+  const fetcher = options?.fetchFn ?? fetch;
+  const base = options?.baseUrl ?? '';
+  const url = `${base}${path}`;
+
+  const requestInit: RequestInit = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json, application/problem+json',
+    },
+    body: JSON.stringify(body),
+  };
+
+  if (options?.signal) {
+    requestInit.signal = options.signal;
+  }
+
+  const response = await fetcher(url, requestInit);
+  return handleResponse<TRes>(response);
+}
+
+export function sendTestDigest(
   request: SendTestDigestRequest,
   options?: ApiClientOptions,
 ): Promise<SendTestDigestResponse> {
-  const fetcher = options?.fetchFn ?? fetch;
-  const base = options?.baseUrl ?? '';
-  const url = `${base}/api/demo/send-test-digest`;
-
-  const requestInit: RequestInit = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json, application/problem+json',
-    },
-    body: JSON.stringify(request),
-  };
-
-  if (options?.signal) {
-    requestInit.signal = options.signal;
-  }
-
-  const response = await fetcher(url, requestInit);
-  return handleResponse<SendTestDigestResponse>(response);
+  return postJson<SendTestDigestRequest, SendTestDigestResponse>(
+    '/api/demo/send-test-digest',
+    request,
+    options,
+  );
 }
 
-export async function createSubscription(
+export function createSubscription(
   request: CreateSubscriptionRequest,
   options?: ApiClientOptions,
 ): Promise<SubscriptionResponse> {
-  const fetcher = options?.fetchFn ?? fetch;
-  const base = options?.baseUrl ?? '';
-  const url = `${base}/api/subscriptions`;
-
-  const requestInit: RequestInit = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json, application/problem+json',
-    },
-    body: JSON.stringify(request),
-  };
-
-  if (options?.signal) {
-    requestInit.signal = options.signal;
-  }
-
-  const response = await fetcher(url, requestInit);
-  return handleResponse<SubscriptionResponse>(response);
+  return postJson<CreateSubscriptionRequest, SubscriptionResponse>(
+    '/api/subscriptions',
+    request,
+    options,
+  );
 }

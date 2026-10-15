@@ -30,12 +30,16 @@ export function App() {
           <p className="mt-1">Powered by official Transport for London (TfL) Unified API data.</p>
         </footer>
 
-        <TestAlertModal
-          open={testAlertOpen}
-          onOpenChange={setTestAlertOpen}
-          disruptedLineIds={disruptedLineIds}
-        />
-        <SubscriptionModal open={subscriptionOpen} onOpenChange={setSubscriptionOpen} />
+        {testAlertOpen && (
+          <TestAlertModal
+            open={testAlertOpen}
+            onOpenChange={setTestAlertOpen}
+            disruptedLineIds={disruptedLineIds}
+          />
+        )}
+        {subscriptionOpen && (
+          <SubscriptionModal open={subscriptionOpen} onOpenChange={setSubscriptionOpen} />
+        )}
       </div>
     </ToastProvider>
   );

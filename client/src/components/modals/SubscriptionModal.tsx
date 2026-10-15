@@ -1,5 +1,5 @@
 import { TFL_LINE_IDS, TFL_LINES } from '@railsignal/shared';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { useCreateSubscription } from '../../hooks/useCreateSubscription';
 import { Dialog } from '../common/Dialog';
 import { useToast } from '../common/Toast';
@@ -14,19 +14,15 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
   const subscriptionMutation = useCreateSubscription();
 
   const [email, setEmail] = useState('');
+  const [touchedEmail, setTouchedEmail] = useState(false);
   const [selectedLines, setSelectedLines] = useState<string[]>([...TFL_LINE_IDS]);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const { reset } = subscriptionMutation;
-
-  useEffect(() => {
-    if (open) {
-      setEmail('');
-      setSelectedLines([...TFL_LINE_IDS]);
-      setLocalError(null);
-      reset();
-    }
-  }, [open, reset]);
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const emailValidationError =
+    touchedEmail && email.trim().length > 0 && !isEmailValid
+      ? 'Please enter a valid email address (e.g. commuter@example.com).'
+      : null;
 
   const allSelected = selectedLines.length === TFL_LINES.length;
 
@@ -130,7 +126,7 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form noValidate onSubmit={handleSubmit} className="space-y-4">
           {(localError || subscriptionMutation.isError) && (
             <div
               role="alert"
@@ -151,11 +147,20 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
               id="subscription-email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => setTouchedEmail(true)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (localError) setLocalError(null);
+              }}
               placeholder="commuter@example.com"
               required
               className="w-full min-h-[44px] rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+            {emailValidationError && (
+              <p role="alert" className="mt-1 text-xs text-amber-400">
+                {emailValidationError}
+              </p>
+            )}
           </div>
 
           <div>
