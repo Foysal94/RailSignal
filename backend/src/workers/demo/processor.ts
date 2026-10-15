@@ -1,7 +1,11 @@
 import type { PrismaClient } from '@prisma/client';
 import { prisma as defaultPrisma } from '../../db.js';
 import { getUpcomingWeekendWindow } from '../../domain/temporal.js';
-import { resendClient as defaultEmailClient, type ResendEmailClient } from '../../email/index.js';
+import {
+  type SendDisruptionDigestOptions,
+  type SendEmailResult,
+  sendDisruptionDigest,
+} from '../../email/index.js';
 import { mapDisruptionsToDigestItems } from '../digestMapper.js';
 import type { WorkerLogger } from '../types.js';
 
@@ -10,7 +14,14 @@ export interface ProcessDemoAlertJobOptions {
   lines: string[];
   referenceDate?: Date | string | undefined;
   prisma?: PrismaClient | undefined;
-  emailClient?: Pick<ResendEmailClient, 'sendDisruptionDigest'> | undefined;
+  emailClient?:
+    | {
+        sendDisruptionDigest: (options: SendDisruptionDigestOptions) => Promise<SendEmailResult>;
+      }
+    | undefined;
+  sendDisruptionDigest?:
+    | ((options: SendDisruptionDigestOptions) => Promise<SendEmailResult>)
+    | undefined;
   logger?: WorkerLogger | undefined;
 }
 
@@ -30,7 +41,11 @@ export async function processDemoAlertJob(
   options: ProcessDemoAlertJobOptions,
 ): Promise<ProcessDemoAlertJobResult> {
   const db = options.prisma ?? defaultPrisma;
-  const emailClient = options.emailClient ?? defaultEmailClient;
+  const sendDigest =
+    options.sendDisruptionDigest ??
+    (options.emailClient
+      ? options.emailClient.sendDisruptionDigest.bind(options.emailClient)
+      : sendDisruptionDigest);
   const logger = options.logger ?? console;
 
   const referenceDate = options.referenceDate ? new Date(options.referenceDate) : undefined;
@@ -56,7 +71,7 @@ export async function processDemoAlertJob(
   );
 
   // Visitors are not subscribers; list-unsubscribe headers are omitted
-  await emailClient.sendDisruptionDigest({
+  await sendDigest({
     to: options.email,
     subject: `RailSignal Weekend Radar (Demo): ${weekendDate}`,
     digest: {

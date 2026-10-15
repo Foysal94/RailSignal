@@ -14,9 +14,10 @@ export async function sendDisruptionDigest(
   options: SendDisruptionDigestOptions,
   client: EmailClient = emailClient,
 ): Promise<SendEmailResult> {
+  const rawDate = options.digest.weekendDate?.trim();
   const subject =
     options.subject ??
-    `RailSignal Weekend Radar: ${options.digest.weekendDate ?? 'Disruption Digest'}`;
+    `RailSignal Weekend Radar: ${rawDate && rawDate.length > 0 ? rawDate : 'Disruption Digest'}`;
 
   const digestElement = React.createElement<DisruptionDigestProps>(
     DisruptionDigest,

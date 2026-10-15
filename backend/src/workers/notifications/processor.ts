@@ -1,6 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
 import { prisma as defaultPrisma } from '../../db.js';
-import { resendClient as defaultEmailClient, type ResendEmailClient } from '../../email/index.js';
+import {
+  type SendDisruptionDigestOptions,
+  type SendEmailResult,
+  sendDisruptionDigest,
+} from '../../email/index.js';
 import { mapDisruptionsToDigestItems } from '../digestMapper.js';
 import type { WorkerLogger } from '../types.js';
 import { matchSubscribersForWeekend } from './matcher.js';
@@ -8,7 +12,14 @@ import { matchSubscribersForWeekend } from './matcher.js';
 export interface ProcessNotificationJobOptions {
   weekendDate: string;
   prisma?: PrismaClient | undefined;
-  emailClient?: Pick<ResendEmailClient, 'sendDisruptionDigest'> | undefined;
+  emailClient?:
+    | {
+        sendDisruptionDigest: (options: SendDisruptionDigestOptions) => Promise<SendEmailResult>;
+      }
+    | undefined;
+  sendDisruptionDigest?:
+    | ((options: SendDisruptionDigestOptions) => Promise<SendEmailResult>)
+    | undefined;
   logger?: WorkerLogger | undefined;
 }
 
@@ -48,7 +59,11 @@ export async function processNotificationJob(
   options: ProcessNotificationJobOptions,
 ): Promise<ProcessNotificationJobResult> {
   const db = options.prisma ?? defaultPrisma;
-  const emailClient = options.emailClient ?? defaultEmailClient;
+  const sendDigest =
+    options.sendDisruptionDigest ??
+    (options.emailClient
+      ? options.emailClient.sendDisruptionDigest.bind(options.emailClient)
+      : sendDisruptionDigest);
   const logger = options.logger ?? console;
   const weekendDate = options.weekendDate;
 
@@ -92,7 +107,7 @@ export async function processNotificationJob(
     );
 
     try {
-      await emailClient.sendDisruptionDigest({
+      await sendDigest({
         to: subscriber.email,
         digest: {
           recipientEmail: subscriber.email,
