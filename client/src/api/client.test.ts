@@ -2,7 +2,7 @@ import type { WeekendStatusResponse } from '@railsignal/shared';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { fetchWeekendStatus } from './client';
+import { createSubscription, fetchWeekendStatus, sendTestDigest } from './client';
 
 const mockResponse: WeekendStatusResponse = {
   weekendDate: '2026-10-17',
@@ -98,5 +98,111 @@ describe('API Client: fetchWeekendStatus', () => {
 
   it('Should_throw_fallback_error_when_backend_fails_without_json_problem_details', async () => {
     await expect(fetchWeekendStatus('500-error')).rejects.toThrow('Request failed with status 500');
+  });
+});
+
+describe('API Client: sendTestDigest', () => {
+  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+  afterEach(() => server.resetHandlers());
+  afterAll(() => server.close());
+
+  it('Should_send_test_digest_successfully', async () => {
+    let capturedBody: unknown;
+    server.use(
+      http.post('/api/demo/send-test-digest', async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(
+          { status: 'queued', email: 'commuter@example.com' },
+          { status: 202 },
+        );
+      }),
+    );
+
+    const result = await sendTestDigest({
+      email: 'commuter@example.com',
+      lineIds: ['victoria', 'central'],
+    });
+
+    expect(capturedBody).toEqual({
+      email: 'commuter@example.com',
+      lineIds: ['victoria', 'central'],
+    });
+    expect(result).toEqual({ status: 'queued', email: 'commuter@example.com' });
+  });
+
+  it('Should_throw_error_with_rfc_9457_detail_when_send_test_digest_fails', async () => {
+    server.use(
+      http.post('/api/demo/send-test-digest', () => {
+        return HttpResponse.json(
+          {
+            type: 'https://datatracker.ietf.org/doc/html/rfc9457',
+            title: 'Bad Request',
+            status: 400,
+            detail: 'Invalid TfL line selected: "unknown-line"',
+          },
+          { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
+        );
+      }),
+    );
+
+    await expect(
+      sendTestDigest({ email: 'test@example.com', lineIds: ['unknown-line'] }),
+    ).rejects.toThrow('Invalid TfL line selected: "unknown-line"');
+  });
+});
+
+describe('API Client: createSubscription', () => {
+  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+  afterEach(() => server.resetHandlers());
+  afterAll(() => server.close());
+
+  it('Should_create_subscription_successfully', async () => {
+    let capturedBody: unknown;
+    server.use(
+      http.post('/api/subscriptions', async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(
+          {
+            id: 'sub-123',
+            email: 'sub@example.com',
+            subscribedLineIds: ['victoria'],
+            createdAt: '2026-10-15T12:00:00Z',
+          },
+          { status: 201 },
+        );
+      }),
+    );
+
+    const result = await createSubscription({
+      email: 'sub@example.com',
+      lineIds: ['victoria'],
+    });
+
+    expect(capturedBody).toEqual({
+      email: 'sub@example.com',
+      lineIds: ['victoria'],
+    });
+    expect(result.id).toBe('sub-123');
+    expect(result.subscribedLineIds).toEqual(['victoria']);
+  });
+
+  it('Should_throw_error_with_rfc_9457_detail_when_create_subscription_fails', async () => {
+    server.use(
+      http.post('/api/subscriptions', () => {
+        return HttpResponse.json(
+          {
+            type: 'https://datatracker.ietf.org/doc/html/rfc9457',
+            title: 'Bad Request',
+            status: 400,
+            detail: 'At least one line must be selected',
+          },
+          { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
+        );
+      }),
+    );
+
+    await expect(createSubscription({ email: 'sub@example.com', lineIds: [] })).rejects.toThrow(
+      'At least one line must be selected',
+    );
   });
 });
