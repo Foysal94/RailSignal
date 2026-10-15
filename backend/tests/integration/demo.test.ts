@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { WebApplicationFactory } from './webApplicationFactory.js';
 
 describe('POST /api/demo/send-test-digest', () => {

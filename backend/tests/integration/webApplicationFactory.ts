@@ -14,6 +14,14 @@ export interface WebApplicationFactoryOptions {
   configure?: ((app: FastifyInstance) => void | Promise<void>) | undefined;
 }
 
+interface WebApplicationFactoryContext {
+  app: FastifyInstance;
+  prisma: PrismaClient;
+  demoAlertQueue: InMemoryQueueDouble<DemoAlertJobData, void>;
+  ingestQueue: InMemoryQueueDouble<IngestJobData, IngestJobResult>;
+  config: AppConfig;
+}
+
 // In-memory application test harness mirroring .NET's WebApplicationFactory<Program>.
 // Coordinates Fastify in-memory transport (app.inject), Prisma persistence against test.db,
 // and in-memory BullMQ queue doubles to eliminate external network/cloud dependencies.
@@ -24,18 +32,12 @@ export class WebApplicationFactory {
   public readonly ingestQueue: InMemoryQueueDouble<IngestJobData, IngestJobResult>;
   public readonly config: AppConfig;
 
-  private constructor(
-    app: FastifyInstance,
-    prisma: PrismaClient,
-    demoAlertQueue: InMemoryQueueDouble<DemoAlertJobData, void>,
-    ingestQueue: InMemoryQueueDouble<IngestJobData, IngestJobResult>,
-    config: AppConfig,
-  ) {
-    this.app = app;
-    this.prisma = prisma;
-    this.demoAlertQueue = demoAlertQueue;
-    this.ingestQueue = ingestQueue;
-    this.config = config;
+  private constructor(context: WebApplicationFactoryContext) {
+    this.app = context.app;
+    this.prisma = context.prisma;
+    this.demoAlertQueue = context.demoAlertQueue;
+    this.ingestQueue = context.ingestQueue;
+    this.config = context.config;
   }
 
   public static async create(
@@ -65,24 +67,31 @@ export class WebApplicationFactory {
 
     await app.ready();
 
-    return new WebApplicationFactory(app, prisma, demoAlertQueue, ingestQueue, appConfig);
+    return new WebApplicationFactory({
+      app,
+      prisma,
+      demoAlertQueue,
+      ingestQueue,
+      config: appConfig,
+    });
   }
 
-  // Mirrors .NET HttpClient calls via Fastify's in-memory transport layer
   public async inject(options: InjectOptions): Promise<Response> {
     return this.app.inject(options);
   }
 
-  // Atomic database purge between test suites to ensure strict test isolation
   public async resetDatabase(): Promise<void> {
     await this.prisma.$transaction([
       this.prisma.subscriptionLine.deleteMany(),
       this.prisma.subscription.deleteMany(),
       this.prisma.weekendDisruption.deleteMany(),
     ]);
+    this.demoAlertQueue.clear();
+    this.ingestQueue.clear();
   }
 
   public async close(): Promise<void> {
     await this.app.close();
+    await this.prisma.$disconnect();
   }
 }

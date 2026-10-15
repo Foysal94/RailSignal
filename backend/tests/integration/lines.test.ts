@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { WebApplicationFactory } from './webApplicationFactory.js';
 
 describe('GET /api/lines/weekend-status', () => {
@@ -30,7 +30,6 @@ describe('GET /api/lines/weekend-status', () => {
     expect(body.weekendDate).toBe(weekendDate);
     expect(body.lines).toHaveLength(19);
 
-    // When clear, all lines should report Good Service
     for (const line of body.lines) {
       expect(line.hasDisruption).toBe(false);
       expect(line.statusSeverityDescription).toBe('Good Service');
@@ -39,7 +38,6 @@ describe('GET /api/lines/weekend-status', () => {
   });
 
   it('Should_prioritize_disrupted_lines_at_top_when_disruptions_exist', async () => {
-    // Seed test disruptions in SQLite via factory.prisma
     await factory.prisma.weekendDisruption.createMany({
       data: [
         {
@@ -75,7 +73,6 @@ describe('GET /api/lines/weekend-status', () => {
     expect(response.statusCode).toBe(200);
     const body = response.json();
 
-    // Disrupted lines must be placed first
     const firstLine = body.lines[0];
     const secondLine = body.lines[1];
 
@@ -84,7 +81,6 @@ describe('GET /api/lines/weekend-status', () => {
     expect(['central', 'victoria']).toContain(firstLine.lineId);
     expect(['central', 'victoria']).toContain(secondLine.lineId);
 
-    // Remaining lines should report Good Service
     const nonDisrupted = body.lines.slice(2);
     for (const line of nonDisrupted) {
       expect(line.hasDisruption).toBe(false);

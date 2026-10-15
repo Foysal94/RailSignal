@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { WebApplicationFactory } from './webApplicationFactory.js';
 
 describe('Subscriptions API Endpoints', () => {
@@ -37,7 +37,6 @@ describe('Subscriptions API Endpoints', () => {
       expect(body.subscribedLineIds).toEqual(expect.arrayContaining(['bakerloo', 'victoria']));
       expect(body.createdAt).toBeDefined();
 
-      // Verify observable SQLite database state via factory.prisma
       const dbRecord = await factory.prisma.subscription.findUnique({
         where: { email: testEmail },
         include: { lines: true },
@@ -49,7 +48,6 @@ describe('Subscriptions API Endpoints', () => {
     });
 
     it('Should_update_existing_subscription_idempotently_when_same_email_subscribes_again', async () => {
-      // Initial subscription creation
       const firstResponse = await factory.inject({
         method: 'POST',
         url: '/api/subscriptions',
@@ -61,7 +59,6 @@ describe('Subscriptions API Endpoints', () => {
       expect([200, 201]).toContain(firstResponse.statusCode);
       const firstBody = firstResponse.json();
 
-      // Second submission with updated line preferences
       const updateResponse = await factory.inject({
         method: 'POST',
         url: '/api/subscriptions',
@@ -131,7 +128,6 @@ describe('Subscriptions API Endpoints', () => {
 
   describe('DELETE /api/subscriptions/:id?token=...', () => {
     it('Should_cascade_delete_subscription_when_valid_id_and_token_provided', async () => {
-      // Seed subscription directly in SQLite via factory.prisma
       const sub = await factory.prisma.subscription.create({
         data: {
           email: testEmail,
@@ -149,7 +145,6 @@ describe('Subscriptions API Endpoints', () => {
 
       expect([200, 204]).toContain(response.statusCode);
 
-      // Verify cascading deletion in SQLite
       const foundSub = await factory.prisma.subscription.findUnique({
         where: { id: sub.id },
       });

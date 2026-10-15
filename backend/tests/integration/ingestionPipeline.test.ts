@@ -2,19 +2,21 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TflClient } from '../../src/clients/tfl/client.js';
 import type { ParsedDisruption } from '../../src/clients/tfl/types.js';
 import { prisma } from '../../src/db.js';
-import type { IngestJobData, IngestJobResult } from '../../src/queues/queues.js';
+import type {
+  IngestJobData,
+  IngestJobResult,
+  NotificationJobData,
+} from '../../src/queues/queues.js';
 import { processIngestionJob } from '../../src/workers/ingestion/processor.js';
 import { createIngestionWorkerHandler } from '../../src/workers/ingestionWorker.js';
 import { InMemoryQueueDouble } from '../support/inMemoryQueueDouble.js';
 
 describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma SQLite)', () => {
-  let notificationQueueDouble: InMemoryQueueDouble;
+  let notificationQueueDouble: InMemoryQueueDouble<NotificationJobData, void>;
 
   beforeEach(async () => {
-    notificationQueueDouble = new InMemoryQueueDouble();
-    await prisma.weekendDisruption.deleteMany({
-      where: { lineId: { startsWith: 'pipeline-' } },
-    });
+    notificationQueueDouble = new InMemoryQueueDouble<NotificationJobData, void>();
+    await prisma.weekendDisruption.deleteMany();
   });
 
   afterAll(async () => {
