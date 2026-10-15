@@ -99,7 +99,7 @@ export function cleanCorridorDescription(description: string, lineName?: string)
  * Maps raw TfL disruptions into normalized domain disruptions filtered strictly to the weekend window.
  * Deduplicates multiple reports for the same line and corridor within the same weekend.
  */
-export const TRANSIENT_SEVERITY_DESCRIPTIONS: ReadonlySet<string> = new Set([
+const TRANSIENT_SEVERITY_DESCRIPTIONS: ReadonlySet<string> = new Set([
   'Minor Delays',
   'Severe Delays',
 ]);
