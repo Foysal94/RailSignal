@@ -285,7 +285,7 @@ describe('TfL Parser - Date-Scoped Status Payload Normalization', () => {
     expect(parsed[0]?.validTo).toBe(mockWeekendWindow.windowEnd.toISOString());
   });
 
-  it('Should_discard_disruptions_with_empty_validity_periods_lacking_weekend_relevance', () => {
+  it('Should_discard_disruptions_with_empty_validity_periods_lacking_weekend_relevance_and_planned_work_category', () => {
     const rawStatusResponse: RawTflLineStatus[] = [
       {
         id: 'waterloo-city',
@@ -297,7 +297,7 @@ describe('TfL Parser - Date-Scoped Status Payload Normalization', () => {
             reason: 'Waterloo & City line: Planned maintenance on Wednesday afternoon.',
             validityPeriods: [],
             disruption: {
-              category: 'PlannedWork',
+              category: 'Information',
               description: 'Waterloo & City line: Planned maintenance on Wednesday afternoon.',
             },
           },
@@ -311,6 +311,37 @@ describe('TfL Parser - Date-Scoped Status Payload Normalization', () => {
     });
 
     expect(parsed).toHaveLength(0);
+  });
+
+  it('Should_permit_fallback_to_weekend_bounds_for_PlannedWork_category_even_without_day_names_in_text', () => {
+    const rawStatusResponse: RawTflLineStatus[] = [
+      {
+        id: 'piccadilly',
+        name: 'Piccadilly',
+        modeName: 'tube',
+        lineStatuses: [
+          {
+            statusSeverityDescription: 'Part Closure',
+            reason: 'Piccadilly line: Track renewal between Acton Town and Uxbridge.',
+            validityPeriods: [],
+            disruption: {
+              category: 'PlannedWork',
+              description: 'Piccadilly line: Track renewal between Acton Town and Uxbridge.',
+            },
+          },
+        ],
+      },
+    ];
+
+    const parsed = parseTflDisruptions({
+      disruptions: rawStatusResponse,
+      weekendWindow: mockWeekendWindow,
+    });
+
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]?.lineId).toBe('piccadilly');
+    expect(parsed[0]?.validFrom).toBe(mockWeekendWindow.windowStart.toISOString());
+    expect(parsed[0]?.validTo).toBe(mockWeekendWindow.windowEnd.toISOString());
   });
 
   it('Should_accept_expanded_severities_and_information_category_with_weekend_relevance', () => {

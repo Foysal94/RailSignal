@@ -46,6 +46,7 @@ const SEVERITY_RANK: Readonly<Record<string, number>> = Object.freeze({
   'special service': 30,
   'minor delays': 20,
   'good service': 0,
+  'no planned closures': 0,
 });
 
 function getSeverityRank(description: string): number {
@@ -54,7 +55,7 @@ function getSeverityRank(description: string): number {
 }
 
 export function pickHighestSeverityDescription(disruptions: readonly DbDisruption[]): string {
-  if (disruptions.length === 0) return 'Good Service';
+  if (disruptions.length === 0) return 'No Planned Closures';
 
   let highest = disruptions[0];
   let highestRank = getSeverityRank(highest.statusSeverityDescription);
@@ -124,7 +125,7 @@ export async function fetchWeekendStatus(
       mode: line.mode,
       color: line.color,
       ...(line.contrastBorder !== undefined ? { contrastBorder: line.contrastBorder } : {}),
-      statusSeverityDescription: 'Good Service',
+      statusSeverityDescription: 'No Planned Closures',
       hasDisruption: false,
       disruptions: [],
     };

@@ -198,8 +198,8 @@ export function parseTflDisruptions(options: ParseTflDisruptionsOptions): Parsed
         validFromStr = sortedFrom[0] ?? weekendWindow.windowStart.toISOString();
         validToStr = sortedTo[sortedTo.length - 1] ?? weekendWindow.windowEnd.toISOString();
       } else {
-        // Fall back to weekendWindow bounds only when notice has weekend operational relevance
-        if (!hasWeekendRelevance(rawDescription)) {
+        // Fall back to weekendWindow bounds when categorized as PlannedWork or notice has weekend operational relevance
+        if (!isPlannedCategory && !hasWeekendRelevance(rawDescription)) {
           continue;
         }
         validFromStr = weekendWindow.windowStart.toISOString();

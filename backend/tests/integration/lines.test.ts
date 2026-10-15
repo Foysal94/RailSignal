@@ -41,10 +41,10 @@ describe('GET /api/lines/weekend-status', () => {
     expect(body.weekendDate).toBe(weekendDate);
     expect(body.lines).toHaveLength(19);
 
-    // When clear, all lines should report Good Service
+    // When clear, all lines should report No Planned Closures
     for (const line of body.lines) {
       expect(line.hasDisruption).toBe(false);
-      expect(line.statusSeverityDescription).toBe('Good Service');
+      expect(line.statusSeverityDescription).toBe('No Planned Closures');
       expect(line.disruptions).toHaveLength(0);
     }
   });
@@ -97,11 +97,11 @@ describe('GET /api/lines/weekend-status', () => {
     expect(['central', 'victoria']).toContain(firstLine.lineId);
     expect(['central', 'victoria']).toContain(secondLine.lineId);
 
-    // Remaining lines should report Good Service
+    // Remaining lines should report No Planned Closures
     const nonDisrupted = body.lines.slice(2);
     for (const line of nonDisrupted) {
       expect(line.hasDisruption).toBe(false);
-      expect(line.statusSeverityDescription).toBe('Good Service');
+      expect(line.statusSeverityDescription).toBe('No Planned Closures');
     }
   });
 });

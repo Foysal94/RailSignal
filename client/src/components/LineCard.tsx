@@ -1,5 +1,5 @@
 import type { WeekendStatusItem } from '@railsignal/shared';
-import { isUndisruptedStatus } from './statusSorter';
+import { isDisrupted } from './statusSorter';
 
 export interface LineCardProps {
   line: WeekendStatusItem;
@@ -7,6 +7,7 @@ export interface LineCardProps {
 
 const PARTIAL_DISRUPTION_KEYWORDS = [
   'part closure',
+  'part closed',
   'part suspended',
   'minor delays',
   'bus service',
@@ -17,13 +18,16 @@ const PARTIAL_DISRUPTION_KEYWORDS = [
 const SEVERE_DISRUPTION_KEYWORDS = [
   'planned closure',
   'closure',
+  'closed',
+  'service closed',
   'suspended',
+  'not running',
   'no service',
   'severe delays',
 ] as const;
 
 function getStatusBadgeClasses(line: WeekendStatusItem): string {
-  if (!line.hasDisruption || isUndisruptedStatus(line.statusSeverityDescription)) {
+  if (!isDisrupted(line)) {
     return 'bg-emerald-950/80 text-emerald-300 border-emerald-800';
   }
 
@@ -42,10 +46,7 @@ function getStatusBadgeClasses(line: WeekendStatusItem): string {
 
 export function LineCard({ line }: LineCardProps) {
   const badgeClasses = getStatusBadgeClasses(line);
-  const badgeText =
-    !line.hasDisruption && isUndisruptedStatus(line.statusSeverityDescription)
-      ? 'No Planned Closures'
-      : line.statusSeverityDescription;
+  const badgeText = !isDisrupted(line) ? 'No Planned Closures' : line.statusSeverityDescription;
 
   return (
     <article

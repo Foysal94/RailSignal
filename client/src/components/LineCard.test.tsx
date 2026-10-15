@@ -116,4 +116,68 @@ describe('LineCard Component', () => {
     expect(badge.className).toContain('text-emerald-300');
     expect(badge.className).not.toContain('text-red-300');
   });
+
+  it('Should_render_red_badge_for_complete_line_shutdown_severities', () => {
+    for (const severity of ['Closed', 'Service Closed', 'Not Running']) {
+      const item: WeekendStatusItem = {
+        lineId: 'waterloo-city',
+        lineName: 'Waterloo & City',
+        mode: 'tube',
+        color: '#95CDBA',
+        statusSeverityDescription: severity,
+        hasDisruption: true,
+        disruptions: [
+          {
+            id: 'd-1',
+            lineId: 'waterloo-city',
+            lineName: 'Waterloo & City',
+            mode: 'tube',
+            statusSeverityDescription: severity,
+            corridorDescription: 'No weekend service',
+            weekendDate: '2026-10-16',
+            validFrom: '2026-10-16T19:00:00Z',
+            validTo: '2026-10-19T04:30:00Z',
+            sourceLastUpdated: '2026-10-16T10:00:00Z',
+            projectedAt: '2026-10-16T10:05:00Z',
+          },
+        ],
+      };
+
+      const { unmount } = render(<LineCard line={item} />);
+      const badge = screen.getByText(severity);
+      expect(badge.className).toContain('text-red-300');
+      unmount();
+    }
+  });
+
+  it('Should_render_amber_badge_for_part_closed_status', () => {
+    const item: WeekendStatusItem = {
+      lineId: 'bakerloo',
+      lineName: 'Bakerloo',
+      mode: 'tube',
+      color: '#B36305',
+      statusSeverityDescription: 'Part Closed',
+      hasDisruption: true,
+      disruptions: [
+        {
+          id: 'd-2',
+          lineId: 'bakerloo',
+          lineName: 'Bakerloo',
+          mode: 'tube',
+          statusSeverityDescription: 'Part Closed',
+          corridorDescription: 'Part closed between Queen’s Park and Harrow & Wealdstone',
+          weekendDate: '2026-10-16',
+          validFrom: '2026-10-16T19:00:00Z',
+          validTo: '2026-10-19T04:30:00Z',
+          sourceLastUpdated: '2026-10-16T10:00:00Z',
+          projectedAt: '2026-10-16T10:05:00Z',
+        },
+      ],
+    };
+
+    render(<LineCard line={item} />);
+    const badge = screen.getByText('Part Closed');
+    expect(badge.className).toContain('text-amber-300');
+    expect(badge.className).not.toContain('text-red-300');
+  });
 });

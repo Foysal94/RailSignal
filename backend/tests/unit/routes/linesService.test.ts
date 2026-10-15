@@ -18,9 +18,9 @@ describe('Lines Domain Service', () => {
     expect(result.weekendDate).toBe('2026-10-16');
     expect(result.lines).toHaveLength(19);
     expect(result.lines.every((line) => !line.hasDisruption)).toBe(true);
-    expect(result.lines.every((line) => line.statusSeverityDescription === 'Good Service')).toBe(
-      true,
-    );
+    expect(
+      result.lines.every((line) => line.statusSeverityDescription === 'No Planned Closures'),
+    ).toBe(true);
   });
 
   it('Should_sort_multiple_disrupted_lines_alphabetically_ahead_of_undisrupted_lines', async () => {

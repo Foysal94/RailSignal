@@ -34,18 +34,9 @@ export async function projectDisruptions(
   const deduplicated = Array.from(uniqueMap.values());
 
   return prisma.$transaction(async (tx) => {
-    // 1. Purge stale transient delay contamination (e.g. real-time Minor Delays, Severe Delays)
-    await tx.weekendDisruption.deleteMany({
-      where: {
-        statusSeverityDescription: {
-          in: ['Minor Delays', 'Severe Delays'],
-        },
-      },
-    });
-
     let totalDeleted = 0;
 
-    // 2. Reconcile cancelled disruptions and rewritten corridor texts for the target weekend
+    // 1. Reconcile cancelled disruptions and rewritten corridor texts for the target weekend
     if (targetWeekendDate) {
       const existing = await tx.weekendDisruption.findMany({
         where: { weekendDate: targetWeekendDate },
@@ -64,7 +55,7 @@ export async function projectDisruptions(
       }
     }
 
-    // 3. Upsert incoming parsed disruptions
+    // 2. Upsert incoming parsed disruptions
     for (const disruption of deduplicated) {
       await tx.weekendDisruption.upsert({
         where: {

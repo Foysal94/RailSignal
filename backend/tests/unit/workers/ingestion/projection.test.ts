@@ -118,8 +118,8 @@ describe('Disruption Projection Persistence', () => {
     expect(countAfter).toBe(0);
   });
 
-  it('Should_purge_stale_transient_delay_records_from_database', async () => {
-    // Insert a transient Minor Delays record manually
+  it('Should_reconcile_and_purge_unreported_disruptions_for_target_weekend_without_affecting_other_weekends', async () => {
+    // Insert a stale disruption for the target weekend
     await prisma.weekendDisruption.create({
       data: {
         lineId: 'projection-northern',
@@ -134,20 +134,45 @@ describe('Disruption Projection Persistence', () => {
       },
     });
 
-    // Run projection
+    // Insert an engineering work for another future weekend
+    await prisma.weekendDisruption.create({
+      data: {
+        lineId: 'projection-northern',
+        lineName: 'Northern',
+        mode: 'tube',
+        statusSeverityDescription: 'Severe Delays',
+        corridorDescription: 'Future scheduled maintenance',
+        weekendDate: '2026-10-24',
+        validFrom: new Date('2026-10-24T02:00:00.000Z'),
+        validTo: new Date('2026-10-26T03:30:00.000Z'),
+        sourceLastUpdated: new Date('2026-10-16T10:00:00.000Z'),
+      },
+    });
+
+    // Run projection for target weekend 2026-10-17
     await projectDisruptions({
       prisma,
       disruptions: [mockDisruption],
       weekendDate: '2026-10-17',
     });
 
-    // Transient record should have been purged
-    const transientCount = await prisma.weekendDisruption.count({
+    // Stale record for 2026-10-17 should have been deleted via reconciliation
+    const staleCount = await prisma.weekendDisruption.count({
       where: {
         lineId: 'projection-northern',
+        weekendDate: '2026-10-17',
         statusSeverityDescription: 'Minor Delays',
       },
     });
-    expect(transientCount).toBe(0);
+    expect(staleCount).toBe(0);
+
+    // Record for other weekend 2026-10-24 must remain intact
+    const futureCount = await prisma.weekendDisruption.count({
+      where: {
+        lineId: 'projection-northern',
+        weekendDate: '2026-10-24',
+      },
+    });
+    expect(futureCount).toBe(1);
   });
 });
