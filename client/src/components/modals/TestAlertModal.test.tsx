@@ -153,4 +153,20 @@ describe('TestAlertModal Component', () => {
       );
     });
   });
+
+  it('Should_render_accessible_sticky_action_bar_and_adaptive_lines_list_to_prevent_scroll_trap', () => {
+    renderWithClient(
+      <TestAlertModal open={true} onOpenChange={vi.fn()} disruptedLineIds={['central']} />,
+    );
+
+    const submitBtn = screen.getByRole('button', { name: /dispatch test alert/i });
+    const actionBar = submitBtn.closest('div');
+    expect(actionBar?.className).toContain('sticky');
+    expect(actionBar?.className).toContain('bottom-0');
+    expect(actionBar?.className).toContain('bg-radar-card');
+
+    const linesList = screen.getByLabelText(/central/i).closest('.grid');
+    expect(linesList?.className).toContain('overscroll-contain');
+    expect(linesList?.className).toContain('max-h-36');
+  });
 });

@@ -180,4 +180,20 @@ describe('LineCard Component', () => {
     expect(badge.className).toContain('text-amber-300');
     expect(badge.className).not.toContain('text-red-300');
   });
+
+  it('Should_render_DLR_mode_acronym_in_uppercase', () => {
+    const item: WeekendStatusItem = {
+      lineId: 'dlr',
+      lineName: 'DLR',
+      mode: 'dlr',
+      color: '#00AFAD',
+      statusSeverityDescription: 'No Planned Closures',
+      hasDisruption: false,
+      disruptions: [],
+    };
+
+    render(<LineCard line={item} />);
+    expect(screen.getByText('DLR', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.queryByText('Dlr')).not.toBeInTheDocument();
+  });
 });

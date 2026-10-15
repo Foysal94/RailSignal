@@ -9,7 +9,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { NetworkStatusGrid } from './NetworkStatusGrid';
 
 const mockSuccessData: WeekendStatusResponse = {
-  weekendDate: '2026-10-17',
+  weekendDate: '2026-10-16',
   windowStart: '2026-10-16T19:00:00Z',
   windowEnd: '2026-10-19T04:30:00Z',
   lastUpdated: '2026-10-14T12:00:00Z',
@@ -95,7 +95,7 @@ describe('NetworkStatusGrid Component', () => {
     });
 
     expect(
-      screen.getByText('This Weekend: Friday 19:00 - Monday 04:30 London Time'),
+      screen.getByText('Weekend Radar: Fri 16 Oct 19:00 \u2013 Mon 19 Oct 04:30'),
     ).toBeInTheDocument();
     expect(screen.getByText('1 Planned Disruption This Weekend')).toBeInTheDocument();
     expect(screen.getByText('3 lines monitored')).toBeInTheDocument();

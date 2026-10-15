@@ -249,6 +249,8 @@ See [ADR 0006](file:///Users/foysalahmed/Code/RailSignal/docs/adr/0006-frontend-
 * **Theme**: Deep slate/navy dark mode (`#0B0F19` page background, `#111827` card background, `border-slate-800`).
 * **Line Color Accents**: Left accent border stripe (4px width) using official TfL hex colors.
 * **Northern Line Accessibility**: Black stripe (`#000000`) rendered with a 1px `border-neutral-500` outline to guarantee 4.5:1 contrast against dark card surfaces.
+* **WCAG 2.1 AA Contrast**: Footer copy uses `text-slate-400` (`#94a3b8`) on `#0B0F19` background yielding a 5.81:1 contrast ratio, comfortably exceeding the WCAG 2.1 AA 4.5:1 minimum threshold.
+* **Responsive Dialog Framing**: Dialog containers enforce `w-[calc(100%-2rem)] max-w-lg mx-auto` to preserve 1rem lateral breathing room against physical glass edges on 375px mobile viewports.
 * **Status Badges**:
   * `Planned Closure`: Red (`bg-red-950/80 text-red-300 border border-red-800`).
   * `Part Closure` / `Minor Delays`: Amber (`bg-amber-950/80 text-amber-300 border border-amber-800`).
@@ -261,13 +263,15 @@ See [ADR 0006](file:///Users/foysalahmed/Code/RailSignal/docs/adr/0006-frontend-
   * `[Friday Alerts]`: Outline button (`border border-slate-700 hover:bg-slate-800 text-slate-200 min-h-[44px]`). Opens `SubscriptionModal`.
 
 ### 7.3 Hero & Information Architecture
-* **Hero Subheader**: Positioned directly above the disruption cards to prominently anchor the upcoming operational window (e.g., `Weekend Disruption Radar` — `Friday 16 Oct, 19:00 – Monday 19 Oct, 04:30 (UK Local Time)`). Prevents commuters scanning the feed from mistaking forecasted weekend closures for today's live train status.
+* **Hero Subheader Badge**: Positioned directly above the disruption cards to prominently anchor the upcoming operational window with dynamic calendar dates formatted from `data.weekendDate` (e.g., `Weekend Radar: Fri 16 Oct 19:00 – Mon 19 Oct 04:30`). Prevents commuters scanning the feed from mistaking forecasted weekend closures for today's live train status.
+* **Transit Acronym Preservation**: Domain modes preserve explicit acronym casing, rendering `DLR` in uppercase rather than capitalized `Dlr`.
 * **Stream Summary Counter**: Displays `{count} Planned Closures This Weekend` (or `No planned closures this weekend`) alongside `{count} lines evaluated`.
 * **Priority Sorting**: Lines with planned closures automatically sort to the top with visible corridor disruption descriptions (*"No service between Victoria and Brixton during maintenance"*).
 * **Normal Service**: Lines with `No Planned Closures` sort alphabetically below.
 
 ### 7.4 Modal Interaction & Submission Flow
 * **Headless Primitives**: Powered by `@radix-ui/react-dialog` with backdrop blur, focus trapping, and `Escape` key handlers.
+* **Mobile Scroll Trap Prevention**: Inner transit lines checklist utilizes adaptive max heights (`max-h-36 sm:max-h-52`) with `overscroll-contain` alongside a sticky bottom actions bar (`sticky bottom-0 bg-radar-card`), ensuring submission controls remain accessible on short mobile landscape viewports and virtual keyboards (<=480px height).
 * **Self-Contained Confirmation**: Submitting either modal (`TestAlertModal` or `SubscriptionModal`) replaces the form with a rich, in-dialog success confirmation card with clear action buttons ("Send Another" / "Close"). The dialog remains open so commuters can read next steps without jarring auto-dismissal or redundant floating toast popups.
 
 ---

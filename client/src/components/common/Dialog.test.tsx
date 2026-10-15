@@ -57,4 +57,16 @@ describe('Dialog component', () => {
     await user.keyboard('{Escape}');
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it('Should_apply_responsive_viewport_margin_classes_to_dialog_container', () => {
+    render(
+      <Dialog open={true} title="Responsive Dialog">
+        <p>Content</p>
+      </Dialog>,
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.className).toContain('w-[calc(100%-2rem)]');
+    expect(dialog.className).toContain('max-w-lg');
+  });
 });

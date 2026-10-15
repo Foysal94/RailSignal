@@ -97,4 +97,13 @@ describe('App Shell Integration', () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
   });
+
+  it('Should_render_footer_with_wcag_compliant_text_slate_400_color', () => {
+    renderWithClient(<App />);
+
+    const footer = screen.getByRole('contentinfo');
+    expect(footer).toBeInTheDocument();
+    expect(footer.className).toContain('text-slate-400');
+    expect(footer.className).not.toContain('text-slate-500');
+  });
 });
