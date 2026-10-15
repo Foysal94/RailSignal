@@ -78,4 +78,31 @@ describe('statusSorter: sortStatusItems', () => {
     expect(sorted[0]?.lineName).toBe('Piccadilly');
     expect(sorted[1]?.lineName).toBe('Jubilee');
   });
+
+  it('Should_treat_no_planned_closures_as_non_disrupted', () => {
+    const items: WeekendStatusItem[] = [
+      {
+        lineId: 'central',
+        lineName: 'Central',
+        mode: 'tube',
+        color: '#E32017',
+        statusSeverityDescription: 'No Planned Closures',
+        hasDisruption: false,
+        disruptions: [],
+      },
+      {
+        lineId: 'circle',
+        lineName: 'Circle',
+        mode: 'tube',
+        color: '#FFD300',
+        statusSeverityDescription: 'Planned Closure',
+        hasDisruption: true,
+        disruptions: [],
+      },
+    ];
+
+    const sorted = sortStatusItems(items);
+    expect(sorted[0]?.lineName).toBe('Circle');
+    expect(sorted[1]?.lineName).toBe('Central');
+  });
 });

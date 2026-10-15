@@ -7,40 +7,18 @@ export function Header({ onSendTestAlert, onFridayAlerts }: HeaderProps) {
   return (
     <header className="border-b border-slate-800 bg-radar-bg/90 backdrop-blur sticky top-0 z-10 px-4 py-3 sm:px-6">
       <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span
-              className="flex h-3 w-3 rounded-full bg-emerald-500 animate-pulse"
-              aria-hidden="true"
-            />
-            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              <span>RailSignal</span>
-              <span className="text-slate-500 font-normal" aria-hidden="true">
-                |
-              </span>
-              <span className="text-slate-300 font-medium text-base">Weekend Closure Radar</span>
-            </h1>
-          </div>
-
-          <div className="inline-flex items-center">
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-xs font-medium text-slate-300">
-              <svg
-                aria-hidden="true"
-                className="h-3.5 w-3.5 text-blue-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span>This Weekend: Friday 19:00 - Monday 04:30 London Time</span>
+        <div className="flex items-center gap-2">
+          <span
+            className="flex h-3 w-3 rounded-full bg-emerald-500 animate-pulse"
+            aria-hidden="true"
+          />
+          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <span>RailSignal</span>
+            <span className="text-slate-500 font-normal" aria-hidden="true">
+              |
             </span>
-          </div>
+            <span className="text-slate-300 font-medium text-base">Weekend Closure Radar</span>
+          </h1>
         </div>
 
         <div className="flex items-center gap-3">

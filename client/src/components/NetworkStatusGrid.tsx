@@ -75,8 +75,31 @@ export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
   }
 
   return (
-    <section className="space-y-4" aria-label="London weekend transit status stream">
-      <h2 className="sr-only">London Weekend Transit Line Statuses</h2>
+    <section className="space-y-6" aria-label="London weekend transit status stream">
+      <div className="text-center py-2 space-y-2 sm:py-4">
+        <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+          Weekend Disruption Radar
+        </h2>
+        <div className="inline-flex items-center justify-center">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-xs font-medium text-slate-300">
+            <svg
+              aria-hidden="true"
+              className="h-3.5 w-3.5 text-blue-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span>This Weekend: Friday 19:00 - Monday 04:30 London Time</span>
+          </span>
+        </div>
+      </div>
 
       {isError && data && (
         <div
@@ -98,10 +121,11 @@ export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
         <span>
           {disruptionCount > 0 ? (
             <strong className="text-amber-400">
-              {disruptionCount} {disruptionCount === 1 ? 'disruption' : 'disruptions'} active
+              {disruptionCount} Planned {disruptionCount === 1 ? 'Disruption' : 'Disruptions'} This
+              Weekend
             </strong>
           ) : (
-            <strong className="text-emerald-400">All monitored lines reporting normal</strong>
+            <strong className="text-emerald-400">No planned closures this weekend</strong>
           )}
         </span>
         <span>

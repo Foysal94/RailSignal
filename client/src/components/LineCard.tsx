@@ -1,4 +1,5 @@
 import type { WeekendStatusItem } from '@railsignal/shared';
+import { isDisrupted } from './statusSorter';
 
 export interface LineCardProps {
   line: WeekendStatusItem;
@@ -6,6 +7,7 @@ export interface LineCardProps {
 
 const PARTIAL_DISRUPTION_KEYWORDS = [
   'part closure',
+  'part closed',
   'part suspended',
   'minor delays',
   'bus service',
@@ -16,12 +18,19 @@ const PARTIAL_DISRUPTION_KEYWORDS = [
 const SEVERE_DISRUPTION_KEYWORDS = [
   'planned closure',
   'closure',
+  'closed',
+  'service closed',
   'suspended',
+  'not running',
   'no service',
   'severe delays',
 ] as const;
 
 function getStatusBadgeClasses(line: WeekendStatusItem): string {
+  if (!isDisrupted(line)) {
+    return 'bg-emerald-950/80 text-emerald-300 border-emerald-800';
+  }
+
   const status = line.statusSeverityDescription.toLowerCase();
 
   if (PARTIAL_DISRUPTION_KEYWORDS.some((kw) => status.includes(kw))) {
@@ -32,15 +41,12 @@ function getStatusBadgeClasses(line: WeekendStatusItem): string {
     return 'bg-red-950/80 text-red-300 border-red-800';
   }
 
-  if (line.hasDisruption) {
-    return 'bg-amber-950/80 text-amber-300 border-amber-800';
-  }
-
-  return 'bg-emerald-950/80 text-emerald-300 border-emerald-800';
+  return 'bg-amber-950/80 text-amber-300 border-amber-800';
 }
 
 export function LineCard({ line }: LineCardProps) {
   const badgeClasses = getStatusBadgeClasses(line);
+  const badgeText = !isDisrupted(line) ? 'No Planned Closures' : line.statusSeverityDescription;
 
   return (
     <article
@@ -80,7 +86,7 @@ export function LineCard({ line }: LineCardProps) {
           <span
             className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${badgeClasses}`}
           >
-            {line.statusSeverityDescription}
+            {badgeText}
           </span>
         </div>
       </div>
