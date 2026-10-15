@@ -14,16 +14,23 @@
     "build:client": "npm run build --workspace=@railsignal/client --if-present",
     "build": "npm run build:shared && npm run build:backend && npm run build:client",
     "dev": "npm run build:shared && npm run dev --workspace=@railsignal/backend",
+    "dev:client": "npm run dev --workspace=@railsignal/client",
     "test": "npm run test --workspaces --if-present",
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "email:dev": "npm run email:dev --workspace=@railsignal/backend",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
-    "@vitest/coverage-v8": "^4.1.11"
+    "@vitest/coverage-v8": "^4.1.11",
+    "husky": "^9.1.7",
+    "jsdom": "^26.0.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.64.6"
   }
 }

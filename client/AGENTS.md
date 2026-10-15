@@ -20,7 +20,7 @@
 - **Comments (Why, Never What):** Forbid tautological comments (`// render row`, `// set state`). Only comment browser workarounds or vendor payload quirks.
 
 ## Testing Standards
-- Place component and hook tests in adjacent `__tests__/` subdirectories.
+- Co-locate component, utility, and hook tests directly in the same directory alongside their source files (e.g. `Component.tsx` and `Component.test.tsx`).
 - Test Naming: Every test case must follow `Should_...`.
 - Query DOM via user-facing roles (`getByRole`, `getByLabelText`) with `@testing-library/user-event`.
 - Mock network interactions using MSW handlers; do not mock `fetch` via `vi.fn()`.

@@ -4,7 +4,7 @@
 - Dev Server: `npm run dev` (inside `/backend`)
 - Run Tests: `npm run test`
 - Database Migrations: `npx prisma migrate dev`
-- Run Scheduled Job: `node dist/index.js --job sync-disruptions`
+- Run Scheduled Job: `node dist/jobs/syncDisruptionsRunner.js` (or `npm run job:sync-disruptions`)
 - Lint & Format: Execute at monorepo root via `npm run lint` / `npm run format`
 
 ## Architecture & Boundaries

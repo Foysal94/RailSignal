@@ -1,21 +1,18 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildApp } from './app.js';
 import { config } from './config.js';
 import { prisma } from './db.js';
-
-const app = buildApp({
-  logger: {
-    level: config.nodeEnv === 'test' ? 'silent' : 'info',
-  },
-});
+import { closeAllWorkers, startAllWorkers } from './workers/index.js';
 
 let isShuttingDown = false;
 
-async function shutdown(signal: string): Promise<void> {
+async function shutdown(app: ReturnType<typeof buildApp>, signal: string): Promise<void> {
   if (isShuttingDown) {
     return;
   }
   isShuttingDown = true;
-  app.log.info(`Received ${signal}, closing server gracefully...`);
+  app.log.info(`Received ${signal}, closing server and workers gracefully...`);
 
   // Force termination fallback if cleanup hangs
   const forceKillTimeout = setTimeout(() => {
@@ -25,8 +22,8 @@ async function shutdown(signal: string): Promise<void> {
   forceKillTimeout.unref();
 
   try {
-    await app.close();
-    app.log.info('Server closed successfully');
+    await Promise.allSettled([app.close(), closeAllWorkers()]);
+    app.log.info('Server and workers closed successfully');
   } catch (error) {
     app.log.error(error, 'Error during graceful shutdown');
     process.exitCode = 1;
@@ -36,8 +33,31 @@ async function shutdown(signal: string): Promise<void> {
   }
 }
 
-async function start(): Promise<void> {
+export async function start(): Promise<void> {
+  const app = buildApp({
+    logger: {
+      level: config.nodeEnv === 'test' ? 'silent' : 'info',
+    },
+  });
+
+  const signals: readonly NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
+  for (const signal of signals) {
+    process.on(signal, () => {
+      void shutdown(app, signal);
+    });
+  }
+
+  process.on('unhandledRejection', (reason) => {
+    app.log.error(reason, 'Unhandled Promise Rejection');
+  });
+
+  process.on('uncaughtException', (error) => {
+    app.log.fatal(error, 'Uncaught Exception');
+    void shutdown(app, 'uncaughtException');
+  });
+
   try {
+    startAllWorkers();
     const address = await app.listen({
       port: config.port,
       host: config.host,
@@ -49,20 +69,6 @@ async function start(): Promise<void> {
   }
 }
 
-const signals: readonly NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
-for (const signal of signals) {
-  process.on(signal, () => {
-    void shutdown(signal);
-  });
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  void start();
 }
-
-process.on('unhandledRejection', (reason) => {
-  app.log.error(reason, 'Unhandled Promise Rejection');
-});
-
-process.on('uncaughtException', (error) => {
-  app.log.fatal(error, 'Uncaught Exception');
-  void shutdown('uncaughtException');
-});
-
-void start();
