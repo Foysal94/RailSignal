@@ -150,4 +150,30 @@ describe('SubscriptionModal Component', () => {
       expect(alerts.some((el) => el.textContent?.includes('Database unreachable'))).toBe(true);
     });
   });
+
+  it('Should_focus_email_input_upon_opening', async () => {
+    renderWithClient(<SubscriptionModal open={true} onOpenChange={vi.fn()} />);
+
+    const emailInput = screen.getByLabelText(/email address/i);
+    await waitFor(() => {
+      expect(emailInput).toHaveFocus();
+    });
+  });
+
+  it('Should_render_single_unified_error_without_duplicate_banner_when_invalid_email_is_entered', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<SubscriptionModal open={true} onOpenChange={vi.fn()} />);
+
+    const emailInput = screen.getByLabelText(/email address/i);
+    await user.type(emailInput, 'invalid-email');
+
+    const submitBtn = screen.getByRole('button', { name: /subscribe to friday alerts/i });
+    await user.click(submitBtn);
+
+    const alerts = screen.getAllByRole('alert');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent(/please enter a valid email address/i);
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true');
+    expect(emailInput).toHaveAttribute('aria-describedby', 'subscription-email-error');
+  });
 });
