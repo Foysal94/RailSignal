@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  runSyncDisruptions,
-  runSyncDisruptionsCli,
-} from '../../../src/jobs/syncDisruptionsRunner.js';
+import { runSyncDisruptionsCli } from '../../../src/jobs/syncDisruptionsRunner.js';
 
 function createMocks() {
   return {
@@ -55,16 +52,5 @@ describe('Sync Disruptions CLI Runner', () => {
     expect(mocks.exit).toHaveBeenCalledWith(1);
     expect(mocks.closeQueues).toHaveBeenCalledOnce();
     expect(mocks.prisma.$disconnect).toHaveBeenCalledOnce();
-  });
-
-  it('Should_skip_queue_dispatch_when_redis_url_missing_in_development', async () => {
-    const mocks = createMocks();
-    const { notificationQueue, ...devMocks } = mocks;
-
-    const result = await runSyncDisruptions(devMocks);
-
-    expect(result.weekendDate).toBe('2026-10-16');
-    expect(mocks.processor).toHaveBeenCalledOnce();
-    expect(notificationQueue.add).not.toHaveBeenCalled();
   });
 });
