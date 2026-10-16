@@ -181,7 +181,9 @@ model WeekendDisruption {
 
 ### 4.1 Connection & Free-Tier Quota Protection
 * **Engine**: BullMQ powered by **Upstash Serverless Redis** over TLS (`rediss://...`) via `ioredis`.
-* **Quota Management**: Upstash free tier allows 10,000 commands/day. Workers are configured with `drainDelay: 60000` (1 minute empty-queue polling backoff).
+* **Worker Host (`src/workers/host.ts`)**: Centralized `createManagedWorker` encapsulates Upstash quota defaults (`drainDelay: 60` seconds, `stalledInterval: 60_000` ms, `lockDuration: 60_000` ms, `maxStalledCount: 2`), structured lifecycle hooks (`completed`, `failed`, `error`), and coordinated graceful shutdown.
+* **Quota Management**: Upstash free tier allows 10,000 commands/day. Workers enforce extended idle polling (`drainDelay: 60`) and relaxed lock/stall timers to stay well under quota limits.
+* **Unified Ingestion Pipeline (`src/workers/ingestion/pipeline.ts`)**: A single shared pipeline (`syncWeekendDisruptionsPipeline`) coordinates TfL disruption fetching, projection, database upsertion, and downstream digest enqueuing. It is reused identically by both the scheduled BullMQ worker and the standalone CLI runner (`syncDisruptionsRunner.ts`).
 * **Scale-to-Zero**: Azure Container Apps runs with `minReplicas = 0`. When no web traffic is active, ACA stops the container, reducing Redis command consumption to 0.
 
 ### 4.2 Queues & Job Flow

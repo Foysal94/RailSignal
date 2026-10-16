@@ -2,13 +2,9 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TflClient } from '../../src/clients/tfl/client.js';
 import type { ParsedDisruption } from '../../src/clients/tfl/types.js';
 import { prisma } from '../../src/db.js';
-import type {
-  IngestJobData,
-  IngestJobResult,
-  NotificationJobData,
-} from '../../src/queues/queues.js';
+import type { NotificationJobData } from '../../src/queues/queues.js';
+import { syncWeekendDisruptionsPipeline } from '../../src/workers/ingestion/pipeline.js';
 import { processIngestionJob } from '../../src/workers/ingestion/processor.js';
-import { createIngestionWorkerHandler } from '../../src/workers/ingestionWorker.js';
 import { InMemoryQueueDouble } from '../support/inMemoryQueueDouble.js';
 
 describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma SQLite)', () => {
@@ -53,7 +49,8 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       getWeekendDisruptions: vi.fn().mockResolvedValue(sampleDisruptions),
     };
 
-    const handler = createIngestionWorkerHandler({
+    const result = await syncWeekendDisruptionsPipeline({
+      referenceDate: '2026-10-15T12:00:00Z',
       notificationQueue: notificationQueueDouble,
       processor: async (opts) =>
         processIngestionJob({
@@ -63,13 +60,6 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
           referenceDate: new Date('2026-10-15T12:00:00Z'),
         }),
     });
-
-    const mockJob = {
-      id: 'ingest-run-1',
-      data: { referenceDate: '2026-10-15T12:00:00Z' } as IngestJobData,
-    };
-
-    const result = (await handler(mockJob as never)) as IngestJobResult;
 
     // Verify ingestion execution result
     expect(result.weekendDate).toBe('2026-10-16');
@@ -100,30 +90,27 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       getWeekendDisruptions: vi.fn().mockResolvedValue(sampleDisruptions),
     };
 
-    const handler = createIngestionWorkerHandler({
-      notificationQueue: notificationQueueDouble,
-      processor: async (opts) =>
-        processIngestionJob({
-          ...opts,
-          tflClient: mockTflClient,
-          prisma,
-          referenceDate: new Date('2026-10-15T12:00:00Z'),
-        }),
-    });
+    const runPipeline = () =>
+      syncWeekendDisruptionsPipeline({
+        referenceDate: '2026-10-15T12:00:00Z',
+        notificationQueue: notificationQueueDouble,
+        processor: async (opts) =>
+          processIngestionJob({
+            ...opts,
+            tflClient: mockTflClient,
+            prisma,
+            referenceDate: new Date('2026-10-15T12:00:00Z'),
+          }),
+      });
 
-    const mockJob = {
-      id: 'ingest-run-idempotency',
-      data: { referenceDate: '2026-10-15T12:00:00Z' } as IngestJobData,
-    };
-
-    await handler(mockJob as never);
+    await runPipeline();
     expect(
       await prisma.weekendDisruption.count({
         where: { lineId: { startsWith: 'pipeline-' } },
       }),
     ).toBe(2);
 
-    await handler(mockJob as never);
+    await runPipeline();
     expect(
       await prisma.weekendDisruption.count({
         where: { lineId: { startsWith: 'pipeline-' } },
@@ -138,7 +125,7 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     ];
     mockTflClient.getWeekendDisruptions = vi.fn().mockResolvedValue(modifiedDisruptions);
 
-    await handler(mockJob as never);
+    await runPipeline();
 
     const central = await prisma.weekendDisruption.findFirst({
       where: { lineId: 'pipeline-central' },
@@ -157,7 +144,8 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       getWeekendDisruptions: vi.fn().mockResolvedValue([]),
     };
 
-    const handler = createIngestionWorkerHandler({
+    const result = await syncWeekendDisruptionsPipeline({
+      referenceDate: '2026-10-15T12:00:00Z',
       notificationQueue: notificationQueueDouble,
       processor: async (opts) =>
         processIngestionJob({
@@ -167,13 +155,6 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
           referenceDate: new Date('2026-10-15T12:00:00Z'),
         }),
     });
-
-    const mockJob = {
-      id: 'ingest-run-empty',
-      data: { referenceDate: '2026-10-15T12:00:00Z' } as IngestJobData,
-    };
-
-    const result = (await handler(mockJob as never)) as IngestJobResult;
 
     expect(result.totalFetched).toBe(0);
     expect(result.totalUpserted).toBe(0);
