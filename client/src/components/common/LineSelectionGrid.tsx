@@ -5,7 +5,6 @@ export interface LineSelectionGridProps {
   onChange: (lines: string[]) => void;
   title?: string;
   helperText?: string;
-  onInteraction?: () => void;
 }
 
 export function LineSelectionGrid({
@@ -13,12 +12,10 @@ export function LineSelectionGrid({
   onChange,
   title = 'Monitored London Lines',
   helperText,
-  onInteraction,
 }: LineSelectionGridProps) {
   const allSelected = selectedLines.length === TFL_LINES.length;
 
   const handleSelectAllToggle = () => {
-    onInteraction?.();
     if (allSelected) {
       onChange([]);
     } else {
@@ -27,7 +24,6 @@ export function LineSelectionGrid({
   };
 
   const toggleLine = (lineId: string) => {
-    onInteraction?.();
     onChange(
       selectedLines.includes(lineId)
         ? selectedLines.filter((id) => id !== lineId)
@@ -76,7 +72,7 @@ export function LineSelectionGrid({
               />
               <span
                 className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${
-                  line.id === 'northern' ? 'border border-neutral-500' : ''
+                  line.contrastBorder ? 'ring-1 ring-neutral-500' : ''
                 }`}
                 style={{ backgroundColor: line.color }}
                 aria-hidden="true"

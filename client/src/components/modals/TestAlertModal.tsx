@@ -2,7 +2,7 @@ import { TFL_LINES } from '@railsignal/shared';
 import { type FormEvent, useRef, useState } from 'react';
 import { useSendTestAlert } from '../../hooks/useSendTestAlert';
 import { Dialog } from '../common/Dialog';
-import { LineSelectionGrid } from './LineSelectionGrid';
+import { LineSelectionGrid } from '../common/LineSelectionGrid';
 
 export interface TestAlertModalProps {
   open: boolean;
@@ -38,6 +38,16 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
       emailError = 'Please enter a valid email address (e.g. commuter@example.com).';
     }
   }
+
+  const handleLinesChange = (lines: string[]) => {
+    if (localError === 'At least one line must be selected.') {
+      setLocalError(null);
+    }
+    if (sendAlertMutation.isError) {
+      sendAlertMutation.reset();
+    }
+    setSelectedLines(lines);
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -104,6 +114,9 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
               type="button"
               onClick={() => {
                 sendAlertMutation.reset();
+                setSubmitted(false);
+                setTouchedEmail(false);
+                setLocalError(null);
               }}
               className="min-h-[44px] rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition"
             >
@@ -162,17 +175,9 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
 
           <LineSelectionGrid
             selectedLines={selectedLines}
-            onChange={setSelectedLines}
+            onChange={handleLinesChange}
             title="Included Transit Lines"
             helperText="Pre-selected active closures or priority lines for immediate demo:"
-            onInteraction={() => {
-              if (localError === 'At least one line must be selected.') {
-                setLocalError(null);
-              }
-              if (sendAlertMutation.isError) {
-                sendAlertMutation.reset();
-              }
-            }}
           />
 
           <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 pt-3 pb-1 border-t border-slate-800 bg-radar-card">

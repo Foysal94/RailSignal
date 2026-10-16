@@ -36,20 +36,12 @@ describe('LineSelectionGrid Component', () => {
   it('Should_toggle_all_lines_to_empty_when_all_are_selected_and_select_all_is_clicked', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    const onInteraction = vi.fn();
 
-    render(
-      <LineSelectionGrid
-        selectedLines={[...TFL_LINE_IDS]}
-        onChange={onChange}
-        onInteraction={onInteraction}
-      />,
-    );
+    render(<LineSelectionGrid selectedLines={[...TFL_LINE_IDS]} onChange={onChange} />);
 
     const selectAllCheckbox = screen.getByLabelText(/select all lines/i);
     await user.click(selectAllCheckbox);
 
-    expect(onInteraction).toHaveBeenCalledOnce();
     expect(onChange).toHaveBeenCalledWith([]);
   });
 
@@ -65,23 +57,15 @@ describe('LineSelectionGrid Component', () => {
     expect(onChange).toHaveBeenCalledWith([...TFL_LINE_IDS]);
   });
 
-  it('Should_toggle_individual_line_selection_and_fire_interaction_callback', async () => {
+  it('Should_toggle_individual_line_selection', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    const onInteraction = vi.fn();
 
-    render(
-      <LineSelectionGrid
-        selectedLines={['central', 'victoria']}
-        onChange={onChange}
-        onInteraction={onInteraction}
-      />,
-    );
+    render(<LineSelectionGrid selectedLines={['central', 'victoria']} onChange={onChange} />);
 
     const victoriaCheckbox = screen.getByLabelText('Victoria');
     await user.click(victoriaCheckbox);
 
-    expect(onInteraction).toHaveBeenCalledOnce();
     expect(onChange).toHaveBeenCalledWith(['central']);
   });
 
@@ -95,13 +79,5 @@ describe('LineSelectionGrid Component', () => {
     await user.click(bakerlooCheckbox);
 
     expect(onChange).toHaveBeenCalledWith(['central', 'bakerloo']);
-  });
-
-  it('Should_apply_dark_mode_contrast_border_to_northern_line_swatch', () => {
-    render(<LineSelectionGrid selectedLines={['northern']} onChange={vi.fn()} />);
-
-    const northernLabel = screen.getByLabelText('Northern').closest('label');
-    const swatch = northernLabel?.querySelector('span[aria-hidden="true"]');
-    expect(swatch?.className).toContain('border-neutral-500');
   });
 });

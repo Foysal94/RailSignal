@@ -2,7 +2,7 @@ import { TFL_LINE_IDS } from '@railsignal/shared';
 import { type FormEvent, useRef, useState } from 'react';
 import { useCreateSubscription } from '../../hooks/useCreateSubscription';
 import { Dialog } from '../common/Dialog';
-import { LineSelectionGrid } from './LineSelectionGrid';
+import { LineSelectionGrid } from '../common/LineSelectionGrid';
 
 export interface SubscriptionModalProps {
   open: boolean;
@@ -32,6 +32,16 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
       emailError = 'Please enter a valid email address (e.g. commuter@example.com).';
     }
   }
+
+  const handleLinesChange = (lines: string[]) => {
+    if (localError === 'At least one line must be selected.') {
+      setLocalError(null);
+    }
+    if (subscriptionMutation.isError) {
+      subscriptionMutation.reset();
+    }
+    setSelectedLines(lines);
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -96,7 +106,10 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
           <div className="flex items-center justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={() => onOpenChange(false)}
+              onClick={() => {
+                subscriptionMutation.reset();
+                onOpenChange(false);
+              }}
               className="min-h-[44px] rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition"
             >
               Done
@@ -145,18 +158,7 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
             )}
           </div>
 
-          <LineSelectionGrid
-            selectedLines={selectedLines}
-            onChange={setSelectedLines}
-            onInteraction={() => {
-              if (localError === 'At least one line must be selected.') {
-                setLocalError(null);
-              }
-              if (subscriptionMutation.isError) {
-                subscriptionMutation.reset();
-              }
-            }}
-          />
+          <LineSelectionGrid selectedLines={selectedLines} onChange={handleLinesChange} />
 
           <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 pt-3 pb-1 border-t border-slate-800 bg-radar-card">
             <button
