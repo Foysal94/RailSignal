@@ -1,5 +1,5 @@
 import { TFL_LINE_IDS, TFL_LINES } from '@railsignal/shared';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useRef, useState } from 'react';
 import { useCreateSubscription } from '../../hooks/useCreateSubscription';
 import { Dialog } from '../common/Dialog';
 
@@ -9,22 +9,38 @@ export interface SubscriptionModalProps {
 }
 
 export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps) {
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const subscriptionMutation = useCreateSubscription();
 
   const [email, setEmail] = useState('');
   const [touchedEmail, setTouchedEmail] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [selectedLines, setSelectedLines] = useState<string[]>([...TFL_LINE_IDS]);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const emailValidationError =
-    touchedEmail && email.trim().length > 0 && !isEmailValid
-      ? 'Please enter a valid email address (e.g. commuter@example.com).'
-      : null;
+  const trimmedEmail = email.trim();
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+
+  let emailError: string | null = null;
+  if (touchedEmail || submitted) {
+    if (trimmedEmail.length === 0) {
+      if (submitted) {
+        emailError = 'Please enter an email address.';
+      }
+    } else if (!isEmailValid) {
+      emailError = 'Please enter a valid email address (e.g. commuter@example.com).';
+    }
+  }
 
   const allSelected = selectedLines.length === TFL_LINES.length;
 
   const handleSelectAllToggle = () => {
+    if (localError === 'At least one line must be selected.') {
+      setLocalError(null);
+    }
+    if (subscriptionMutation.isError) {
+      subscriptionMutation.reset();
+    }
     if (allSelected) {
       setSelectedLines([]);
     } else {
@@ -33,6 +49,12 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
   };
 
   const toggleLine = (lineId: string) => {
+    if (localError === 'At least one line must be selected.') {
+      setLocalError(null);
+    }
+    if (subscriptionMutation.isError) {
+      subscriptionMutation.reset();
+    }
     setSelectedLines((prev) =>
       prev.includes(lineId) ? prev.filter((id) => id !== lineId) : [...prev, lineId],
     );
@@ -40,16 +62,11 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setSubmitted(true);
     setLocalError(null);
 
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setLocalError('Please enter an email address.');
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setLocalError('Please enter a valid email address.');
+    const validEmail = email.trim();
+    if (!validEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(validEmail)) {
       return;
     }
 
@@ -60,7 +77,7 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
 
     try {
       await subscriptionMutation.mutateAsync({
-        email: trimmedEmail,
+        email: validEmail,
         lineIds: selectedLines,
       });
     } catch (err) {
@@ -73,6 +90,7 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
+      initialFocusRef={emailInputRef}
       title="Friday Alerts Subscription"
       description="Receive timely weekend closure briefings every Friday morning directly in your inbox."
     >
@@ -131,6 +149,7 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
               Email Address
             </label>
             <input
+              ref={emailInputRef}
               id="subscription-email"
               type="email"
               value={email}
@@ -138,23 +157,32 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (localError) setLocalError(null);
+                if (subscriptionMutation.isError) subscriptionMutation.reset();
               }}
               placeholder="commuter@example.com"
               required
+              aria-invalid={Boolean(emailError)}
+              aria-describedby={emailError ? 'subscription-email-error' : undefined}
               className="w-full min-h-[44px] rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
-            {emailValidationError && (
-              <p role="alert" className="mt-1 text-xs text-amber-400">
-                {emailValidationError}
+            {emailError && (
+              <p id="subscription-email-error" role="alert" className="mt-1 text-xs text-amber-400">
+                {emailError}
               </p>
             )}
           </div>
 
-          <div>
+          <fieldset className="border-0 p-0 m-0">
+            <legend className="sr-only">Monitored London Lines</legend>
             <div className="flex items-center justify-between mb-2">
-              <span className="block text-sm font-medium text-slate-300">
-                Monitored London Lines ({selectedLines.length}/{TFL_LINES.length})
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="block text-sm font-medium text-slate-300">
+                  Monitored London Lines
+                </span>
+                <span className="inline-flex items-center rounded-full bg-slate-800 border border-slate-700 px-2 py-0.5 text-xs font-medium text-slate-300">
+                  {selectedLines.length}/{TFL_LINES.length} lines selected
+                </span>
+              </div>
               <label className="flex items-center gap-2 cursor-pointer text-xs text-blue-400 hover:text-blue-300 select-none min-h-[44px]">
                 <input
                   type="checkbox"
@@ -192,7 +220,7 @@ export function SubscriptionModal({ open, onOpenChange }: SubscriptionModalProps
                 );
               })}
             </div>
-          </div>
+          </fieldset>
 
           <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 pt-3 pb-1 border-t border-slate-800 bg-radar-card">
             <button

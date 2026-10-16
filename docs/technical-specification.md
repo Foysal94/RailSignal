@@ -270,7 +270,13 @@ See [ADR 0006](file:///Users/foysalahmed/Code/RailSignal/docs/adr/0006-frontend-
 * **Normal Service**: Lines with `No Planned Closures` sort alphabetically below.
 
 ### 7.4 Modal Interaction & Submission Flow
-* **Headless Primitives**: Powered by `@radix-ui/react-dialog` with backdrop blur, focus trapping, and `Escape` key handlers.
+* **Accessibility & Initial Focus**: Dialogs automatically route focus to the email input field upon opening via the Dialog primitive's `initialFocusRef`, rather than defaulting focus to the Close ("X") button.
+* **Unified Validation & Error Placement**:
+  - Email format validation provides real-time `onBlur` feedback and form submit verification.
+  - Form errors avoid duplicate stacked banners: email format errors are rendered exclusively as a single, accessible alert directly under the email input with `aria-invalid` and `aria-describedby` associations.
+  - Top modal alert banners are reserved strictly for non-input errors (line selection validation, network/server failures).
+  - 0-Line Validation: Both `SubscriptionModal` and `TestAlertModal` mandate that at least one transit line must be selected before dispatch, blocking submission with `"At least one line must be selected."` and preventing empty line arrays from falling back to all 19 lines.
+* **Line Selection Parity & Counter**: Both modals feature a "Select All" checkbox toggle alongside a live counter badge (`X/19 lines selected`), ensuring consistent line selection ergonomics across subscription and demo alert workflows.
 * **Mobile Scroll Trap Prevention**: Inner transit lines checklist utilizes adaptive max heights (`max-h-36 sm:max-h-52`) with `overscroll-contain` alongside a sticky bottom actions bar (`sticky bottom-0 bg-radar-card`), ensuring submission controls remain accessible on short mobile landscape viewports and virtual keyboards (<=480px height).
 * **Self-Contained Confirmation**: Submitting either modal (`TestAlertModal` or `SubscriptionModal`) replaces the form with a rich, in-dialog success confirmation card with clear action buttons ("Send Another" / "Close"). The dialog remains open so commuters can read next steps without jarring auto-dismissal or redundant floating toast popups.
 

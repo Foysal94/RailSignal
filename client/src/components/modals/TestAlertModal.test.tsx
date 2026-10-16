@@ -153,4 +153,113 @@ describe('TestAlertModal Component', () => {
       );
     });
   });
+
+  it('Should_focus_email_input_upon_opening', async () => {
+    renderWithClient(
+      <TestAlertModal open={true} onOpenChange={vi.fn()} disruptedLineIds={['central']} />,
+    );
+
+    const emailInput = screen.getByLabelText(/recipient email/i);
+    await waitFor(() => {
+      expect(emailInput).toHaveFocus();
+    });
+  });
+
+  it('Should_render_select_all_toggle_and_live_line_counter', () => {
+    renderWithClient(
+      <TestAlertModal
+        open={true}
+        onOpenChange={vi.fn()}
+        disruptedLineIds={['central', 'district']}
+      />,
+    );
+
+    expect(screen.getByLabelText(/select all lines/i)).toBeInTheDocument();
+    expect(screen.getByText(/2\/19 lines selected/i)).toBeInTheDocument();
+  });
+
+  it('Should_toggle_all_lines_when_select_all_is_clicked', async () => {
+    const user = userEvent.setup();
+    renderWithClient(
+      <TestAlertModal open={true} onOpenChange={vi.fn()} disruptedLineIds={['central']} />,
+    );
+
+    const selectAllCheckbox = screen.getByLabelText(/select all lines/i) as HTMLInputElement;
+    expect(selectAllCheckbox.checked).toBe(false);
+
+    await user.click(selectAllCheckbox);
+    expect(selectAllCheckbox.checked).toBe(true);
+    expect(screen.getByText(/19\/19 lines selected/i)).toBeInTheDocument();
+
+    const centralCheckbox = screen.getByLabelText(/central/i) as HTMLInputElement;
+    const bakerlooCheckbox = screen.getByLabelText(/bakerloo/i) as HTMLInputElement;
+    expect(centralCheckbox.checked).toBe(true);
+    expect(bakerlooCheckbox.checked).toBe(true);
+
+    await user.click(selectAllCheckbox);
+    expect(selectAllCheckbox.checked).toBe(false);
+    expect(screen.getByText(/0\/19 lines selected/i)).toBeInTheDocument();
+    expect(centralCheckbox.checked).toBe(false);
+  });
+
+  it('Should_display_real_time_email_validation_feedback_on_blur', async () => {
+    const user = userEvent.setup();
+    renderWithClient(
+      <TestAlertModal open={true} onOpenChange={vi.fn()} disruptedLineIds={['central']} />,
+    );
+
+    const emailInput = screen.getByLabelText(/recipient email/i);
+    await user.type(emailInput, 'invalid-email');
+    await user.tab();
+
+    expect(screen.getByText(/please enter a valid email address/i)).toBeInTheDocument();
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true');
+    expect(emailInput).toHaveAttribute('aria-describedby', 'test-alert-email-error');
+  });
+
+  it('Should_block_submission_and_display_error_when_zero_lines_are_selected', async () => {
+    let requestSent = false;
+    server.use(
+      http.post('/api/demo/send-test-digest', () => {
+        requestSent = true;
+        return HttpResponse.json({ status: 'queued', email: 'test@example.com' }, { status: 202 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithClient(
+      <TestAlertModal open={true} onOpenChange={vi.fn()} disruptedLineIds={['central']} />,
+    );
+
+    const emailInput = screen.getByLabelText(/recipient email/i);
+    await user.type(emailInput, 'test@example.com');
+
+    const centralCheckbox = screen.getByLabelText(/central/i);
+    await user.click(centralCheckbox);
+
+    const submitBtn = screen.getByRole('button', { name: /dispatch test alert/i });
+    await user.click(submitBtn);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/at least one line must be selected/i);
+    expect(requestSent).toBe(false);
+  });
+
+  it('Should_render_single_unified_error_without_duplicate_banner_when_invalid_email_is_submitted', async () => {
+    const user = userEvent.setup();
+    renderWithClient(
+      <TestAlertModal open={true} onOpenChange={vi.fn()} disruptedLineIds={['central']} />,
+    );
+
+    const emailInput = screen.getByLabelText(/recipient email/i);
+    await user.type(emailInput, 'bad-email');
+
+    const submitBtn = screen.getByRole('button', { name: /dispatch test alert/i });
+    await user.click(submitBtn);
+
+    const alerts = screen.getAllByRole('alert');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent(/please enter a valid email address/i);
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true');
+    expect(emailInput).toHaveAttribute('aria-describedby', 'test-alert-email-error');
+  });
 });

@@ -57,4 +57,22 @@ describe('Dialog component', () => {
     await user.keyboard('{Escape}');
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it('Should_focus_initialFocusRef_element_upon_opening', () => {
+    function TestComponent() {
+      const inputRef = { current: null as HTMLInputElement | null };
+      return (
+        <Dialog open={true} title="Focus Test" initialFocusRef={inputRef}>
+          <input
+            ref={(el) => {
+              inputRef.current = el;
+            }}
+            aria-label="Target input"
+          />
+        </Dialog>
+      );
+    }
+    render(<TestComponent />);
+    expect(screen.getByLabelText('Target input')).toHaveFocus();
+  });
 });
