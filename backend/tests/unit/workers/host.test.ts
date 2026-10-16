@@ -27,7 +27,28 @@ describe('Worker Host Lifecycle & Registration', () => {
     clearRegisteredWorkers();
   });
 
-  it('Should_configure_worker_with_specified_queue_name_and_overrides', async () => {
+  it('Should_configure_worker_with_upstash_quota_defaults_and_specified_queue_name', async () => {
+    const mockConnection = createMockRedisConnection();
+    const worker = createManagedWorker({
+      queueName: 'test-queue',
+      processor: async () => 'ok',
+      connection: mockConnection as never,
+      autorun: false,
+    });
+
+    try {
+      expect(worker.name).toBe('test-queue');
+      expect(worker.opts.concurrency).toBe(1);
+      expect(worker.opts.drainDelay).toBe(60);
+      expect(worker.opts.stalledInterval).toBe(60_000);
+      expect(worker.opts.lockDuration).toBe(60_000);
+      expect(worker.opts.maxStalledCount).toBe(2);
+    } finally {
+      await worker.close();
+    }
+  });
+
+  it('Should_allow_overriding_worker_concurrency_and_timings', async () => {
     const mockConnection = createMockRedisConnection();
     const worker = createManagedWorker({
       queueName: 'custom-queue',
@@ -35,6 +56,9 @@ describe('Worker Host Lifecycle & Registration', () => {
       connection: mockConnection as never,
       concurrency: 5,
       drainDelay: 120,
+      stalledInterval: 30_000,
+      lockDuration: 45_000,
+      maxStalledCount: 3,
       autorun: false,
     });
 
@@ -42,6 +66,9 @@ describe('Worker Host Lifecycle & Registration', () => {
       expect(worker.name).toBe('custom-queue');
       expect(worker.opts.concurrency).toBe(5);
       expect(worker.opts.drainDelay).toBe(120);
+      expect(worker.opts.stalledInterval).toBe(30_000);
+      expect(worker.opts.lockDuration).toBe(45_000);
+      expect(worker.opts.maxStalledCount).toBe(3);
       expect(worker.isRunning()).toBe(false);
     } finally {
       await worker.close();
