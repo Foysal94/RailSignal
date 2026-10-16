@@ -4,7 +4,6 @@ import type { ParsedDisruption } from '../../src/clients/tfl/types.js';
 import { prisma } from '../../src/db.js';
 import type { NotificationJobData } from '../../src/queues/queues.js';
 import { syncWeekendDisruptionsPipeline } from '../../src/workers/ingestion/pipeline.js';
-import { processIngestionJob } from '../../src/workers/ingestion/processor.js';
 import { InMemoryQueueDouble } from '../support/inMemoryQueueDouble.js';
 
 describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma SQLite)', () => {
@@ -66,13 +65,8 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     const result = await syncWeekendDisruptionsPipeline({
       referenceDate: '2026-10-15T12:00:00Z',
       notificationQueue: notificationQueueDouble,
-      processor: async (opts) =>
-        processIngestionJob({
-          ...opts,
-          tflClient: mockTflClient,
-          prisma,
-          referenceDate: new Date('2026-10-15T12:00:00Z'),
-        }),
+      tflClient: mockTflClient,
+      prisma,
     });
 
     // Verify ingestion execution result
@@ -113,13 +107,8 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       syncWeekendDisruptionsPipeline({
         referenceDate: '2026-10-15T12:00:00Z',
         notificationQueue: notificationQueueDouble,
-        processor: async (opts) =>
-          processIngestionJob({
-            ...opts,
-            tflClient: mockTflClient,
-            prisma,
-            referenceDate: new Date('2026-10-15T12:00:00Z'),
-          }),
+        tflClient: mockTflClient,
+        prisma,
       });
 
     await runPipeline();
@@ -166,13 +155,8 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     const result = await syncWeekendDisruptionsPipeline({
       referenceDate: '2026-10-15T12:00:00Z',
       notificationQueue: notificationQueueDouble,
-      processor: async (opts) =>
-        processIngestionJob({
-          ...opts,
-          tflClient: mockTflClient,
-          prisma,
-          referenceDate: new Date('2026-10-15T12:00:00Z'),
-        }),
+      tflClient: mockTflClient,
+      prisma,
     });
 
     expect(result.totalFetched).toBe(0);

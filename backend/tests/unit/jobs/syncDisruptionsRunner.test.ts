@@ -3,15 +3,12 @@ import { runSyncDisruptionsCli } from '../../../src/jobs/syncDisruptionsRunner.j
 
 function createMocks() {
   return {
-    processor: vi.fn().mockResolvedValue({
+    pipeline: vi.fn().mockResolvedValue({
       weekendDate: '2026-10-16',
       totalFetched: 3,
       totalUpserted: 3,
       disruptions: [],
     }),
-    notificationQueue: {
-      add: vi.fn().mockResolvedValue({ id: 'job-1' }),
-    },
     closeQueues: vi.fn().mockResolvedValue(undefined),
     prisma: {
       $disconnect: vi.fn().mockResolvedValue(undefined),
@@ -34,17 +31,14 @@ describe('Sync Disruptions CLI Runner', () => {
 
     expect(exitCode).toBe(0);
     expect(mocks.exit).toHaveBeenCalledWith(0);
-    expect(mocks.processor).toHaveBeenCalledOnce();
-    expect(mocks.notificationQueue.add).toHaveBeenCalledWith('dispatch-weekend-digest', {
-      weekendDate: '2026-10-16',
-    });
+    expect(mocks.pipeline).toHaveBeenCalledOnce();
     expect(mocks.closeQueues).toHaveBeenCalledOnce();
     expect(mocks.prisma.$disconnect).toHaveBeenCalledOnce();
   });
 
   it('Should_close_resources_and_exit_1_when_ingestion_fails', async () => {
     const mocks = createMocks();
-    mocks.processor.mockRejectedValue(new Error('TfL Gateway Timeout'));
+    mocks.pipeline.mockRejectedValue(new Error('TfL Gateway Timeout'));
 
     const exitCode = await runSyncDisruptionsCli(mocks);
 

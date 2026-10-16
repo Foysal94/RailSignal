@@ -7,9 +7,11 @@ import {
   syncWeekendDisruptionsPipeline,
 } from '../workers/ingestion/pipeline.js';
 
-export type SyncDisruptionsOptions = SyncWeekendDisruptionsPipelineOptions;
+export interface SyncDisruptionsOptions extends SyncWeekendDisruptionsPipelineOptions {
+  pipeline?: typeof syncWeekendDisruptionsPipeline | undefined;
+}
 
-export interface SyncDisruptionsCliOptions extends SyncWeekendDisruptionsPipelineOptions {
+export interface SyncDisruptionsCliOptions extends SyncDisruptionsOptions {
   closeQueues?: (() => Promise<void>) | undefined;
   exit?: ((code: number) => void) | undefined;
 }
@@ -18,10 +20,11 @@ export async function runSyncDisruptions(
   options: SyncDisruptionsOptions = {},
 ): Promise<IngestJobResult> {
   const logger = options.logger ?? console;
+  const executePipeline = options.pipeline ?? syncWeekendDisruptionsPipeline;
 
   logger.info('[Sync Disruptions Runner] Starting TfL weekend disruptions synchronization...');
 
-  const result = await syncWeekendDisruptionsPipeline(options);
+  const result = await executePipeline(options);
 
   logger.info(
     `[Sync Disruptions Runner] Ingested ${result.totalUpserted} disruptions across ${result.disruptions.length} lines for weekend ${result.weekendDate}`,
