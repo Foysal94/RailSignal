@@ -53,6 +53,7 @@ function formatModeLabel(mode: string): string {
   return mode.replace('-', ' ');
 }
 
+// Masks directional transit glyphs with aria-hidden and provides screen-reader phrasing ('to')
 function renderAccessibleHeadline(headline: string): ReactNode {
   if (headline.includes(' ↔ ')) {
     const [start, ...rest] = headline.split(' ↔ ');

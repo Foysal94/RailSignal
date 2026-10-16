@@ -7,6 +7,7 @@ export interface UseDisclosureReturn {
   close: () => void;
 }
 
+// Isolates disclosure state outside presentational components to maintain pure leaf component contracts (client/AGENTS.md).
 export function useDisclosure(initialState = false): UseDisclosureReturn {
   const [isOpen, setIsOpen] = useState(initialState);
 
