@@ -1,13 +1,9 @@
 import { EventEmitter } from 'node:events';
-import type { Job } from 'bullmq';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../../src/db.js';
 import type { SendDisruptionDigestOptions } from '../../src/email/index.js';
-import type { DemoAlertJobData, NotificationJobData } from '../../src/queues/queues.js';
 import {
   closeAllWorkers,
-  createDemoAlertWorkerHandler,
-  createNotificationWorkerHandler,
   processDemoAlertJob,
   processNotificationJob,
   startAllWorkers,
@@ -99,22 +95,12 @@ describe('Notification & Demo Pipeline Integration Tests', () => {
         }),
     };
 
-    // 3. Instantiate worker handler bound to real DB and mock email transport
-    const handler = createNotificationWorkerHandler({
-      processor: (opts) =>
-        processNotificationJob({
-          ...opts,
-          prisma,
-          emailClient: mockEmailClient,
-        }),
+    // 3. Invoke notification processor directly against real DB and mock email transport
+    const result = await processNotificationJob({
+      weekendDate,
+      prisma,
+      emailClient: mockEmailClient,
     });
-
-    const mockJob = {
-      id: 'pipeline-job-1',
-      data: { weekendDate },
-    } as unknown as Job<NotificationJobData>;
-
-    const result = await handler(mockJob);
 
     expect(result.weekendDate).toBe(weekendDate);
     expect(result.totalMatched).toBe(2);
@@ -177,28 +163,22 @@ describe('Notification & Demo Pipeline Integration Tests', () => {
         .mockResolvedValue({ id: 'mock-1', delivered: true, mocked: false }),
     };
 
-    const handler = createNotificationWorkerHandler({
-      processor: (opts) =>
-        processNotificationJob({
-          ...opts,
-          prisma,
-          emailClient: mockEmailClient,
-        }),
-    });
-
-    const mockJob = {
-      id: 'pipeline-job-replay',
-      data: { weekendDate },
-    } as unknown as Job<NotificationJobData>;
-
     // First run: dispatches
-    const firstResult = await handler(mockJob);
+    const firstResult = await processNotificationJob({
+      weekendDate,
+      prisma,
+      emailClient: mockEmailClient,
+    });
     expect(firstResult.totalDispatched).toBe(1);
     expect(firstResult.totalSkipped).toBe(0);
     expect(mockEmailClient.sendDisruptionDigest).toHaveBeenCalledTimes(1);
 
     // Replay / second run: skips completely
-    const secondResult = await handler(mockJob);
+    const secondResult = await processNotificationJob({
+      weekendDate,
+      prisma,
+      emailClient: mockEmailClient,
+    });
     expect(secondResult.totalDispatched).toBe(0);
     expect(secondResult.totalSkipped).toBe(1);
     // Still 1 total invocation across both runs
@@ -226,27 +206,15 @@ describe('Notification & Demo Pipeline Integration Tests', () => {
         .mockResolvedValue({ id: 'demo-msg', delivered: true, mocked: false }),
     };
 
-    const handler = createDemoAlertWorkerHandler({
-      processor: (opts) =>
-        processDemoAlertJob({
-          ...opts,
-          referenceDate: new Date('2026-10-15T12:00:00Z'),
-          prisma,
-          emailClient: mockEmailClient,
-        }),
-    });
-
-    const mockJob = {
-      id: 'demo-job-1',
-      data: {
-        email: 'pipeline-notif-demo@example.com',
-        lines: ['pipe-notif-central'],
-      },
-    } as unknown as Job<DemoAlertJobData>;
-
     const initialSubscriptions = await prisma.subscription.findMany();
 
-    const result = await handler(mockJob);
+    const result = await processDemoAlertJob({
+      email: 'pipeline-notif-demo@example.com',
+      lines: ['pipe-notif-central'],
+      referenceDate: new Date('2026-10-15T12:00:00Z'),
+      prisma,
+      emailClient: mockEmailClient,
+    });
 
     expect(result.email).toBe('pipeline-notif-demo@example.com');
     expect(result.weekendDate).toBe(weekendDate);
