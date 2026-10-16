@@ -8,6 +8,8 @@ on:
       - 'packages/shared/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'tsconfig.base.json'
+      - 'biome.json'
       - '.github/workflows/backend-ci-cd.yml'
   pull_request:
     branches: [main]
@@ -16,6 +18,8 @@ on:
       - 'packages/shared/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'tsconfig.base.json'
+      - 'biome.json'
       - '.github/workflows/backend-ci-cd.yml'
 
 concurrency:
@@ -67,6 +71,8 @@ jobs:
     needs: validate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    env:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -101,16 +107,12 @@ jobs:
       - name: Log in to Azure
         if: env.AZURE_CREDENTIALS != ''
         uses: azure/login@v2
-        env:
-          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ env.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure Container Apps (minReplicas = 0)
         if: env.AZURE_CREDENTIALS != ''
         uses: azure/cli@v2
-        env:
-          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
         with:
           inlineScript: |
             az containerapp update \

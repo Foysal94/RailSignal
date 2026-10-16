@@ -1,16 +1,6 @@
 # Monorepo Docker ignore rules
-node_modules
-*/node_modules
-packages/*/node_modules
-backend/node_modules
-client/node_modules
-
-# Build artifacts
-dist
-*/dist
-packages/*/dist
-backend/dist
-client/dist
+**/node_modules
+**/dist
 
 # Version control and tooling
 .git

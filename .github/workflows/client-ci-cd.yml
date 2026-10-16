@@ -8,6 +8,8 @@ on:
       - 'packages/shared/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'tsconfig.base.json'
+      - 'biome.json'
       - '.github/workflows/client-ci-cd.yml'
   pull_request:
     branches: [main]
@@ -16,6 +18,8 @@ on:
       - 'packages/shared/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'tsconfig.base.json'
+      - 'biome.json'
       - '.github/workflows/client-ci-cd.yml'
 
 concurrency:
