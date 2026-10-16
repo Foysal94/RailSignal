@@ -1,3 +1,4 @@
+import type { DisruptionNotice } from '@railsignal/shared';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import type { ParsedDisruption } from '../../../../src/clients/tfl/types.js';
 import { prisma } from '../../../../src/db.js';
@@ -14,6 +15,13 @@ describe('Disruption Projection Persistence', () => {
     await prisma.$disconnect();
   });
 
+  const mockNotice: DisruptionNotice = {
+    headline: 'Camden Town ↔ High Barnet: No service',
+    corridor: 'Camden Town ↔ High Barnet: No service',
+    timeframe: 'Saturday & Sunday',
+    rawFallback: 'No service between Camden Town and High Barnet',
+  };
+
   const mockDisruption: ParsedDisruption = {
     lineId: 'projection-northern',
     lineName: 'Northern',
@@ -24,6 +32,7 @@ describe('Disruption Projection Persistence', () => {
     validFrom: '2026-10-17T02:00:00.000Z',
     validTo: '2026-10-19T03:30:00.000Z',
     sourceLastUpdated: '2026-10-16T10:00:00.000Z',
+    notices: [mockNotice],
   };
 
   it('Should_idempotently_upsert_weekend_disruptions_into_prisma_without_duplication', async () => {
@@ -174,5 +183,88 @@ describe('Disruption Projection Persistence', () => {
       },
     });
     expect(futureCount).toBe(1);
+  });
+
+  it('Should_materialize_child_disruption_notices_when_projecting_disruptions', async () => {
+    await projectDisruptions({
+      prisma,
+      disruptions: [mockDisruption],
+      weekendDate: '2026-10-17',
+    });
+
+    const persisted = await prisma.weekendDisruption.findFirst({
+      where: { lineId: 'projection-northern', weekendDate: '2026-10-17' },
+      include: { notices: true },
+    });
+
+    expect(persisted).toBeDefined();
+    expect(persisted?.notices).toHaveLength(1);
+    expect(persisted?.notices[0]?.headline).toBe('Camden Town ↔ High Barnet: No service');
+    expect(persisted?.notices[0]?.timeframe).toBe('Saturday & Sunday');
+    expect(persisted?.notices[0]?.disruptionId).toBe(persisted?.id);
+  });
+
+  it('Should_atomically_replace_child_notices_when_re_projecting_disruptions', async () => {
+    await projectDisruptions({
+      prisma,
+      disruptions: [mockDisruption],
+      weekendDate: '2026-10-17',
+    });
+
+    const updatedDisruption: ParsedDisruption = {
+      ...mockDisruption,
+      notices: [
+        {
+          headline: 'Camden Town ↔ Archway: Reduced service',
+          corridor: 'Camden Town ↔ Archway: Reduced service',
+          timeframe: 'Sunday only',
+        },
+      ],
+    };
+
+    await projectDisruptions({
+      prisma,
+      disruptions: [updatedDisruption],
+      weekendDate: '2026-10-17',
+    });
+
+    const persisted = await prisma.weekendDisruption.findFirst({
+      where: { lineId: 'projection-northern', weekendDate: '2026-10-17' },
+      include: { notices: true },
+    });
+
+    expect(persisted?.notices).toHaveLength(1);
+    expect(persisted?.notices[0]?.headline).toBe('Camden Town ↔ Archway: Reduced service');
+    expect(persisted?.notices[0]?.timeframe).toBe('Sunday only');
+  });
+
+  it('Should_cascade_delete_child_notices_when_parent_disruption_is_purged', async () => {
+    await projectDisruptions({
+      prisma,
+      disruptions: [mockDisruption],
+      weekendDate: '2026-10-17',
+    });
+
+    const savedDisruption = await prisma.weekendDisruption.findFirst({
+      where: { lineId: 'projection-northern', weekendDate: '2026-10-17' },
+    });
+    expect(savedDisruption).toBeDefined();
+
+    const noticeCountBefore = await prisma.disruptionNotice.count({
+      where: { disruptionId: savedDisruption?.id },
+    });
+    expect(noticeCountBefore).toBe(1);
+
+    // Reconcile with empty payload to purge
+    await projectDisruptions({
+      prisma,
+      disruptions: [],
+      weekendDate: '2026-10-17',
+    });
+
+    const noticeCountAfter = await prisma.disruptionNotice.count({
+      where: { disruptionId: savedDisruption?.id },
+    });
+    expect(noticeCountAfter).toBe(0);
   });
 });

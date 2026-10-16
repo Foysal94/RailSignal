@@ -38,31 +38,50 @@ describe('GET /api/lines/weekend-status', () => {
   });
 
   it('Should_prioritize_disrupted_lines_at_top_when_disruptions_exist', async () => {
-    await context.prisma.weekendDisruption.createMany({
-      data: [
-        {
-          lineId: 'central',
-          lineName: 'Central',
-          mode: 'tube',
-          statusSeverityDescription: 'Part Closure',
-          corridorDescription: 'No service between White City and Ealing Broadway',
-          weekendDate,
-          validFrom: new Date('2026-10-16T19:00:00Z'),
-          validTo: new Date('2026-10-19T03:30:00Z'),
-          sourceLastUpdated: new Date('2026-10-16T10:00:00Z'),
+    await context.prisma.weekendDisruption.create({
+      data: {
+        lineId: 'central',
+        lineName: 'Central',
+        mode: 'tube',
+        statusSeverityDescription: 'Part Closure',
+        corridorDescription: 'No service between White City and Ealing Broadway',
+        weekendDate,
+        validFrom: new Date('2026-10-16T19:00:00Z'),
+        validTo: new Date('2026-10-19T03:30:00Z'),
+        sourceLastUpdated: new Date('2026-10-16T10:00:00Z'),
+        notices: {
+          create: [
+            {
+              headline: 'White City ↔ Ealing Broadway: No service',
+              corridor: 'White City ↔ Ealing Broadway: No service',
+              rawFallback: 'No service between White City and Ealing Broadway',
+            },
+          ],
         },
-        {
-          lineId: 'victoria',
-          lineName: 'Victoria',
-          mode: 'tube',
-          statusSeverityDescription: 'Planned Closure',
-          corridorDescription: 'Entire line closed for resignalling',
-          weekendDate,
-          validFrom: new Date('2026-10-16T19:00:00Z'),
-          validTo: new Date('2026-10-19T03:30:00Z'),
-          sourceLastUpdated: new Date('2026-10-16T10:00:00Z'),
+      },
+    });
+
+    await context.prisma.weekendDisruption.create({
+      data: {
+        lineId: 'victoria',
+        lineName: 'Victoria',
+        mode: 'tube',
+        statusSeverityDescription: 'Planned Closure',
+        corridorDescription: 'Entire line closed for resignalling',
+        weekendDate,
+        validFrom: new Date('2026-10-16T19:00:00Z'),
+        validTo: new Date('2026-10-19T03:30:00Z'),
+        sourceLastUpdated: new Date('2026-10-16T10:00:00Z'),
+        notices: {
+          create: [
+            {
+              headline: 'Entire line closed for resignalling',
+              corridor: 'Entire line closed for resignalling',
+              rawFallback: 'Entire line closed for resignalling',
+            },
+          ],
         },
-      ],
+      },
     });
 
     const response = await context.app.inject({

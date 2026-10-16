@@ -1,4 +1,10 @@
-import { cleanLinePrefix, TFL_LINES, TFL_LINES_BY_ID, type TflLine } from '@railsignal/shared';
+import {
+  cleanLinePrefix,
+  parseDisruptionNotices,
+  TFL_LINES,
+  TFL_LINES_BY_ID,
+  type TflLine,
+} from '@railsignal/shared';
 import { isDisruptionInWindow } from '../../domain/temporal.js';
 import type { ParsedDisruption, ParseTflDisruptionsOptions, RawTflLineStatus } from './types.js';
 
@@ -236,6 +242,8 @@ export function parseTflDisruptions(options: ParseTflDisruptionsOptions): Parsed
         sourceLastUpdated = new Date().toISOString();
       }
 
+      const notices = parseDisruptionNotices(corridor, line.name);
+
       results.push({
         lineId: line.id,
         lineName: line.name,
@@ -246,6 +254,7 @@ export function parseTflDisruptions(options: ParseTflDisruptionsOptions): Parsed
         validFrom: validFromStr,
         validTo: validToStr,
         sourceLastUpdated,
+        notices,
       });
     }
   }

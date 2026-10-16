@@ -18,7 +18,9 @@
       "!**/prisma/migrations",
       "!*.db*",
       "!**/*.db*",
-      "!package-lock.json"
+      "!package-lock.json",
+      "!.worktrees",
+      "!**/.worktrees"
     ]
   },
   "formatter": {

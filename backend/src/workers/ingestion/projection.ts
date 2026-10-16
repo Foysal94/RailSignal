@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import type { ParsedDisruption } from '../../clients/tfl/types.js';
+import { serializeDisruptionNotice } from '../../domain/disruptionNotices.js';
 
 export interface ProjectDisruptionsOptions {
   prisma: PrismaClient;
@@ -57,6 +58,8 @@ export async function projectDisruptions(
 
     // 2. Upsert incoming parsed disruptions
     for (const disruption of deduplicated) {
+      const serializedNotices = (disruption.notices ?? []).map(serializeDisruptionNotice);
+
       await tx.weekendDisruption.upsert({
         where: {
           lineId_weekendDate_corridorDescription: {
@@ -75,6 +78,9 @@ export async function projectDisruptions(
           validFrom: new Date(disruption.validFrom),
           validTo: new Date(disruption.validTo),
           sourceLastUpdated: new Date(disruption.sourceLastUpdated),
+          notices: {
+            create: serializedNotices,
+          },
         },
         update: {
           lineName: disruption.lineName,
@@ -84,6 +90,10 @@ export async function projectDisruptions(
           validTo: new Date(disruption.validTo),
           sourceLastUpdated: new Date(disruption.sourceLastUpdated),
           projectedAt: new Date(),
+          notices: {
+            deleteMany: {},
+            create: serializedNotices,
+          },
         },
       });
     }

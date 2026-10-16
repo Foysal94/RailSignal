@@ -61,6 +61,7 @@ export async function processDemoAlertJob(
       weekendDate,
       lineId: { in: options.lines },
     },
+    include: { notices: true },
     orderBy: [{ lineName: 'asc' }, { corridorDescription: 'asc' }],
   });
 
