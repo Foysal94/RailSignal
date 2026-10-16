@@ -95,10 +95,10 @@ export default function DisruptionDigest(props: DisruptionDigestProps = {}): Rea
                       </tbody>
                     </table>
                     {item.notices && item.notices.length > 0 ? (
-                      item.notices.map((notice, idx) => (
+                      item.notices.map((notice) => (
                         <div
-                          key={`${item.lineId}-${notice.headline}-${notice.timeframe ?? idx}`}
-                          style={idx > 0 ? emailStyles.noticeContainer : { marginTop: '10px' }}
+                          key={`${item.lineId}-${notice.headline}-${notice.timeframe ?? 'active'}`}
+                          style={emailStyles.noticeContainer}
                         >
                           {notice.timeframe && (
                             <div>
@@ -109,17 +109,25 @@ export default function DisruptionDigest(props: DisruptionDigestProps = {}): Rea
                           )}
                           <Text style={emailStyles.noticeHeadline}>{notice.headline}</Text>
                           {notice.busRoute && (
-                            <div style={emailStyles.busRouteSection}>
+                            <Section style={emailStyles.busRouteSection}>
                               <Text style={emailStyles.busRouteName}>
-                                {notice.busRoute.serviceName}
+                                {notice.busRoute.serviceName} ({notice.busRoute.summary}):
                               </Text>
-                              <Text style={emailStyles.busRouteStops}>
-                                {notice.busRoute.stops.join(' ↔ ')}
-                              </Text>
-                            </div>
+                              {notice.busRoute.stops.map((stop) => (
+                                <Text
+                                  key={`${item.lineId}-${notice.headline}-bus-${stop}`}
+                                  style={emailStyles.busRouteStopBullet}
+                                >
+                                  • {stop}
+                                </Text>
+                              ))}
+                            </Section>
                           )}
                           {notice.details?.map((detail) => (
-                            <Text key={detail} style={emailStyles.noticeDetailItem}>
+                            <Text
+                              key={`${item.lineId}-${notice.headline}-detail-${detail}`}
+                              style={emailStyles.noticeDetailItem}
+                            >
                               • {detail}
                             </Text>
                           ))}

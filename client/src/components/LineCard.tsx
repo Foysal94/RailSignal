@@ -1,5 +1,6 @@
 import type { DisruptionNotice, ReplacementBusRoute, WeekendStatusItem } from '@railsignal/shared';
-import { useState } from 'react';
+import type { ReactNode } from 'react';
+import { useDisclosure } from '../hooks/useDisclosure';
 import { isDisrupted } from './statusSorter';
 
 export interface LineCardProps {
@@ -52,22 +53,52 @@ function formatModeLabel(mode: string): string {
   return mode.replace('-', ' ');
 }
 
+function renderAccessibleHeadline(headline: string): ReactNode {
+  if (headline.includes(' ↔ ')) {
+    const [start, ...rest] = headline.split(' ↔ ');
+    return (
+      <>
+        <span>{start}</span>
+        <span className="sr-only"> to </span>
+        <span className="text-slate-500 mx-1.5" aria-hidden="true">
+          ↔
+        </span>
+        <span>{rest.join(' ↔ ')}</span>
+      </>
+    );
+  }
+  if (headline.includes(' → ')) {
+    const [start, ...rest] = headline.split(' → ');
+    return (
+      <>
+        <span>{start}</span>
+        <span className="sr-only"> to </span>
+        <span className="text-slate-500 mx-1.5" aria-hidden="true">
+          →
+        </span>
+        <span>{rest.join(' → ')}</span>
+      </>
+    );
+  }
+  return headline;
+}
+
 interface ReplacementBusSectionProps {
   busRoute: ReplacementBusRoute;
   id: string;
+  isOpen: boolean;
+  onToggle: () => void;
 }
 
-function ReplacementBusSection({ busRoute, id }: ReplacementBusSectionProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
+function ReplacementBusSection({ busRoute, id, isOpen, onToggle }: ReplacementBusSectionProps) {
   return (
     <div className="space-y-1 pt-1">
       <button
         type="button"
         id={`${id}-btn`}
         aria-expanded={isOpen}
-        aria-controls={`${id}-panel`}
-        onClick={() => setIsOpen((prev) => !prev)}
+        aria-controls={isOpen ? `${id}-panel` : undefined}
+        onClick={onToggle}
         className="w-full min-h-[44px] flex items-center justify-between px-3 py-2 rounded-md bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 text-xs text-slate-300 transition text-left"
       >
         <span className="flex items-center gap-2 font-medium">
@@ -106,9 +137,12 @@ function ReplacementBusSection({ busRoute, id }: ReplacementBusSectionProps) {
           {busRoute.stops.map((stop, sIdx) => (
             <span key={stop}>
               {sIdx > 0 && (
-                <span className="text-slate-500 mx-1.5" aria-hidden="true">
-                  ↔
-                </span>
+                <>
+                  <span className="sr-only">, to </span>
+                  <span className="text-slate-500 mx-1.5" aria-hidden="true">
+                    ↔
+                  </span>
+                </>
               )}
               {stop}
             </span>
@@ -122,14 +156,18 @@ function ReplacementBusSection({ busRoute, id }: ReplacementBusSectionProps) {
 interface NoticeItemProps {
   notice: DisruptionNotice;
   lineId: string;
-  index: number;
 }
 
-function NoticeItem({ notice, lineId, index }: NoticeItemProps) {
+function NoticeItem({ notice, lineId }: NoticeItemProps) {
+  const busDisclosure = useDisclosure(false);
+  const busId = `${lineId}-${notice.headline.replace(/[^a-zA-Z0-9]/g, '-')}-bus`;
+
   return (
     <div className="py-2.5 space-y-1.5 first:pt-2 last:pb-0">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1 sm:gap-2">
-        <h4 className="text-sm font-bold text-slate-100 leading-snug">{notice.headline}</h4>
+        <h4 className="text-sm font-bold text-slate-100 leading-snug">
+          {renderAccessibleHeadline(notice.headline)}
+        </h4>
         {notice.timeframe && (
           <span className="shrink-0 self-start text-xs font-medium px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700/60">
             {notice.timeframe}
@@ -138,7 +176,12 @@ function NoticeItem({ notice, lineId, index }: NoticeItemProps) {
       </div>
 
       {notice.busRoute && (
-        <ReplacementBusSection busRoute={notice.busRoute} id={`${lineId}-notice-${index}-bus`} />
+        <ReplacementBusSection
+          busRoute={notice.busRoute}
+          id={busId}
+          isOpen={busDisclosure.isOpen}
+          onToggle={busDisclosure.toggle}
+        />
       )}
 
       {notice.details && notice.details.length > 0 && (
@@ -156,7 +199,6 @@ export function LineCard({ line }: LineCardProps) {
   const badgeClasses = getStatusBadgeClasses(line);
   const badgeText = !isDisrupted(line) ? 'No Planned Closures' : line.statusSeverityDescription;
 
-  // Collect structured notices from line or nested disruptions
   const notices = line.notices ?? line.disruptions.flatMap((d) => d.notices ?? []);
   const hasStructuredNotices = notices.length > 0;
 
@@ -173,7 +215,6 @@ export function LineCard({ line }: LineCardProps) {
       />
 
       <div className="flex flex-1 flex-col p-4">
-        {/* Card Header Row: Line Name, Mode Badge, and Status Severity Badge */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-semibold text-slate-100">{line.lineName}</h3>
@@ -189,20 +230,17 @@ export function LineCard({ line }: LineCardProps) {
           </div>
         </div>
 
-        {/* Structured Notices (Flattened Layout with Hairline Dividers) */}
         {hasStructuredNotices ? (
           <div className="divide-y divide-slate-800/80 border-t border-slate-800/80 mt-3 pt-1">
-            {notices.map((notice, idx) => (
+            {notices.map((notice) => (
               <NoticeItem
-                key={`${line.lineId}-${notice.headline}-${notice.timeframe ?? idx}`}
+                key={`${line.lineId}-${notice.headline}-${notice.timeframe ?? 'active'}`}
                 notice={notice}
                 lineId={line.lineId}
-                index={idx}
               />
             ))}
           </div>
-        ) : /* Graceful Fallback for Unstructured Descriptions */
-        line.disruptions.length > 0 ? (
+        ) : line.disruptions.length > 0 ? (
           <div className="space-y-1 mt-2">
             {line.disruptions.map((disruption) => (
               <p key={disruption.id} className="text-sm text-slate-300">

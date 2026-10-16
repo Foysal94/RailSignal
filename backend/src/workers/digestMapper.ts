@@ -11,8 +11,6 @@ function isValidLineMode(mode: string): mode is LineMode {
   return (TFL_MODES as readonly string[]).includes(mode);
 }
 
-// Pure domain presentation mapper transforming database disruption projections
-// into styled email digest template items with official TfL branding and contrast borders.
 export function mapDisruptionsToDigestItems(
   disruptions: WeekendDisruption[],
 ): DisruptionDigestItem[] {

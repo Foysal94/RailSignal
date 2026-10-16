@@ -110,7 +110,10 @@ export async function fetchWeekendStatus(
 
     if (matched && matched.length > 0) {
       const mappedDisruptions = matched.map(mapDbDisruptionToContract);
-      const combinedNotices = mappedDisruptions.flatMap((d) => d.notices ?? []);
+      const allNotices = mappedDisruptions.flatMap((d) => d.notices ?? []);
+      const combinedNotices = Array.from(
+        new Map(allNotices.map((n) => [`${n.headline}|${n.timeframe ?? ''}`, n])).values(),
+      );
 
       return {
         lineId: line.id,

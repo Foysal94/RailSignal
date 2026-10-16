@@ -23,6 +23,10 @@ describe('Disruption Notice Parser', () => {
       expect(cleanLinePrefix('Elizabeth line: Sunday 18 October, a reduced service...')).toBe(
         'Sunday 18 October, a reduced service...',
       );
+
+      expect(cleanLinePrefix('LONDON OVERGROUND: Sunday 18 October, no service...')).toBe(
+        'Sunday 18 October, no service...',
+      );
     });
 
     it('Should_strip_dynamic_line_name_when_provided', () => {
@@ -116,12 +120,39 @@ Sunday 18 October, until 1115, no service between Gospel Oak and Stratford. Repl
       expect(notices[0].details?.some((d) => d.includes('stations are CLOSED'))).toBe(true);
     });
 
+    it('Should_parse_stations_with_typographic_apostrophes_and_parentheses', () => {
+      const raw = 'Saturday 17 October, no service between Queen’s Park and Harrow & Wealdstone.';
+      const notices = parseDisruptionNotices(raw, 'Bakerloo');
+
+      expect(notices).toHaveLength(1);
+      expect(notices[0].timeframe).toBe('Saturday 17 October');
+      expect(notices[0].headline).toBe('Queen’s Park ↔ Harrow & Wealdstone: No service');
+      expect(notices[0].corridor).toBe(notices[0].headline);
+
+      const rawWithParens =
+        'Sunday 18 October, no service between Shepherd’s Bush and Kensington (Olympia).';
+      const noticesParens = parseDisruptionNotices(rawWithParens, 'Overground');
+      expect(noticesParens[0].headline).toBe('Shepherd’s Bush ↔ Kensington (Olympia): No service');
+      expect(noticesParens[0].corridor).toBe(noticesParens[0].headline);
+    });
+
+    it('Should_parse_coloned_timeframes_without_leaking_into_details', () => {
+      const raw = 'Sunday 18 October, after 22:15, no service between Camden Road and Stratford.';
+      const notices = parseDisruptionNotices(raw, 'Mildmay line');
+
+      expect(notices).toHaveLength(1);
+      expect(notices[0].timeframe).toBe('Sunday 18 October · After 22:15');
+      expect(notices[0].headline).toBe('Camden Road ↔ Stratford: No service');
+      expect(notices[0].details).toBeUndefined();
+    });
+
     it('Should_safely_fallback_on_unrecognized_free_text_without_data_loss', () => {
       const oddText = 'Service operates under special timing arrangements due to civil works.';
       const notices = parseDisruptionNotices(oddText);
 
       expect(notices).toHaveLength(1);
       expect(notices[0].headline).toBe(oddText);
+      expect(notices[0].corridor).toBe(oddText);
       expect(notices[0].rawFallback).toBe(oddText);
     });
   });

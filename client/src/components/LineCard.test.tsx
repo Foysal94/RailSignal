@@ -193,10 +193,12 @@ describe('LineCard Component', () => {
       notices: [
         {
           headline: 'Gospel Oak ↔ Stratford: No service',
+          corridor: 'Gospel Oak ↔ Stratford: No service',
           timeframe: 'Sunday · Until 11:15',
         },
         {
           headline: 'Camden Road ↔ Stratford: No service',
+          corridor: 'Camden Road ↔ Stratford: No service',
           timeframe: 'Sunday · After 22:15',
         },
       ],
@@ -205,9 +207,13 @@ describe('LineCard Component', () => {
 
     render(<LineCard line={item} />);
 
-    expect(screen.getByText('Gospel Oak ↔ Stratford: No service')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Gospel Oak to Stratford: No service/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Sunday · Until 11:15')).toBeInTheDocument();
-    expect(screen.getByText('Camden Road ↔ Stratford: No service')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Camden Road to Stratford: No service/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Sunday · After 22:15')).toBeInTheDocument();
   });
 
@@ -222,6 +228,7 @@ describe('LineCard Component', () => {
       notices: [
         {
           headline: 'Gospel Oak ↔ Stratford: No service',
+          corridor: 'Gospel Oak ↔ Stratford: No service',
           timeframe: 'Sunday · Until 11:15',
           busRoute: {
             serviceName: 'Replacement Bus Service S',
@@ -261,6 +268,7 @@ describe('LineCard Component', () => {
       notices: [
         {
           headline: 'Shadwell ↔ Tower Gateway: No service',
+          corridor: 'Shadwell ↔ Tower Gateway: No service',
           timeframe: 'Sunday 18 October',
         },
       ],

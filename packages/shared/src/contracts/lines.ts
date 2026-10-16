@@ -27,6 +27,7 @@ export type ReplacementBusRoute = Static<typeof ReplacementBusRouteSchema>;
 
 export const DisruptionNoticeSchema = Type.Object({
   headline: Type.String(),
+  corridor: Type.String(),
   timeframe: Type.Optional(Type.String()),
   busRoute: Type.Optional(ReplacementBusRouteSchema),
   details: Type.Optional(Type.Array(Type.String())),

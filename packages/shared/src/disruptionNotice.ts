@@ -1,9 +1,12 @@
 import type { DisruptionNotice, ReplacementBusRoute } from './contracts/lines.js';
 
 const KNOWN_LINE_PREFIX_PATTERN =
-  /^(?:docklands light railway|dlr|elizabeth line|overground|bakerloo|central|circle|district|hammersmith & city|hammersmith and city|jubilee|metropolitan|northern|piccadilly|victoria|waterloo & city|waterloo and city|lioness line|mildmay line|windrush line|weaver line|suffragette line|liberty line)(?:\s+line)?\s*:\s*/i;
+  /^(?:docklands light railway|dlr|elizabeth line|(?:london\s+)?overground|bakerloo|central|circle|district|hammersmith & city|hammersmith and city|jubilee|metropolitan|northern|piccadilly|victoria|waterloo & city|waterloo and city|lioness line|mildmay line|windrush line|weaver line|suffragette line|liberty line)(?:\s+line)?\s*:\s*/i;
 
-// Strips redundant line or mode names from the start of descriptions
+const DAYS_PATTERN = 'Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday';
+// Supports typographic apostrophe ’ (\u2019) and station disambiguation parentheses e.g. Kensington (Olympia)
+const STATION_PATTERN = "[A-Za-z0-9\\s'&’./()\\-]+?";
+
 export function cleanLinePrefix(text: string, lineName?: string): string {
   let cleaned = text.trim();
   cleaned = cleaned.replace(KNOWN_LINE_PREFIX_PATTERN, '');
@@ -27,18 +30,17 @@ function formatRawTime(timeStr: string): string {
 function formatTimeframeString(raw: string): string {
   let formatted = raw.trim().replace(/,\s*$/, '');
   formatted = formatted.replace(
-    /\b(after|until|from)\s+(\d{4})\b/gi,
+    /\b(after|until|from)\s+(\d{4}|\d{1,2}:\d{2})\b/gi,
     (_, prep, time) => `${prep} ${formatRawTime(time)}`,
   );
   formatted = formatted.replace(
     /,\s*(after|until|from)\s+(\d{1,2}:\d{2})/gi,
     (_, prep, time) => ` · ${prep.charAt(0).toUpperCase() + prep.slice(1).toLowerCase()} ${time}`,
   );
-  formatted = formatted.replace(/\s+and\s+/gi, ' & ');
+  formatted = formatted.replace(/\s+(?:and|to)\s+/gi, ' & ');
   return formatted;
 }
 
-// Splits composite descriptions into individual time-scoped operational clauses
 export function splitDisruptionClauses(text: string): string[] {
   // TfL descriptions concatenate notices via newlines or mid-paragraph sentence starts
   const lines = text
@@ -49,8 +51,10 @@ export function splitDisruptionClauses(text: string): string[] {
 
   for (const line of lines) {
     // Split on day boundaries if multiple notices are crammed into a single line
-    const daySplitRegex =
-      /(?<=[.!?]|\bnot run|\boperate[sd]?|\bclosed)\s+(?=(?:On\s+)?(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+\d{1,2}\b)/gi;
+    const daySplitRegex = new RegExp(
+      `(?<=[.!?]|\\bnot run|\\boperate[sd]?|\\bclosed)\\s+(?=(?:On\\s+)?(?:${DAYS_PATTERN})\\s+\\d{1,2}\\b)`,
+      'gi',
+    );
     const parts = line
       .split(daySplitRegex)
       .map((p) => p.trim())
@@ -62,7 +66,6 @@ export function splitDisruptionClauses(text: string): string[] {
 }
 
 function parseReplacementBus(text: string): { route?: ReplacementBusRoute; remainingText: string } {
-  // 1. Look for explicit service code (1-3 chars like 'S' or 'A1')
   const codeMatch = text.match(
     /(?:(?:Rail\s+)?replacement\s+bus(?:\s+service)?\s+([A-Z0-9]{1,3})\b|Service\s+([A-Z0-9]{1,3})\s*:)/i,
   );
@@ -71,7 +74,6 @@ function parseReplacementBus(text: string): { route?: ReplacementBusRoute; remai
     ? `Replacement Bus Service ${serviceCode}`
     : 'Replacement Bus Service';
 
-  // 2. Match the overall bus route sentence
   const busMatch = text.match(
     /(?:(?:Rail\s+)?replacement\s+bus(?:es)?(?:\s+service)?(?:\s+[A-Za-z0-9]+)?(?:\s+will\s+run\s+as\s+follows:?)?|Service\s+[A-Za-z0-9]+\s*:)\s*(?:will run as follows:|operates between|:)?\s*([^.]+?)(?:\.|$)/i,
   );
@@ -83,7 +85,7 @@ function parseReplacementBus(text: string): { route?: ReplacementBusRoute; remai
   const fullMatch = busMatch[0];
   const rawRouteSection = busMatch[1]?.trim() || '';
 
-  // Extract station stops separated by dashes, 'via', or commas
+  // Station stops in TfL replacement bus schedules use dashes, 'via', or commas
   let stops = rawRouteSection
     .split(/\s*[-–—]\s*/)
     .map((s) => s.replace(/\s*\([^)]*\)/g, '').trim())
@@ -113,12 +115,13 @@ export function parseSingleDisruptionNotice(
 ): DisruptionNotice {
   const cleaned = cleanLinePrefix(rawClause, lineName);
   if (!cleaned) {
-    return { headline: 'Service Disruption' };
+    return { headline: 'Service Disruption', corridor: 'Service Disruption' };
   }
 
-  // 1. Timeframe extraction
-  const timeframeRegex =
-    /^(?:On\s+)?((?:(?:Saturday|Sunday|Friday|Monday)\s+\d{1,2}(?:\s+[A-Za-z]+)?\s*(?:&|and)\s*(?:Saturday|Sunday|Friday|Monday)\s+\d{1,2}(?:\s+[A-Za-z]+)?|(?:Saturday|Sunday|Friday|Monday)\s+\d{1,2}(?:\s+[A-Za-z]+)?|(?:Saturday|Sunday|Friday|Monday))\s*(?:,\s*(?:after|until|from)\s+\d{4})?)(?:,\s*|:\s*|\s+-\s+)?/i;
+  const timeframeRegex = new RegExp(
+    `^(?:On\\s+)?((?:(?:${DAYS_PATTERN})\\s+\\d{1,2}(?:\\s+[A-Za-z]+)?\\s*(?:&|and|to)\\s*(?:${DAYS_PATTERN})\\s+\\d{1,2}(?:\\s+[A-Za-z]+)?|(?:${DAYS_PATTERN})\\s+\\d{1,2}(?:\\s+[A-Za-z]+)?|(?:${DAYS_PATTERN}))\\s*(?:,\\s*(?:after|until|from)\\s*(?:\\d{4}|\\d{1,2}:\\d{2}))?)(?:,\\s*|:\\s*|\\s+-\\s+)?`,
+    'i',
+  );
 
   const timeframeMatch = cleaned.match(timeframeRegex);
   let timeframe: string | undefined;
@@ -129,20 +132,25 @@ export function parseSingleDisruptionNotice(
     body = cleaned.slice(timeframeMatch[0].length).trim();
   }
 
-  // 2. Corridor / Headline extraction
   let headline: string | undefined;
   const details: string[] = [];
 
   const closureBetweenMatch = body.match(
-    /(?:no service|closed|part closed|part suspended)\s+between\s+([A-Za-z0-9\s'&./-]+?)\s+and\s+([A-Za-z0-9\s'&./-]+?)(?:\.|$|due to)/i,
+    new RegExp(
+      `(?:no service|closed|part closed|part suspended)\\s+between\\s+(${STATION_PATTERN})\\s+and\\s+(${STATION_PATTERN})(?:\\.|$|due to)`,
+      'i',
+    ),
   );
 
   const reducedServiceMatch = body.match(
-    /(?:a reduced service (?:operates|will run))\s+between\s+([A-Za-z0-9\s'&./-]+?)\s+and\s+([A-Za-z0-9\s'&./-]+?)(?:\.|$|due to)/i,
+    new RegExp(
+      `(?:a reduced service (?:operates|will run))\\s+between\\s+(${STATION_PATTERN})\\s+and\\s+(${STATION_PATTERN})(?:\\.|$|due to)`,
+      'i',
+    ),
   );
 
   const trainAlterationMatch = body.match(
-    /(?:the\s+\d{4}\s+train\s+from\s+([A-Za-z0-9\s]+?)\s+to\s+([A-Za-z0-9\s]+?)\b[^.]*)/i,
+    /(?:the\s+\d{4}\s+train\s+from\s+([A-Za-z0-9\s'&’./()-]+?)\s+to\s+([A-Za-z0-9\s'&’./()-]+?)\b[^.]*)/i,
   );
 
   if (closureBetweenMatch) {
@@ -157,26 +165,22 @@ export function parseSingleDisruptionNotice(
     body = body.replace(reducedServiceMatch[0], '').trim();
   } else if (trainAlterationMatch) {
     headline = `${trainAlterationMatch[1].trim()} → ${trainAlterationMatch[2].trim()}: Service Alterations`;
-    // Keep alteration sentence in details if useful
     body = body.replace(trainAlterationMatch[0], '').trim();
   } else {
-    // First sentence fallback
     const firstSentence = body.split(/[.;]\s/)[0]?.trim();
     headline = firstSentence && firstSentence.length > 5 ? firstSentence : cleaned;
     body = body.slice(headline.length).trim();
   }
 
-  // 3. Bus route extraction from remaining body
   const { route: busRoute, remainingText } = parseReplacementBus(body);
   body = remainingText;
 
-  // 4. Secondary advice and notes extraction
   const lastTrainsMatch = body.match(/Last through trains?:?\s*([^.]+?)(?:\.|$)/i);
   if (lastTrainsMatch) {
     details.push(`Last through trains: ${lastTrainsMatch[1].trim()}`);
   }
 
-  const stationClosedMatch = body.match(/([A-Za-z0-9,\s&]+ stations? (?:are|is) CLOSED)/i);
+  const stationClosedMatch = body.match(/([A-Za-z0-9,\s&'’./()-]+ stations? (?:are|is) CLOSED)/i);
   if (stationClosedMatch) {
     details.push(stationClosedMatch[1].trim());
   }
@@ -186,7 +190,6 @@ export function parseSingleDisruptionNotice(
     details.push(localBusMatch[1].trim());
   }
 
-  // Additional narrative sentences not yet captured in headline/busRoute
   const remainingSentences = body
     .split(/\.\s+/)
     .map((s) => s.trim())
@@ -207,6 +210,7 @@ export function parseSingleDisruptionNotice(
 
   return {
     headline,
+    corridor: headline,
     ...(timeframe ? { timeframe } : {}),
     ...(busRoute ? { busRoute } : {}),
     ...(details.length > 0 ? { details } : {}),

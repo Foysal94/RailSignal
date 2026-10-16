@@ -134,6 +134,12 @@ export const emailStyles = {
     lineHeight: '18px',
     margin: 0,
   },
+  busRouteStopBullet: {
+    color: '#475569',
+    fontSize: '12px',
+    lineHeight: '18px',
+    margin: '2px 0 0 8px',
+  },
   noticeDetailItem: {
     color: '#64748b',
     fontSize: '12px',
