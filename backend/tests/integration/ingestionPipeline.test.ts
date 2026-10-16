@@ -34,6 +34,13 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       validFrom: '2026-10-16T19:00:00.000Z',
       validTo: '2026-10-19T03:30:00.000Z',
       sourceLastUpdated: '2026-10-16T08:00:00.000Z',
+      notices: [
+        {
+          headline: 'White City ↔ Ealing Broadway: No service',
+          corridor: 'White City ↔ Ealing Broadway: No service',
+          rawFallback: 'No service between White City and Ealing Broadway',
+        },
+      ],
     },
     {
       lineId: 'pipeline-northern',
@@ -45,6 +52,13 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       validFrom: '2026-10-16T19:00:00.000Z',
       validTo: '2026-10-19T03:30:00.000Z',
       sourceLastUpdated: '2026-10-16T08:30:00.000Z',
+      notices: [
+        {
+          headline: 'Camden Town ↔ High Barnet: No service',
+          corridor: 'Camden Town ↔ High Barnet: No service',
+          rawFallback: 'No service between Camden Town and High Barnet',
+        },
+      ],
     },
   ];
 
@@ -79,6 +93,7 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     // Verify observable Prisma SQLite persistence
     const persisted = await prisma.weekendDisruption.findMany({
       where: { lineId: { startsWith: 'pipeline-' } },
+      include: { notices: true },
       orderBy: { lineId: 'asc' },
     });
     expect(persisted).toHaveLength(2);
@@ -86,8 +101,12 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     expect(persisted[0].corridorDescription).toBe(
       'No service between White City and Ealing Broadway',
     );
+    expect(persisted[0].notices).toHaveLength(1);
+    expect(persisted[0].notices[0].headline).toBe('White City ↔ Ealing Broadway: No service');
     expect(persisted[1].lineId).toBe('pipeline-northern');
     expect(persisted[1].statusSeverityDescription).toBe('Planned Closure');
+    expect(persisted[1].notices).toHaveLength(1);
+    expect(persisted[1].notices[0].headline).toBe('Camden Town ↔ High Barnet: No service');
 
     expect(notificationQueueDouble.jobs).toHaveLength(1);
     const downstreamJob = notificationQueueDouble.jobs[0];

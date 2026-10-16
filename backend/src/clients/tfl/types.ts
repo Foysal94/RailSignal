@@ -1,4 +1,4 @@
-import type { LineMode } from '@railsignal/shared';
+import type { DisruptionNotice, LineMode } from '@railsignal/shared';
 import type { WeekendWindow, WeekendWindowOptions } from '../../domain/temporal.js';
 
 export type { WeekendWindow, WeekendWindowOptions };
@@ -61,6 +61,7 @@ export interface ParsedDisruption {
   validFrom: string;
   validTo: string;
   sourceLastUpdated: string;
+  notices: DisruptionNotice[];
 }
 
 export interface ParseTflDisruptionsOptions {

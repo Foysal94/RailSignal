@@ -38,8 +38,23 @@ model WeekendDisruption {
   validTo                   DateTime
   sourceLastUpdated         DateTime
   projectedAt               DateTime @default(now())
+  notices                   DisruptionNotice[]
 
   @@index([lineId])
   @@index([weekendDate])
   @@unique([lineId, weekendDate, corridorDescription])
+}
+
+model DisruptionNotice {
+  id           String            @id @default(uuid())
+  disruptionId String
+  headline     String
+  corridor     String
+  timeframe    String?
+  busRouteJson String?
+  detailsJson  String?
+  rawFallback  String?
+  disruption   WeekendDisruption @relation(fields: [disruptionId], references: [id], onDelete: Cascade)
+
+  @@index([disruptionId])
 }

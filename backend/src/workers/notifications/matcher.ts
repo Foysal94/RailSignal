@@ -1,12 +1,8 @@
-import type {
-  PrismaClient,
-  Subscription,
-  SubscriptionLine,
-  WeekendDisruption,
-} from '@prisma/client';
+import type { PrismaClient, Subscription, SubscriptionLine } from '@prisma/client';
 import { prisma as defaultPrisma } from '../../db.js';
+import type { WeekendDisruptionWithNotices } from '../../domain/disruptionNotices.js';
 
-export interface MatchedSubscriber<TDisruption = WeekendDisruption> {
+export interface MatchedSubscriber<TDisruption = WeekendDisruptionWithNotices> {
   subscriptionId: string;
   email: string;
   unsubscribeToken: string;
@@ -76,12 +72,13 @@ export function matchSubscribersToDisruptions<
  */
 export async function matchSubscribersForWeekend(
   options: MatchSubscribersOptions,
-): Promise<MatchedSubscriber<WeekendDisruption>[]> {
+): Promise<MatchedSubscriber<WeekendDisruptionWithNotices>[]> {
   const db = options.prisma ?? defaultPrisma;
   const weekendDate = options.weekendDate;
 
   const weekendDisruptions = await db.weekendDisruption.findMany({
     where: { weekendDate },
+    include: { notices: true },
     orderBy: [{ lineName: 'asc' }, { corridorDescription: 'asc' }],
   });
 

@@ -161,3 +161,6 @@ vite.config.ts.timestamp-*
 
 # graphify
 graphify-out/
+
+# Git worktrees
+.worktrees/

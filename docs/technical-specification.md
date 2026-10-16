@@ -30,7 +30,9 @@ RailSignal/
 │   │   ├── 0003-bullmq-upstash-quota-and-scale-to-zero.md
 │   │   ├── 0004-cockatiel-resilience-and-react-email.md
 │   │   ├── 0005-typebox-validation-and-shared-contracts.md
-│   │   └── 0006-frontend-design-system-and-ui-architecture.md
+│   │   ├── 0006-frontend-design-system-and-ui-architecture.md
+│   │   ├── 0007-deep-email-delivery-client.md
+│   │   └── 0008-materialized-disruption-notices.md
 │   └── technical-specification.md
 ├── infra/                              # Terraform (Zero-cost Azure resources)
 │   ├── main.tf
@@ -79,7 +81,8 @@ RailSignal/
 │   │   │       ├── types.ts            # Internal TfL DTOs (RawTflDisruption) & ParsedDisruption
 │   │   │       └── index.ts            # Sealed public barrel (TflClient, ParsedDisruption, TflHttpError)
 │   │   ├── domain/                     # Core domain business rules
-│   │   │   └── temporal.ts             # Europe/London weekend operational window calculator
+│   │   │   ├── temporal.ts             # Europe/London weekend operational window calculator
+│   │   │   └── disruptionNotices.ts    # Materialized disruption notice serialization & domain mapping
 │   │   ├── email/                      # Email notifications
 │   │   │   ├── client.ts               # Deep EmailClient module (Resend SDK, retries, console mock)
 │   │   │   ├── digest.ts               # Domain email dispatcher (DisruptionDigest coordination)
@@ -157,21 +160,36 @@ model SubscriptionLine {
 }
 
 model WeekendDisruption {
-  id                        String   @id @default(uuid())
+  id                        String             @id @default(uuid())
   lineId                    String
   lineName                  String
-  mode                      String   // "tube", "elizabeth-line", "overground", "dlr"
-  statusSeverityDescription String   // "Part Closure", "Planned Closure", etc.
-  corridorDescription       String   // E.g. "No service between Camden Town and High Barnet"
-  weekendDate               String   // ISO Date "YYYY-MM-DD"
+  mode                      String             // "tube", "elizabeth-line", "overground", "dlr"
+  statusSeverityDescription String             // "Part Closure", "Planned Closure", etc.
+  corridorDescription       String             // E.g. "No service between Camden Town and High Barnet"
+  weekendDate               String             // ISO Date "YYYY-MM-DD"
   validFrom                 DateTime
   validTo                   DateTime
   sourceLastUpdated         DateTime
-  projectedAt               DateTime @default(now())
+  projectedAt               DateTime           @default(now())
+  notices                   DisruptionNotice[]
 
   @@index([lineId])
   @@index([weekendDate])
   @@unique([lineId, weekendDate, corridorDescription])
+}
+
+model DisruptionNotice {
+  id           String            @id @default(uuid())
+  disruptionId String
+  headline     String
+  corridor     String
+  timeframe    String?
+  busRouteJson String?           // Serialized ReplacementBusRoute JSON or null
+  detailsJson  String?           // Serialized string[] of secondary bullet points
+  rawFallback  String?
+  disruption   WeekendDisruption @relation(fields: [disruptionId], references: [id], onDelete: Cascade)
+
+  @@index([disruptionId])
 }
 ```
 
@@ -187,7 +205,7 @@ model WeekendDisruption {
 ### 4.2 Queues & Job Flow
 1. **`ingest-disruptions-queue`**:
    - Triggered every Friday at 09:00 UK time (via ACA Scheduled Job or manual API trigger).
-   - Worker fetches TfL disruptions via `tflClient`, normalizes against the upcoming weekend window (Friday 19:00 to Monday 04:30 London local time), upserts `WeekendDisruption` records in Prisma, and enqueues jobs to `notification-dispatch-queue`.
+   - Worker fetches TfL disruptions via `tflClient`, normalizes against the upcoming weekend window (Friday 19:00 to Monday 04:30 London local time), parses and materializes structured `DisruptionNotice` child records alongside `WeekendDisruption` in Prisma via atomic transactions (ADR 0008), and enqueues jobs to `notification-dispatch-queue`. Downstream read paths query pre-materialized notices directly without runtime regex parsing.
 2. **`notification-dispatch-queue`**:
    - Consumes disruption events per affected subscriber.
    - Enforces idempotency: verifies `lastNotifiedWeekendDate !== currentWeekendDate` before sending email.
