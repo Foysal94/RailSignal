@@ -7,9 +7,7 @@ import {
   syncWeekendDisruptionsPipeline,
 } from '../workers/ingestion/pipeline.js';
 
-export interface SyncDisruptionsOptions extends SyncWeekendDisruptionsPipelineOptions {
-  pipeline?: typeof syncWeekendDisruptionsPipeline | undefined;
-}
+export type SyncDisruptionsOptions = SyncWeekendDisruptionsPipelineOptions;
 
 export interface SyncDisruptionsCliOptions extends SyncDisruptionsOptions {
   closeQueues?: (() => Promise<void>) | undefined;
@@ -20,11 +18,10 @@ export async function runSyncDisruptions(
   options: SyncDisruptionsOptions = {},
 ): Promise<IngestJobResult> {
   const logger = options.logger ?? console;
-  const executePipeline = options.pipeline ?? syncWeekendDisruptionsPipeline;
 
   logger.info('[Sync Disruptions Runner] Starting TfL weekend disruptions synchronization...');
 
-  const result = await executePipeline(options);
+  const result = await syncWeekendDisruptionsPipeline(options);
 
   logger.info(
     `[Sync Disruptions Runner] Ingested ${result.totalUpserted} disruptions across ${result.disruptions.length} lines for weekend ${result.weekendDate}`,
@@ -41,19 +38,16 @@ export async function runSyncDisruptionsCli(
   const db = options.prisma ?? defaultPrisma;
   const exit = options.exit ?? ((code: number) => process.exit(code));
 
+  let exitCode = 0;
+
   try {
     const result = await runSyncDisruptions(options);
 
     logger.info(
       `[Sync Disruptions Runner] Synchronization completed successfully for weekend ${result.weekendDate}. (Fetched: ${result.totalFetched}, Upserted: ${result.totalUpserted})`,
     );
-
-    await closeQueues();
-    await db.$disconnect();
-
-    exit(0);
-    return 0;
   } catch (error) {
+    exitCode = 1;
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
 
@@ -61,22 +55,13 @@ export async function runSyncDisruptionsCli(
       error,
       stack,
     });
-
-    try {
-      await closeQueues();
-    } catch {
-      // Suppress secondary queue teardown errors during failure reporting
-    }
-
-    try {
-      await db.$disconnect();
-    } catch {
-      // Suppress secondary DB teardown errors during failure reporting
-    }
-
-    exit(1);
-    return 1;
+  } finally {
+    // Teardown connections cleanly in all cases, suppressing secondary teardown faults
+    await Promise.allSettled([closeQueues().catch(() => {}), db.$disconnect().catch(() => {})]);
   }
+
+  exit(exitCode);
+  return exitCode;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {

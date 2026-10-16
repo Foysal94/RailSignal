@@ -67,7 +67,6 @@ export async function projectDisruptions(
       }
     }
 
-    // 2. Upsert incoming parsed disruptions
     for (const disruption of deduplicated) {
       const serializedNotices = (disruption.notices ?? []).map(serializeDisruptionNotice);
 
@@ -169,9 +168,15 @@ export async function syncWeekendDisruptionsPipeline(
       `[Ingestion Pipeline] REDIS_URL not configured; skipping downstream notification queue enqueue in ${appConfig.nodeEnv}`,
     );
   } else {
-    await queue.add('dispatch-weekend-digest', {
-      weekendDate,
-    });
+    await queue.add(
+      'dispatch-weekend-digest',
+      {
+        weekendDate,
+      },
+      {
+        jobId: `dispatch-weekend-digest-${weekendDate}`,
+      },
+    );
 
     logger.info(`[Ingestion Pipeline] Notification job enqueued for weekend ${weekendDate}`);
   }

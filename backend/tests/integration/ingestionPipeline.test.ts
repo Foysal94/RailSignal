@@ -171,4 +171,21 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     expect(notificationQueueDouble.jobs).toHaveLength(1);
     expect(notificationQueueDouble.jobs[0].data.weekendDate).toBe('2026-10-16');
   });
+
+  it('Should_propagate_tfl_client_errors_without_enqueuing_downstream_notification_jobs', async () => {
+    const mockTflClient: Pick<TflClient, 'getWeekendDisruptions'> = {
+      getWeekendDisruptions: vi.fn().mockRejectedValue(new Error('TfL 503 Service Unavailable')),
+    };
+
+    await expect(
+      syncWeekendDisruptionsPipeline({
+        referenceDate: '2026-10-15T12:00:00Z',
+        notificationQueue: notificationQueueDouble,
+        tflClient: mockTflClient,
+        prisma,
+      }),
+    ).rejects.toThrow('TfL 503 Service Unavailable');
+
+    expect(notificationQueueDouble.jobs).toHaveLength(0);
+  });
 });
