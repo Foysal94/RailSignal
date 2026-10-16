@@ -1,0 +1,57 @@
+name: Client CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/client-ci-cd.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'client/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/client-ci-cd.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-build:
+    name: Lint, Typecheck, Test & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared contracts
+        run: npm run build:shared
+
+      - name: Check formatting and linting (Biome)
+        run: npm run lint
+
+      - name: Typecheck
+        run: |
+          npm run typecheck --workspace=@railsignal/shared
+          npm run typecheck --workspace=@railsignal/client
+
+      - name: Run Vitest component tests
+        run: npm run test --workspace=@railsignal/client
+
+      - name: Compile Vite production build
+        run: npm run build:client

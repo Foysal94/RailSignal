@@ -22,7 +22,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prisma:prep-prod": "npm run prisma:prep-prod --workspace=@railsignal/backend"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
