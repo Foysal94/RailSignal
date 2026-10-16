@@ -1,17 +1,25 @@
-import type { DisruptionNotice as DbDisruptionNotice, Prisma } from '@prisma/client';
+import type {
+  DisruptionNotice as DbDisruptionNotice,
+  WeekendDisruption as DbWeekendDisruption,
+  Prisma,
+} from '@prisma/client';
 import type { DisruptionNotice, ReplacementBusRoute } from '@railsignal/shared';
+
+export type WeekendDisruptionWithNotices = DbWeekendDisruption & {
+  notices?: DbDisruptionNotice[] | undefined;
+};
 
 export type DisruptionNoticeCreateInput = Omit<
   Prisma.DisruptionNoticeCreateWithoutDisruptionInput,
   'id'
 >;
 
-// Maps a domain DisruptionNotice into normalized Prisma columns preserving SQLite & PostgreSQL parity.
 export function serializeDisruptionNotice(notice: DisruptionNotice): DisruptionNoticeCreateInput {
   return {
     headline: notice.headline,
     corridor: notice.corridor,
     timeframe: notice.timeframe ?? null,
+    // Complex nested objects are serialized to JSON strings for SQLite and PostgreSQL dialect parity (ADR 0002).
     busRouteJson: notice.busRoute ? JSON.stringify(notice.busRoute) : null,
     detailsJson:
       notice.details && notice.details.length > 0 ? JSON.stringify(notice.details) : null,
@@ -19,7 +27,6 @@ export function serializeDisruptionNotice(notice: DisruptionNotice): DisruptionN
   };
 }
 
-// Maps a materialized database DisruptionNotice row into the shared API and email contract.
 export function deserializeDisruptionNotice(record: DbDisruptionNotice): DisruptionNotice {
   let busRoute: ReplacementBusRoute | undefined;
   if (record.busRouteJson) {

@@ -1,11 +1,11 @@
-import type { DisruptionNotice as DbDisruptionNotice, WeekendDisruption } from '@prisma/client';
 import { getTflLineById, type LineMode, TFL_MODES } from '@railsignal/shared';
-import { deserializeDisruptionNotice } from '../domain/disruptionNotices.js';
+import {
+  deserializeDisruptionNotice,
+  type WeekendDisruptionWithNotices,
+} from '../domain/disruptionNotices.js';
 import type { DisruptionDigestItem } from '../email/templates/DisruptionDigest.js';
 
-export type WeekendDisruptionWithNotices = WeekendDisruption & {
-  notices?: DbDisruptionNotice[] | undefined;
-};
+export type { WeekendDisruptionWithNotices };
 
 function isValidLineMode(mode: string): mode is LineMode {
   return (TFL_MODES as readonly string[]).includes(mode);

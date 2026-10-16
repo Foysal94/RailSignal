@@ -1,6 +1,6 @@
 import type { PrismaClient, Subscription, SubscriptionLine } from '@prisma/client';
 import { prisma as defaultPrisma } from '../../db.js';
-import type { WeekendDisruptionWithNotices } from '../digestMapper.js';
+import type { WeekendDisruptionWithNotices } from '../../domain/disruptionNotices.js';
 
 export interface MatchedSubscriber<TDisruption = WeekendDisruptionWithNotices> {
   subscriptionId: string;

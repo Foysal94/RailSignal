@@ -1,8 +1,4 @@
-import type {
-  WeekendDisruption as DbDisruption,
-  DisruptionNotice as DbDisruptionNotice,
-  PrismaClient,
-} from '@prisma/client';
+import type { WeekendDisruption as DbDisruption, PrismaClient } from '@prisma/client';
 import {
   type LineMode,
   TFL_LINES,
@@ -11,19 +7,18 @@ import {
   type WeekendStatusResponse,
 } from '@railsignal/shared';
 import { prisma as defaultPrisma } from '../../db.js';
-import { deserializeDisruptionNotice } from '../../domain/disruptionNotices.js';
+import {
+  deserializeDisruptionNotice,
+  type WeekendDisruptionWithNotices,
+} from '../../domain/disruptionNotices.js';
 import { getUpcomingWeekendWindow } from '../../domain/temporal.js';
-
-export type DbDisruptionWithNotices = DbDisruption & {
-  notices?: DbDisruptionNotice[] | undefined;
-};
 
 export interface FetchWeekendStatusOptions {
   prisma?: PrismaClient | undefined;
   referenceDate?: string | Date | undefined;
 }
 
-function mapDbDisruptionToContract(item: DbDisruptionWithNotices): WeekendDisruption {
+function mapDbDisruptionToContract(item: WeekendDisruptionWithNotices): WeekendDisruption {
   const notices = (item.notices ?? []).map(deserializeDisruptionNotice);
   return {
     id: item.id,
@@ -101,7 +96,7 @@ export async function fetchWeekendStatus(
   });
 
   // Group disruptions by lineId in O(N)
-  const disruptionsByLineId = new Map<string, DbDisruptionWithNotices[]>();
+  const disruptionsByLineId = new Map<string, WeekendDisruptionWithNotices[]>();
   let latestProjectedAt: Date | undefined;
 
   for (const disruption of dbDisruptions) {
