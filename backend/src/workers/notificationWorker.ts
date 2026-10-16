@@ -14,35 +14,32 @@ export interface NotificationWorkerOptions
 export function createNotificationWorker(
   options: NotificationWorkerOptions = {},
 ): Worker<NotificationJobData, ProcessNotificationJobResult, string> {
-  const executeProcessor = options.processor ?? processNotificationJob;
+  const { processor, ...managedOptions } = options;
+  const executeProcessor = processor ?? processNotificationJob;
   const logger = options.logger ?? console;
 
-  return createManagedWorker<NotificationJobData, ProcessNotificationJobResult>(
-    QUEUE_NAMES.NOTIFICATION,
-    async (job) => {
+  return createManagedWorker<NotificationJobData, ProcessNotificationJobResult>({
+    queueName: QUEUE_NAMES.NOTIFICATION,
+    processor: async (job) => {
+      if (!job.data?.weekendDate) {
+        throw new Error(`[Notification Worker] Missing weekendDate in job data for job ${job.id}`);
+      }
+
       logger.info(
-        `[Notification Worker] Processing job ${job.id} for weekend ${job.data?.weekendDate}...`,
+        `[Notification Worker] Processing job ${job.id} for weekend ${job.data.weekendDate}...`,
       );
 
-      const result = await executeProcessor({
+      return executeProcessor({
         weekendDate: job.data.weekendDate,
         logger,
       });
-
+    },
+    workerName: 'Notification Worker',
+    onCompleted: (job, result) => {
       logger.info(
-        `[Notification Worker] Completed job ${job.id}. Dispatched: ${result.totalDispatched}, Skipped: ${result.totalSkipped}`,
+        `[Notification Worker] Job ${job.id} completed. Dispatched ${result.totalDispatched} digests, skipped ${result.totalSkipped} for weekend ${result.weekendDate}`,
       );
-
-      return result;
     },
-    {
-      workerName: 'Notification Worker',
-      onCompleted: (job, result) => {
-        logger.info(
-          `[Notification Worker] Job ${job.id} completed. Dispatched ${result.totalDispatched} digests, skipped ${result.totalSkipped} for weekend ${result.weekendDate}`,
-        );
-      },
-      ...options,
-    },
-  );
+    ...managedOptions,
+  });
 }

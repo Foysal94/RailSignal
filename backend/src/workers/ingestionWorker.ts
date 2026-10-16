@@ -19,29 +19,28 @@ export interface IngestionWorkerOptions
 export function createIngestionWorker(
   options: IngestionWorkerOptions = {},
 ): Worker<IngestJobData, IngestJobResult, string> {
-  const executePipeline = options.pipeline ?? syncWeekendDisruptionsPipeline;
+  const { processor, pipeline, notificationQueue, ...managedOptions } = options;
+  const executePipeline = pipeline ?? syncWeekendDisruptionsPipeline;
   const logger = options.logger ?? console;
 
-  return createManagedWorker<IngestJobData, IngestJobResult>(
-    QUEUE_NAMES.INGEST,
-    async (job) => {
+  return createManagedWorker<IngestJobData, IngestJobResult>({
+    queueName: QUEUE_NAMES.INGEST,
+    processor: async (job) => {
       logger.info(`[Ingestion Worker] Processing job ${job.id}...`);
 
       return executePipeline({
         referenceDate: job.data?.referenceDate,
-        notificationQueue: options.notificationQueue,
-        processor: options.processor,
+        notificationQueue,
+        processor,
         logger,
       });
     },
-    {
-      workerName: 'Ingestion Worker',
-      onCompleted: (job, result) => {
-        logger.info(
-          `[Ingestion Worker] Job ${job.id} completed. Projected ${result.totalUpserted} disruptions for weekend ${result.weekendDate}`,
-        );
-      },
-      ...options,
+    workerName: 'Ingestion Worker',
+    onCompleted: (job, result) => {
+      logger.info(
+        `[Ingestion Worker] Job ${job.id} completed. Projected ${result.totalUpserted} disruptions for weekend ${result.weekendDate}`,
+      );
     },
-  );
+    ...managedOptions,
+  });
 }

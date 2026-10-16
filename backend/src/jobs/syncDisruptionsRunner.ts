@@ -7,9 +7,9 @@ import {
   syncWeekendDisruptionsPipeline,
 } from '../workers/ingestion/pipeline.js';
 
-export interface SyncDisruptionsOptions extends SyncWeekendDisruptionsPipelineOptions {}
+export type SyncDisruptionsOptions = SyncWeekendDisruptionsPipelineOptions;
 
-export interface SyncDisruptionsCliOptions extends SyncDisruptionsOptions {
+export interface SyncDisruptionsCliOptions extends SyncWeekendDisruptionsPipelineOptions {
   closeQueues?: (() => Promise<void>) | undefined;
   exit?: ((code: number) => void) | undefined;
 }

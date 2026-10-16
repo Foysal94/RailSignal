@@ -26,10 +26,7 @@ export interface WorkerLifecycleOptions {
 
 let activeWorkers: ActiveWorkers | null = null;
 
-/**
- * Boots all background BullMQ workers and registers them in the managed host.
- * Called exclusively by the host process composition root (backend/src/index.ts).
- */
+// Boots all background BullMQ workers and registers them in the managed host
 export function startAllWorkers(options?: WorkerLifecycleOptions): ActiveWorkers {
   if (activeWorkers) {
     return activeWorkers;
@@ -48,14 +45,8 @@ export function getActiveWorkers(): ActiveWorkers | null {
   return activeWorkers;
 }
 
-/**
- * Coordinates graceful shutdown across all active workers through the centralized host.
- */
+// Coordinates graceful shutdown across all active workers through the centralized host
 export async function closeAllWorkers(): Promise<void> {
-  if (!activeWorkers) {
-    return;
-  }
-
   activeWorkers = null;
   await closeAllManagedWorkers();
 }

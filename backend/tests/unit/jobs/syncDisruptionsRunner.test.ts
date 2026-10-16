@@ -59,11 +59,12 @@ describe('Sync Disruptions CLI Runner', () => {
 
   it('Should_skip_queue_dispatch_when_redis_url_missing_in_development', async () => {
     const mocks = createMocks();
-    const { notificationQueue: _, ...devMocks } = mocks;
+    const { notificationQueue, ...devMocks } = mocks;
 
     const result = await runSyncDisruptions(devMocks);
 
     expect(result.weekendDate).toBe('2026-10-16');
     expect(mocks.processor).toHaveBeenCalledOnce();
+    expect(notificationQueue.add).not.toHaveBeenCalled();
   });
 });

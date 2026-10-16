@@ -1,7 +1,7 @@
-import { EventEmitter } from 'node:events';
 import type { Job } from 'bullmq';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  clearRegisteredWorkers,
   closeAllManagedWorkers,
   createManagedWorker,
   getRegisteredWorker,
@@ -10,30 +10,28 @@ import {
 } from '../../../src/workers/host.js';
 
 function createMockRedisConnection() {
-  const mockConnection = Object.assign(new EventEmitter(), {
-    options: {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-    },
-    connect: vi.fn().mockResolvedValue(undefined),
-    disconnect: vi.fn(),
-    duplicate: () => mockConnection,
-    quit: vi.fn().mockResolvedValue('OK'),
+  return {
     status: 'ready',
-    info: vi.fn().mockResolvedValue('redis_version:7.0.0\r\nmaxmemory_policy:noeviction\r\n'),
-    defineCommand: vi.fn(),
-  });
-  return mockConnection;
+    options: {},
+    on: vi.fn(),
+    once: vi.fn(),
+    off: vi.fn(),
+    quit: vi.fn().mockResolvedValue('OK'),
+    disconnect: vi.fn(),
+  };
 }
 
-describe('Managed Worker Host', () => {
+describe('Worker Host (backend/src/workers/host.ts)', () => {
   afterEach(async () => {
     await closeAllManagedWorkers();
+    clearRegisteredWorkers();
   });
 
   it('Should_configure_worker_with_upstash_quota_defaults_and_specified_queue_name', async () => {
     const mockConnection = createMockRedisConnection();
-    const worker = createManagedWorker('test-queue', async () => 'ok', {
+    const worker = createManagedWorker({
+      queueName: 'test-queue',
+      processor: async () => 'ok',
       connection: mockConnection as never,
       autorun: false,
     });
@@ -52,7 +50,9 @@ describe('Managed Worker Host', () => {
 
   it('Should_allow_overriding_worker_concurrency_and_timings', async () => {
     const mockConnection = createMockRedisConnection();
-    const worker = createManagedWorker('custom-queue', async () => 'ok', {
+    const worker = createManagedWorker({
+      queueName: 'custom-queue',
+      processor: async () => 'ok',
       connection: mockConnection as never,
       concurrency: 5,
       drainDelay: 120,
@@ -73,22 +73,6 @@ describe('Managed Worker Host', () => {
     }
   });
 
-  it('Should_support_single_typed_options_object_overload', async () => {
-    const mockConnection = createMockRedisConnection();
-    const worker = createManagedWorker({
-      queueName: 'options-overload-queue',
-      processor: async () => 'ok',
-      connection: mockConnection as never,
-      autorun: false,
-    });
-
-    try {
-      expect(worker.name).toBe('options-overload-queue');
-    } finally {
-      await worker.close();
-    }
-  });
-
   it('Should_bind_completed_failed_and_error_lifecycle_events_with_logging_and_custom_hooks', async () => {
     const mockConnection = createMockRedisConnection();
     const mockLogger = {
@@ -101,7 +85,9 @@ describe('Managed Worker Host', () => {
     const onFailed = vi.fn();
     const onError = vi.fn();
 
-    const worker = createManagedWorker('events-queue', async () => 'ok', {
+    const worker = createManagedWorker({
+      queueName: 'events-queue',
+      processor: async () => 'ok',
       connection: mockConnection as never,
       autorun: false,
       workerName: 'Custom Events Worker',
@@ -138,7 +124,9 @@ describe('Managed Worker Host', () => {
       debug: vi.fn(),
     };
 
-    const worker = createManagedWorker('default-log-queue', async () => 'ok', {
+    const worker = createManagedWorker({
+      queueName: 'default-log-queue',
+      processor: async () => 'ok',
       connection: mockConnection as never,
       autorun: false,
       workerName: 'Default Log Worker',
@@ -168,11 +156,15 @@ describe('Managed Worker Host', () => {
 
   it('Should_register_workers_and_coordinate_graceful_shutdown_without_dangling_connections', async () => {
     const mockConnection = createMockRedisConnection();
-    const worker1 = createManagedWorker('managed-1', async () => 'ok', {
+    const worker1 = createManagedWorker({
+      queueName: 'managed-1',
+      processor: async () => 'ok',
       connection: mockConnection as never,
       autorun: false,
     });
-    const worker2 = createManagedWorker('managed-2', async () => 'ok', {
+    const worker2 = createManagedWorker({
+      queueName: 'managed-2',
+      processor: async () => 'ok',
       connection: mockConnection as never,
       autorun: false,
     });
@@ -192,6 +184,5 @@ describe('Managed Worker Host', () => {
     expect(closeSpy1).toHaveBeenCalledOnce();
     expect(closeSpy2).toHaveBeenCalledOnce();
     expect(getRegisteredWorkers().size).toBe(0);
-    expect(getRegisteredWorker('w1')).toBeUndefined();
   });
 });

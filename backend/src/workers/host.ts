@@ -29,38 +29,15 @@ export interface CreateManagedWorkerOptions<TData = unknown, TResult = unknown>
 }
 
 export function createManagedWorker<TData = unknown, TResult = unknown>(
-  queueName: string,
-  processor: (job: Job<TData, TResult, string>) => Promise<TResult>,
-  options?: ManagedWorkerOptions<TData, TResult>,
-): Worker<TData, TResult, string>;
-export function createManagedWorker<TData = unknown, TResult = unknown>(
   options: CreateManagedWorkerOptions<TData, TResult>,
-): Worker<TData, TResult, string>;
-export function createManagedWorker<TData = unknown, TResult = unknown>(
-  queueNameOrOptions: string | CreateManagedWorkerOptions<TData, TResult>,
-  processorArg?: (job: Job<TData, TResult, string>) => Promise<TResult>,
-  optionsArg?: ManagedWorkerOptions<TData, TResult>,
 ): Worker<TData, TResult, string> {
-  let queueName: string;
-  let processor: (job: Job<TData, TResult, string>) => Promise<TResult>;
-  let options: ManagedWorkerOptions<TData, TResult>;
-
-  if (typeof queueNameOrOptions === 'string') {
-    queueName = queueNameOrOptions;
-    if (!processorArg) {
-      throw new Error('Processor function must be supplied when queueName is passed as a string');
-    }
-    processor = processorArg;
-    options = optionsArg ?? {};
-  } else {
-    queueName = queueNameOrOptions.queueName;
-    processor = queueNameOrOptions.processor;
-    options = queueNameOrOptions;
-  }
+  const { queueName, processor } = options;
+  const ownsConnection = !options.connection;
+  const connection = options.connection ?? createRedisConnection();
 
   // Enforces ADR 0003: BullMQ polling frequency is throttled to preserve Upstash daily free-tier quotas.
   const workerOptions: WorkerOptions = {
-    connection: options.connection ?? createRedisConnection(),
+    connection,
     concurrency: options.concurrency ?? 1,
     drainDelay: options.drainDelay ?? UPSTASH_WORKER_DEFAULTS.drainDelay,
     stalledInterval: options.stalledInterval ?? UPSTASH_WORKER_DEFAULTS.stalledInterval,
@@ -70,6 +47,17 @@ export function createManagedWorker<TData = unknown, TResult = unknown>(
   };
 
   const worker = new Worker<TData, TResult, string>(queueName, processor, workerOptions);
+
+  // Closes internally created Redis connection on worker shutdown to prevent dangling socket handles
+  if (
+    ownsConnection &&
+    connection &&
+    typeof (connection as { quit?: () => Promise<unknown> }).quit === 'function'
+  ) {
+    worker.on('closed', () => {
+      void (connection as { quit: () => Promise<unknown> }).quit().catch(() => {});
+    });
+  }
 
   const logger = options.logger ?? console;
   const workerName = options.workerName ?? queueName;
@@ -104,6 +92,10 @@ export function createManagedWorker<TData = unknown, TResult = unknown>(
 const registeredWorkers = new Map<string, Worker>();
 
 export function registerWorker<T extends Worker>(name: string, worker: T): T {
+  const existing = registeredWorkers.get(name);
+  if (existing && existing !== worker) {
+    void existing.close().catch(() => {});
+  }
   registeredWorkers.set(name, worker);
   return worker;
 }
@@ -118,8 +110,8 @@ export function getRegisteredWorkers(): ReadonlyMap<string, Worker> {
 
 export async function closeAllManagedWorkers(): Promise<void> {
   const workers = Array.from(registeredWorkers.values());
-  registeredWorkers.clear();
   await Promise.allSettled(workers.map((worker) => worker.close()));
+  registeredWorkers.clear();
 }
 
 export function clearRegisteredWorkers(): void {
