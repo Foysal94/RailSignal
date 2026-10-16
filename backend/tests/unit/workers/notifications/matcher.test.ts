@@ -4,7 +4,7 @@ import {
   filterDisruptionsForLines,
   matchSubscribersForWeekend,
   matchSubscribersToDisruptions,
-} from '../../../../src/workers/notifications/matcher.js';
+} from '../../../../src/workers/notifications/processor.js';
 
 describe('Subscriber Matching Domain Logic (SubscriptionLine Junction)', () => {
   const weekendDate = '2026-10-16';
