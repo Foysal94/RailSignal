@@ -14,6 +14,7 @@
 - **Persistence:** Dual SQLite (local development) and PostgreSQL (Neon cloud) via Prisma ORM.
 - **Validation & Errors:** Validate requests with Fastify schemas returning RFC 9457 (`application/problem+json`).
 - **Modularity & SRP:** A file must have one reason to change. Never co-locate external I/O/transport, domain business rules, and payload transformation in the same file. Ticket paths define public entry points; decompose internal concerns into cohesive sibling modules.
+- **No Shallow Wrappers:** Do not create separate service or helper files for trivial pass-throughs lacking business logic (e.g. direct queue dispatches or simple queries). Extract only when genuine domain rules or multi-step coordination exist.
 
 ## Style & Coding Standards
 - **Returns & Primitives:** Return typed interfaces/objects; never positional array tuples `[data, error]`. No artificial `Result<T>` wrappers.
