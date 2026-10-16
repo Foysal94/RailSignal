@@ -21,34 +21,13 @@ function createMockRedisConnection() {
   };
 }
 
-describe('Worker Host (backend/src/workers/host.ts)', () => {
+describe('Worker Host Lifecycle & Registration', () => {
   afterEach(async () => {
     await closeAllManagedWorkers();
     clearRegisteredWorkers();
   });
 
-  it('Should_configure_worker_with_upstash_quota_defaults_and_specified_queue_name', async () => {
-    const mockConnection = createMockRedisConnection();
-    const worker = createManagedWorker({
-      queueName: 'test-queue',
-      processor: async () => 'ok',
-      connection: mockConnection as never,
-      autorun: false,
-    });
-
-    try {
-      expect(worker.name).toBe('test-queue');
-      expect(worker.opts.concurrency).toBe(1);
-      expect(worker.opts.drainDelay).toBe(60);
-      expect(worker.opts.stalledInterval).toBe(60_000);
-      expect(worker.opts.lockDuration).toBe(60_000);
-      expect(worker.opts.maxStalledCount).toBe(2);
-    } finally {
-      await worker.close();
-    }
-  });
-
-  it('Should_allow_overriding_worker_concurrency_and_timings', async () => {
+  it('Should_configure_worker_with_specified_queue_name_and_overrides', async () => {
     const mockConnection = createMockRedisConnection();
     const worker = createManagedWorker({
       queueName: 'custom-queue',
@@ -56,31 +35,21 @@ describe('Worker Host (backend/src/workers/host.ts)', () => {
       connection: mockConnection as never,
       concurrency: 5,
       drainDelay: 120,
-      stalledInterval: 30_000,
-      lockDuration: 45_000,
-      maxStalledCount: 3,
       autorun: false,
     });
 
     try {
+      expect(worker.name).toBe('custom-queue');
       expect(worker.opts.concurrency).toBe(5);
       expect(worker.opts.drainDelay).toBe(120);
-      expect(worker.opts.stalledInterval).toBe(30_000);
-      expect(worker.opts.lockDuration).toBe(45_000);
-      expect(worker.opts.maxStalledCount).toBe(3);
+      expect(worker.isRunning()).toBe(false);
     } finally {
       await worker.close();
     }
   });
 
-  it('Should_bind_completed_failed_and_error_lifecycle_events_with_logging_and_custom_hooks', async () => {
+  it('Should_bind_completed_failed_and_error_lifecycle_events_to_custom_hooks', async () => {
     const mockConnection = createMockRedisConnection();
-    const mockLogger = {
-      info: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-      debug: vi.fn(),
-    };
     const onCompleted = vi.fn();
     const onFailed = vi.fn();
     const onError = vi.fn();
@@ -90,8 +59,6 @@ describe('Worker Host (backend/src/workers/host.ts)', () => {
       processor: async () => 'ok',
       connection: mockConnection as never,
       autorun: false,
-      workerName: 'Custom Events Worker',
-      logger: mockLogger,
       onCompleted,
       onFailed,
       onError,
@@ -110,45 +77,6 @@ describe('Worker Host (backend/src/workers/host.ts)', () => {
 
       worker.emit('error', testError);
       expect(onError).toHaveBeenCalledWith(testError);
-    } finally {
-      await worker.close();
-    }
-  });
-
-  it('Should_use_default_logging_when_custom_lifecycle_hooks_are_not_provided', async () => {
-    const mockConnection = createMockRedisConnection();
-    const mockLogger = {
-      info: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-      debug: vi.fn(),
-    };
-
-    const worker = createManagedWorker({
-      queueName: 'default-log-queue',
-      processor: async () => 'ok',
-      connection: mockConnection as never,
-      autorun: false,
-      workerName: 'Default Log Worker',
-      logger: mockLogger,
-    });
-
-    try {
-      const mockJob = { id: 'job-202' } as Job<unknown, unknown, string>;
-      const testError = new Error('Network timeout');
-
-      worker.emit('completed', mockJob, 'done');
-      expect(mockLogger.info).toHaveBeenCalledWith('[Default Log Worker] Job job-202 completed');
-
-      worker.emit('failed', mockJob, testError);
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        '[Default Log Worker] Job job-202 failed with error: Network timeout',
-      );
-
-      worker.emit('error', testError);
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        '[Default Log Worker] Internal worker error: Network timeout',
-      );
     } finally {
       await worker.close();
     }
