@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useWeekendStatus } from '../hooks/useWeekendStatus';
+import { formatWeekendRadarBadge } from '../utils/date';
 import { LineCard } from './LineCard';
 import { isDisrupted, sortStatusItems } from './statusSorter';
 
@@ -96,7 +97,11 @@ export function NetworkStatusGrid({ referenceDate }: NetworkStatusGridProps) {
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span>This Weekend: Friday 19:00 - Monday 04:30 London Time</span>
+            <span>
+              {data?.weekendDate
+                ? formatWeekendRadarBadge(data.weekendDate)
+                : 'This Weekend: Friday 19:00 - Monday 04:30 London Time'}
+            </span>
           </span>
         </div>
       </div>

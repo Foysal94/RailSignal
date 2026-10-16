@@ -46,11 +46,12 @@ function getStatusBadgeClasses(line: WeekendStatusItem): string {
   return 'bg-amber-950/80 text-amber-300 border-amber-800';
 }
 
-function formatModeLabel(mode: string): string {
+function formatMode(mode: string): string {
   if (mode.toLowerCase() === 'dlr') {
     return 'DLR';
   }
-  return mode.replace('-', ' ');
+  const formatted = mode.replaceAll('-', ' ');
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
 // Masks directional transit glyphs with aria-hidden and provides screen-reader phrasing ('to')
@@ -219,7 +220,7 @@ export function LineCard({ line }: LineCardProps) {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-semibold text-slate-100">{line.lineName}</h3>
-            <span className="text-xs text-slate-400 capitalize">{formatModeLabel(line.mode)}</span>
+            <span className="text-xs text-slate-400">{formatMode(line.mode)}</span>
           </div>
 
           <div className="flex items-center shrink-0">

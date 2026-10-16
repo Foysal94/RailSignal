@@ -1,5 +1,5 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 
 export interface DialogProps {
   open?: boolean;
@@ -9,6 +9,7 @@ export interface DialogProps {
   description?: string;
   children: ReactNode;
   contentClassName?: string;
+  initialFocusRef?: RefObject<HTMLElement | null>;
 }
 
 export function Dialog({
@@ -19,7 +20,15 @@ export function Dialog({
   description,
   children,
   contentClassName = '',
+  initialFocusRef,
 }: DialogProps) {
+  const handleOpenAutoFocus = (event: Event) => {
+    if (initialFocusRef?.current) {
+      event.preventDefault();
+      initialFocusRef.current.focus();
+    }
+  };
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogPrimitive.Trigger asChild>{trigger}</DialogPrimitive.Trigger>}
@@ -27,7 +36,8 @@ export function Dialog({
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm transition-opacity" />
         <DialogPrimitive.Content
           {...(!description ? { 'aria-describedby': undefined } : {})}
-          className={`fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-slate-800 bg-radar-card p-6 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${contentClassName}`}
+          onOpenAutoFocus={handleOpenAutoFocus}
+          className={`fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-lg mx-auto -translate-x-1/2 -translate-y-1/2 rounded-xl border border-slate-800 bg-radar-card p-6 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${contentClassName}`}
         >
           <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
             <DialogPrimitive.Title className="text-lg font-bold text-white tracking-tight">

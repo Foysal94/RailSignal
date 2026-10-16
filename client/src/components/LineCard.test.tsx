@@ -257,26 +257,18 @@ describe('LineCard Component', () => {
     expect(button).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('Should_display_uppercase_DLR_mode_acronym', () => {
+  it('Should_render_DLR_mode_acronym_in_uppercase', () => {
     const item: WeekendStatusItem = {
       lineId: 'dlr',
       lineName: 'DLR',
       mode: 'dlr',
-      color: '#00A4A7',
-      statusSeverityDescription: 'Part Closure',
-      hasDisruption: true,
-      notices: [
-        {
-          headline: 'Shadwell ↔ Tower Gateway: No service',
-          corridor: 'Shadwell ↔ Tower Gateway: No service',
-          timeframe: 'Sunday 18 October',
-        },
-      ],
+      color: '#00AFAD',
+      statusSeverityDescription: 'No Planned Closures',
+      hasDisruption: false,
       disruptions: [],
     };
 
     render(<LineCard line={item} />);
-
     expect(screen.getByText('DLR', { selector: 'span' })).toBeInTheDocument();
     expect(screen.queryByText('Dlr')).not.toBeInTheDocument();
   });
