@@ -1,15 +1,14 @@
 import type { PrismaClient, Subscription, SubscriptionLine } from '@prisma/client';
 import { prisma as defaultPrisma } from '../../db.js';
-import type { WeekendDisruptionWithNotices } from '../../domain/disruptionNotices.js';
 import {
   type SendDisruptionDigestOptions,
   type SendEmailResult,
   sendDisruptionDigest,
 } from '../../email/index.js';
-import { assembleDigestDisruptions, mapDisruptionsToDigestItems } from '../digestMapper.js';
+import { assembleDigestItems, type DisruptionDigestItem } from '../digestMapper.js';
 import type { WorkerLogger } from '../types.js';
 
-export interface MatchedSubscriber<TDisruption = WeekendDisruptionWithNotices> {
+export interface MatchedSubscriber<TDisruption = DisruptionDigestItem> {
   subscriptionId: string;
   email: string;
   unsubscribeToken: string;
@@ -27,7 +26,6 @@ export type SubscriptionWithLines = Subscription & {
   lines: SubscriptionLine[];
 };
 
-// Pure domain filtering helper isolating in-memory disruption matching per line set.
 export function filterDisruptionsForLines<T extends { lineId: string }>(
   lineIds: Iterable<string>,
   disruptions: T[],
@@ -36,8 +34,6 @@ export function filterDisruptionsForLines<T extends { lineId: string }>(
   return disruptions.filter((d) => lineSet.has(d.lineId));
 }
 
-// Pure domain matching function operating entirely in memory.
-// Matches subscriber records via their SubscriptionLine junction relations against active weekend disruptions.
 export function matchSubscribersToDisruptions<
   S extends {
     id: string;
@@ -69,15 +65,13 @@ export function matchSubscribersToDisruptions<
   return matched;
 }
 
-// Queries active subscription projections via Prisma and coordinates domain matching.
-// Traverses the SubscriptionLine junction table to find subscribers monitoring disrupted lines.
 export async function matchSubscribersForWeekend(
   options: MatchSubscribersOptions,
-): Promise<MatchedSubscriber<WeekendDisruptionWithNotices>[]> {
+): Promise<MatchedSubscriber<DisruptionDigestItem>[]> {
   const db = options.prisma ?? defaultPrisma;
   const weekendDate = options.weekendDate;
 
-  const weekendDisruptions = await assembleDigestDisruptions({
+  const weekendDisruptions = await assembleDigestItems({
     prisma: db,
     weekendDate,
   });
@@ -140,9 +134,6 @@ export interface ProcessNotificationJobResult {
   recipients: ProcessNotificationRecipientResult[];
 }
 
-// Orchestrates subscriber matching, idempotency enforcement, email dispatch,
-// and atomic database state updates for a target weekend.
-//
 // Rationale (ADR 0003):
 // In lieu of a distributed transactional outbox spanning PostgreSQL and Redis,
 // idempotency is guaranteed at the persistence layer via lastNotifiedWeekendDate.
@@ -198,10 +189,8 @@ export async function processNotificationJob(
       continue;
     }
 
-    const digestItems = mapDisruptionsToDigestItems(subscriber.disruptions);
-
     logger.info(
-      `[Notification Processor] Dispatching digest to ${subscriber.email} with ${digestItems.length} disruptions...`,
+      `[Notification Processor] Dispatching digest to ${subscriber.email} with ${subscriber.disruptions.length} disruptions...`,
     );
 
     try {
@@ -210,7 +199,7 @@ export async function processNotificationJob(
         digest: {
           recipientEmail: subscriber.email,
           weekendDate,
-          disruptions: digestItems,
+          disruptions: subscriber.disruptions,
           unsubscribeToken: subscriber.unsubscribeToken,
         },
       });

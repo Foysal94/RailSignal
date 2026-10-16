@@ -32,9 +32,6 @@ export interface ProcessDemoAlertJobResult {
   dispatched: boolean;
 }
 
-// Dispatches an immediate, on-demand test alert digest for website portfolio visitors.
-// Queries active weekend disruptions matching the visitor's selected lines and dispatches
-// via the email client without persisting or modifying any subscriber database state.
 export async function processDemoAlertJob(
   options: ProcessDemoAlertJobOptions,
 ): Promise<ProcessDemoAlertJobResult> {

@@ -7,7 +7,7 @@ import {
 } from '../domain/disruptionNotices.js';
 import type { DisruptionDigestItem } from '../email/templates/DisruptionDigest.js';
 
-export type { WeekendDisruptionWithNotices };
+export type { DisruptionDigestItem, WeekendDisruptionWithNotices };
 
 function isValidLineMode(mode: string): mode is LineMode {
   return (TFL_MODES as readonly string[]).includes(mode);
@@ -43,7 +43,6 @@ export interface AssembleDigestOptions {
   lineIds?: string[] | undefined;
 }
 
-// Queries read-model weekend disruptions with child notices for given lines/weekend.
 export async function assembleDigestDisruptions(
   options: AssembleDigestOptions,
 ): Promise<WeekendDisruptionWithNotices[]> {
@@ -58,7 +57,6 @@ export async function assembleDigestDisruptions(
   });
 }
 
-// Unified email digest assembly: queries line disruptions and projects them to email template models.
 export async function assembleDigestItems(
   options: AssembleDigestOptions,
 ): Promise<DisruptionDigestItem[]> {
