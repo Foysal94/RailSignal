@@ -9,7 +9,7 @@ import {
 
 export type SyncDisruptionsOptions = SyncWeekendDisruptionsPipelineOptions;
 
-export interface SyncDisruptionsCliOptions extends SyncWeekendDisruptionsPipelineOptions {
+export interface SyncDisruptionsCliOptions extends SyncDisruptionsOptions {
   closeQueues?: (() => Promise<void>) | undefined;
   exit?: ((code: number) => void) | undefined;
 }
@@ -38,19 +38,16 @@ export async function runSyncDisruptionsCli(
   const db = options.prisma ?? defaultPrisma;
   const exit = options.exit ?? ((code: number) => process.exit(code));
 
+  let exitCode = 0;
+
   try {
     const result = await runSyncDisruptions(options);
 
     logger.info(
       `[Sync Disruptions Runner] Synchronization completed successfully for weekend ${result.weekendDate}. (Fetched: ${result.totalFetched}, Upserted: ${result.totalUpserted})`,
     );
-
-    await closeQueues();
-    await db.$disconnect();
-
-    exit(0);
-    return 0;
   } catch (error) {
+    exitCode = 1;
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
 
@@ -58,22 +55,13 @@ export async function runSyncDisruptionsCli(
       error,
       stack,
     });
-
-    try {
-      await closeQueues();
-    } catch {
-      // Suppress secondary queue teardown errors during failure reporting
-    }
-
-    try {
-      await db.$disconnect();
-    } catch {
-      // Suppress secondary DB teardown errors during failure reporting
-    }
-
-    exit(1);
-    return 1;
+  } finally {
+    // Teardown connections cleanly in all cases, suppressing secondary teardown faults
+    await Promise.allSettled([closeQueues().catch(() => {}), db.$disconnect().catch(() => {})]);
   }
+
+  exit(exitCode);
+  return exitCode;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {

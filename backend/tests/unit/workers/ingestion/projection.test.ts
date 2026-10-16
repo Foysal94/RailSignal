@@ -2,7 +2,7 @@ import type { DisruptionNotice } from '@railsignal/shared';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import type { ParsedDisruption } from '../../../../src/clients/tfl/types.js';
 import { prisma } from '../../../../src/db.js';
-import { projectDisruptions } from '../../../../src/workers/ingestion/projection.js';
+import { projectDisruptions } from '../../../../src/workers/ingestion/pipeline.js';
 
 describe('Disruption Projection Persistence', () => {
   beforeEach(async () => {

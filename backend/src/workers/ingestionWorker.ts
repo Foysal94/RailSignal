@@ -7,19 +7,17 @@ import {
 } from '../queues/queues.js';
 import { createManagedWorker, type ManagedWorkerOptions } from './host.js';
 import { syncWeekendDisruptionsPipeline } from './ingestion/pipeline.js';
-import type { processIngestionJob } from './ingestion/processor.js';
 
 export interface IngestionWorkerOptions
   extends ManagedWorkerOptions<IngestJobData, IngestJobResult> {
   notificationQueue?: Pick<Queue<NotificationJobData, void, string>, 'add'> | undefined;
-  processor?: typeof processIngestionJob | undefined;
   pipeline?: typeof syncWeekendDisruptionsPipeline | undefined;
 }
 
 export function createIngestionWorker(
   options: IngestionWorkerOptions = {},
 ): Worker<IngestJobData, IngestJobResult, string> {
-  const { processor, pipeline, notificationQueue, ...managedOptions } = options;
+  const { pipeline, notificationQueue, ...managedOptions } = options;
   const executePipeline = pipeline ?? syncWeekendDisruptionsPipeline;
   const logger = options.logger ?? console;
 
@@ -31,7 +29,6 @@ export function createIngestionWorker(
       return executePipeline({
         referenceDate: job.data?.referenceDate,
         notificationQueue,
-        processor,
         logger,
       });
     },

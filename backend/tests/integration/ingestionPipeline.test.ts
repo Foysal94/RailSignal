@@ -4,7 +4,6 @@ import type { ParsedDisruption } from '../../src/clients/tfl/types.js';
 import { prisma } from '../../src/db.js';
 import type { NotificationJobData } from '../../src/queues/queues.js';
 import { syncWeekendDisruptionsPipeline } from '../../src/workers/ingestion/pipeline.js';
-import { processIngestionJob } from '../../src/workers/ingestion/processor.js';
 import { InMemoryQueueDouble } from '../support/inMemoryQueueDouble.js';
 
 describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma SQLite)', () => {
@@ -66,13 +65,8 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     const result = await syncWeekendDisruptionsPipeline({
       referenceDate: '2026-10-15T12:00:00Z',
       notificationQueue: notificationQueueDouble,
-      processor: async (opts) =>
-        processIngestionJob({
-          ...opts,
-          tflClient: mockTflClient,
-          prisma,
-          referenceDate: new Date('2026-10-15T12:00:00Z'),
-        }),
+      tflClient: mockTflClient,
+      prisma,
     });
 
     // Verify ingestion execution result
@@ -113,13 +107,8 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       syncWeekendDisruptionsPipeline({
         referenceDate: '2026-10-15T12:00:00Z',
         notificationQueue: notificationQueueDouble,
-        processor: async (opts) =>
-          processIngestionJob({
-            ...opts,
-            tflClient: mockTflClient,
-            prisma,
-            referenceDate: new Date('2026-10-15T12:00:00Z'),
-          }),
+        tflClient: mockTflClient,
+        prisma,
       });
 
     await runPipeline();
@@ -166,13 +155,8 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     const result = await syncWeekendDisruptionsPipeline({
       referenceDate: '2026-10-15T12:00:00Z',
       notificationQueue: notificationQueueDouble,
-      processor: async (opts) =>
-        processIngestionJob({
-          ...opts,
-          tflClient: mockTflClient,
-          prisma,
-          referenceDate: new Date('2026-10-15T12:00:00Z'),
-        }),
+      tflClient: mockTflClient,
+      prisma,
     });
 
     expect(result.totalFetched).toBe(0);
@@ -186,5 +170,22 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     // Downstream notification worker is still notified so subscribers receive normal service status
     expect(notificationQueueDouble.jobs).toHaveLength(1);
     expect(notificationQueueDouble.jobs[0].data.weekendDate).toBe('2026-10-16');
+  });
+
+  it('Should_propagate_tfl_client_errors_without_enqueuing_downstream_notification_jobs', async () => {
+    const mockTflClient: Pick<TflClient, 'getWeekendDisruptions'> = {
+      getWeekendDisruptions: vi.fn().mockRejectedValue(new Error('TfL 503 Service Unavailable')),
+    };
+
+    await expect(
+      syncWeekendDisruptionsPipeline({
+        referenceDate: '2026-10-15T12:00:00Z',
+        notificationQueue: notificationQueueDouble,
+        tflClient: mockTflClient,
+        prisma,
+      }),
+    ).rejects.toThrow('TfL 503 Service Unavailable');
+
+    expect(notificationQueueDouble.jobs).toHaveLength(0);
   });
 });
