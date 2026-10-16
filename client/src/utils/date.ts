@@ -5,6 +5,13 @@ const UK_DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'UTC',
 });
 
+const WEEKEND_RADAR_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+});
+
 export interface ParsedUtcDate {
   year: number;
   month: number;
@@ -35,4 +42,19 @@ export function formatUtcWeekendLabel(isoDate: string): string {
   const { year, month, day } = parseUtcDateString(isoDate);
   const date = new Date(Date.UTC(year, month - 1, day));
   return UK_DATE_FORMATTER.format(date);
+}
+
+export function formatWeekendRadarBadge(isoFridayDate: string): string {
+  try {
+    const { year, month, day } = parseUtcDateString(isoFridayDate);
+    const friday = new Date(Date.UTC(year, month - 1, day));
+    const monday = new Date(Date.UTC(year, month - 1, day + 3));
+
+    const formattedFriday = WEEKEND_RADAR_FORMATTER.format(friday);
+    const formattedMonday = WEEKEND_RADAR_FORMATTER.format(monday);
+
+    return `Weekend Radar: ${formattedFriday} 19:00 \u2013 ${formattedMonday} 04:30`;
+  } catch {
+    return 'This Weekend: Friday 19:00 - Monday 04:30 London Time';
+  }
 }

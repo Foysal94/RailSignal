@@ -212,7 +212,7 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
             <p className="text-xs text-slate-400 mb-2">
               Pre-selected active closures or priority lines for immediate demo:
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 border border-slate-800 rounded-lg bg-slate-900/40">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 sm:max-h-52 overflow-y-auto overscroll-contain p-1 border border-slate-800 rounded-lg bg-slate-900/40">
               {TFL_LINES.map((line) => {
                 const checked = selectedLines.includes(line.id);
                 return (
@@ -239,7 +239,7 @@ export function TestAlertModal({ open, onOpenChange, disruptedLineIds }: TestAle
             </div>
           </fieldset>
 
-          <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+          <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 pt-3 pb-1 border-t border-slate-800 bg-radar-card">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
