@@ -158,3 +158,6 @@ vite.config.ts.timestamp-*
 .react-email/
 
 .DS_Store
+
+# graphify
+graphify-out/
