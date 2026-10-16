@@ -1,6 +1,7 @@
 import type { WeekendDisruption as DbDisruption, PrismaClient } from '@prisma/client';
 import {
   type LineMode,
+  parseDisruptionNotices,
   TFL_LINES,
   type WeekendDisruption,
   type WeekendStatusItem,
@@ -15,6 +16,7 @@ export interface FetchWeekendStatusOptions {
 }
 
 function mapDbDisruptionToContract(item: DbDisruption): WeekendDisruption {
+  const notices = parseDisruptionNotices(item.corridorDescription, item.lineName);
   return {
     id: item.id,
     lineId: item.lineId,
@@ -22,6 +24,7 @@ function mapDbDisruptionToContract(item: DbDisruption): WeekendDisruption {
     mode: item.mode as LineMode,
     statusSeverityDescription: item.statusSeverityDescription,
     corridorDescription: item.corridorDescription,
+    ...(notices.length > 0 ? { notices } : {}),
     weekendDate: item.weekendDate,
     validFrom: item.validFrom.toISOString(),
     validTo: item.validTo.toISOString(),
@@ -106,6 +109,12 @@ export async function fetchWeekendStatus(
     const matched = disruptionsByLineId.get(line.id);
 
     if (matched && matched.length > 0) {
+      const mappedDisruptions = matched.map(mapDbDisruptionToContract);
+      const allNotices = mappedDisruptions.flatMap((d) => d.notices ?? []);
+      const combinedNotices = Array.from(
+        new Map(allNotices.map((n) => [`${n.headline}|${n.timeframe ?? ''}`, n])).values(),
+      );
+
       return {
         lineId: line.id,
         lineName: line.name,
@@ -114,8 +123,9 @@ export async function fetchWeekendStatus(
         ...(line.contrastBorder !== undefined ? { contrastBorder: line.contrastBorder } : {}),
         statusSeverityDescription: pickHighestSeverityDescription(matched),
         corridorDescription: matched.map((m) => m.corridorDescription).join('; '),
+        ...(combinedNotices.length > 0 ? { notices: combinedNotices } : {}),
         hasDisruption: true,
-        disruptions: matched.map(mapDbDisruptionToContract),
+        disruptions: mappedDisruptions,
       };
     }
 

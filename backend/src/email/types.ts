@@ -1,4 +1,4 @@
-import type { LineMode } from '@railsignal/shared';
+import type { DisruptionNotice, LineMode } from '@railsignal/shared';
 import type React from 'react';
 
 export interface Logger {
@@ -15,6 +15,7 @@ export interface DisruptionDigestItem {
   contrastBorder?: boolean;
   statusSeverityDescription: string;
   corridorDescription: string;
+  notices?: DisruptionNotice[];
 }
 
 export interface DisruptionDigestProps {

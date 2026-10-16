@@ -94,7 +94,50 @@ export default function DisruptionDigest(props: DisruptionDigestProps = {}): Rea
                         </tr>
                       </tbody>
                     </table>
-                    <Text style={emailStyles.corridorDescription}>{item.corridorDescription}</Text>
+                    {item.notices && item.notices.length > 0 ? (
+                      item.notices.map((notice) => (
+                        <div
+                          key={`${item.lineId}-${notice.headline}-${notice.timeframe ?? 'active'}`}
+                          style={emailStyles.noticeContainer}
+                        >
+                          {notice.timeframe && (
+                            <div>
+                              <span style={emailStyles.noticeTimeframeBadge}>
+                                {notice.timeframe}
+                              </span>
+                            </div>
+                          )}
+                          <Text style={emailStyles.noticeHeadline}>{notice.headline}</Text>
+                          {notice.busRoute && (
+                            <Section style={emailStyles.busRouteSection}>
+                              <Text style={emailStyles.busRouteName}>
+                                {notice.busRoute.serviceName} ({notice.busRoute.summary}):
+                              </Text>
+                              {notice.busRoute.stops.map((stop) => (
+                                <Text
+                                  key={`${item.lineId}-${notice.headline}-bus-${stop}`}
+                                  style={emailStyles.busRouteStopBullet}
+                                >
+                                  • {stop}
+                                </Text>
+                              ))}
+                            </Section>
+                          )}
+                          {notice.details?.map((detail) => (
+                            <Text
+                              key={`${item.lineId}-${notice.headline}-detail-${detail}`}
+                              style={emailStyles.noticeDetailItem}
+                            >
+                              • {detail}
+                            </Text>
+                          ))}
+                        </div>
+                      ))
+                    ) : (
+                      <Text style={emailStyles.corridorDescription}>
+                        {item.corridorDescription}
+                      </Text>
+                    )}
                   </Section>
                 );
               })
