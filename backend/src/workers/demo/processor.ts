@@ -6,7 +6,7 @@ import {
   type SendEmailResult,
   sendDisruptionDigest,
 } from '../../email/index.js';
-import { mapDisruptionsToDigestItems } from '../digestMapper.js';
+import { assembleDigestItems } from '../digestMapper.js';
 import type { WorkerLogger } from '../types.js';
 
 export interface ProcessDemoAlertJobOptions {
@@ -32,11 +32,6 @@ export interface ProcessDemoAlertJobResult {
   dispatched: boolean;
 }
 
-/**
- * Dispatches an immediate, on-demand test alert digest for website portfolio visitors.
- * Queries active weekend disruptions matching the visitor's selected lines and dispatches
- * via the email client without persisting or modifying any subscriber database state.
- */
 export async function processDemoAlertJob(
   options: ProcessDemoAlertJobOptions,
 ): Promise<ProcessDemoAlertJobResult> {
@@ -56,16 +51,11 @@ export async function processDemoAlertJob(
     `[Demo Alert Processor] Fetching disruptions for lines [${options.lines.join(', ')}] on weekend ${weekendDate}...`,
   );
 
-  const disruptions = await db.weekendDisruption.findMany({
-    where: {
-      weekendDate,
-      lineId: { in: options.lines },
-    },
-    include: { notices: true },
-    orderBy: [{ lineName: 'asc' }, { corridorDescription: 'asc' }],
+  const digestItems = await assembleDigestItems({
+    prisma: db,
+    weekendDate,
+    lineIds: options.lines,
   });
-
-  const digestItems = mapDisruptionsToDigestItems(disruptions);
 
   logger.info(
     `[Demo Alert Processor] Dispatching demo digest to ${options.email} with ${digestItems.length} disruptions...`,
