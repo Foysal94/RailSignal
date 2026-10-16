@@ -9,17 +9,13 @@ import {
   deserializeDisruptionNotice,
   type WeekendDisruptionWithNotices,
 } from './disruptionNotices.js';
+import type { WeekendWindow } from './temporal.js';
 
 export interface ProjectWeekendStatusBoardOptions {
   disruptions: readonly WeekendDisruptionWithNotices[];
-  targetWindow: {
-    weekendDate: string;
-    windowStart: Date;
-    windowEnd: Date;
-  };
+  targetWindow: WeekendWindow;
 }
 
-// Rank hierarchy: Planned Closure / Closed / Suspended > Part Closure / Part Suspended > Severe Delays > Reduced Service > Special Service > Good Service
 export const SEVERITY_RANK: Readonly<Record<string, number>> = Object.freeze({
   'planned closure': 100,
   closed: 100,
@@ -38,7 +34,8 @@ export const SEVERITY_RANK: Readonly<Record<string, number>> = Object.freeze({
   'no planned closures': 0,
 });
 
-export function getSeverityRank(description: string): number {
+export function getSeverityRank(description?: string | null): number {
+  if (!description) return 10;
   const normalized = description.trim().toLowerCase();
   return SEVERITY_RANK[normalized] ?? 10;
 }
@@ -74,10 +71,10 @@ export function mapDbDisruptionToContract(item: WeekendDisruptionWithNotices): W
     corridorDescription: item.corridorDescription,
     ...(notices.length > 0 ? { notices } : {}),
     weekendDate: item.weekendDate,
-    validFrom: item.validFrom.toISOString(),
-    validTo: item.validTo.toISOString(),
-    sourceLastUpdated: item.sourceLastUpdated.toISOString(),
-    projectedAt: item.projectedAt.toISOString(),
+    validFrom: new Date(item.validFrom).toISOString(),
+    validTo: new Date(item.validTo).toISOString(),
+    sourceLastUpdated: new Date(item.sourceLastUpdated).toISOString(),
+    projectedAt: new Date(item.projectedAt).toISOString(),
   };
 }
 
@@ -87,7 +84,6 @@ export function projectWeekendStatusBoard(
   const { disruptions, targetWindow } = options;
   const weekendDate = targetWindow.weekendDate;
 
-  // Group disruptions by lineId in O(N)
   const disruptionsByLineId = new Map<string, WeekendDisruptionWithNotices[]>();
   let latestProjectedAt: Date | undefined;
 
@@ -96,8 +92,9 @@ export function projectWeekendStatusBoard(
     list.push(disruption);
     disruptionsByLineId.set(disruption.lineId, list);
 
-    if (!latestProjectedAt || disruption.projectedAt > latestProjectedAt) {
-      latestProjectedAt = disruption.projectedAt;
+    const projectedDate = new Date(disruption.projectedAt);
+    if (!latestProjectedAt || projectedDate > latestProjectedAt) {
+      latestProjectedAt = projectedDate;
     }
   }
 
@@ -108,8 +105,12 @@ export function projectWeekendStatusBoard(
       const mappedDisruptions = matched.map(mapDbDisruptionToContract);
       const allNotices = mappedDisruptions.flatMap((d) => d.notices ?? []);
       const combinedNotices = Array.from(
-        new Map(allNotices.map((n) => [`${n.headline}|${n.timeframe ?? ''}`, n])).values(),
+        new Map(
+          allNotices.map((n) => [`${n.headline}|${n.timeframe ?? ''}|${n.corridor ?? ''}`, n]),
+        ).values(),
       );
+
+      const uniqueCorridors = Array.from(new Set(matched.map((m) => m.corridorDescription)));
 
       return {
         lineId: line.id,
@@ -118,7 +119,7 @@ export function projectWeekendStatusBoard(
         color: line.color,
         ...(line.contrastBorder !== undefined ? { contrastBorder: line.contrastBorder } : {}),
         statusSeverityDescription: pickHighestSeverityDescription(matched),
-        corridorDescription: matched.map((m) => m.corridorDescription).join('; '),
+        corridorDescription: uniqueCorridors.join('; '),
         ...(combinedNotices.length > 0 ? { notices: combinedNotices } : {}),
         hasDisruption: true,
         disruptions: mappedDisruptions,
@@ -149,6 +150,6 @@ export function projectWeekendStatusBoard(
     windowStart: targetWindow.windowStart.toISOString(),
     windowEnd: targetWindow.windowEnd.toISOString(),
     lines: items,
-    lastUpdated: (latestProjectedAt ?? new Date()).toISOString(),
+    lastUpdated: (latestProjectedAt ?? targetWindow.windowStart).toISOString(),
   };
 }
