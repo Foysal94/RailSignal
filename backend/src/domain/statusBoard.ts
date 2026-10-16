@@ -1,43 +1,22 @@
-import type { WeekendDisruption as DbDisruption, PrismaClient } from '@prisma/client';
-import {
-  type LineMode,
-  TFL_LINES,
-  type WeekendDisruption,
-  type WeekendStatusItem,
-  type WeekendStatusResponse,
+import type {
+  LineMode,
+  WeekendDisruption,
+  WeekendStatusItem,
+  WeekendStatusResponse,
 } from '@railsignal/shared';
-import { prisma as defaultPrisma } from '../../db.js';
+import { TFL_LINES } from '@railsignal/shared';
 import {
   deserializeDisruptionNotice,
   type WeekendDisruptionWithNotices,
-} from '../../domain/disruptionNotices.js';
-import { getUpcomingWeekendWindow } from '../../domain/temporal.js';
+} from './disruptionNotices.js';
+import type { WeekendWindow } from './temporal.js';
 
-export interface FetchWeekendStatusOptions {
-  prisma?: PrismaClient | undefined;
-  referenceDate?: string | Date | undefined;
+export interface ProjectWeekendStatusBoardOptions {
+  disruptions: readonly WeekendDisruptionWithNotices[];
+  targetWindow: WeekendWindow;
 }
 
-function mapDbDisruptionToContract(item: WeekendDisruptionWithNotices): WeekendDisruption {
-  const notices = (item.notices ?? []).map(deserializeDisruptionNotice);
-  return {
-    id: item.id,
-    lineId: item.lineId,
-    lineName: item.lineName,
-    mode: item.mode as LineMode,
-    statusSeverityDescription: item.statusSeverityDescription,
-    corridorDescription: item.corridorDescription,
-    ...(notices.length > 0 ? { notices } : {}),
-    weekendDate: item.weekendDate,
-    validFrom: item.validFrom.toISOString(),
-    validTo: item.validTo.toISOString(),
-    sourceLastUpdated: item.sourceLastUpdated.toISOString(),
-    projectedAt: item.projectedAt.toISOString(),
-  };
-}
-
-// Rank hierarchy: Planned Closure / Closed / Suspended > Part Closure / Part Suspended > Reduced Service > Special Service > Good Service
-const SEVERITY_RANK: Readonly<Record<string, number>> = Object.freeze({
+export const SEVERITY_RANK: Readonly<Record<string, number>> = Object.freeze({
   'planned closure': 100,
   closed: 100,
   suspended: 100,
@@ -55,12 +34,15 @@ const SEVERITY_RANK: Readonly<Record<string, number>> = Object.freeze({
   'no planned closures': 0,
 });
 
-function getSeverityRank(description: string): number {
+export function getSeverityRank(description?: string | null): number {
+  if (!description) return 10;
   const normalized = description.trim().toLowerCase();
   return SEVERITY_RANK[normalized] ?? 10;
 }
 
-export function pickHighestSeverityDescription(disruptions: readonly DbDisruption[]): string {
+export function pickHighestSeverityDescription(
+  disruptions: readonly { statusSeverityDescription: string }[],
+): string {
   if (disruptions.length === 0) return 'No Planned Closures';
 
   let highest = disruptions[0];
@@ -78,34 +60,41 @@ export function pickHighestSeverityDescription(disruptions: readonly DbDisruptio
   return highest.statusSeverityDescription;
 }
 
-// Pure domain service querying the WeekendDisruption read model and assembling
-// the prioritized radar status board matching the target weekend window.
-export async function fetchWeekendStatus(
-  options: FetchWeekendStatusOptions = {},
-): Promise<WeekendStatusResponse> {
-  const db = options.prisma ?? defaultPrisma;
-  const referenceDate = options.referenceDate ? new Date(options.referenceDate) : undefined;
-  const targetWindow = getUpcomingWeekendWindow({ referenceDate });
+export function mapDbDisruptionToContract(item: WeekendDisruptionWithNotices): WeekendDisruption {
+  const notices = (item.notices ?? []).map(deserializeDisruptionNotice);
+  return {
+    id: item.id,
+    lineId: item.lineId,
+    lineName: item.lineName,
+    mode: item.mode as LineMode,
+    statusSeverityDescription: item.statusSeverityDescription,
+    corridorDescription: item.corridorDescription,
+    ...(notices.length > 0 ? { notices } : {}),
+    weekendDate: item.weekendDate,
+    validFrom: new Date(item.validFrom).toISOString(),
+    validTo: new Date(item.validTo).toISOString(),
+    sourceLastUpdated: new Date(item.sourceLastUpdated).toISOString(),
+    projectedAt: new Date(item.projectedAt).toISOString(),
+  };
+}
+
+export function projectWeekendStatusBoard(
+  options: ProjectWeekendStatusBoardOptions,
+): WeekendStatusResponse {
+  const { disruptions, targetWindow } = options;
   const weekendDate = targetWindow.weekendDate;
 
-  // Single indexed read query against materialized read model (<5ms response target)
-  const dbDisruptions = await db.weekendDisruption.findMany({
-    where: { weekendDate },
-    include: { notices: true },
-    orderBy: [{ lineName: 'asc' }, { corridorDescription: 'asc' }],
-  });
-
-  // Group disruptions by lineId in O(N)
   const disruptionsByLineId = new Map<string, WeekendDisruptionWithNotices[]>();
   let latestProjectedAt: Date | undefined;
 
-  for (const disruption of dbDisruptions) {
+  for (const disruption of disruptions) {
     const list = disruptionsByLineId.get(disruption.lineId) ?? [];
     list.push(disruption);
     disruptionsByLineId.set(disruption.lineId, list);
 
-    if (!latestProjectedAt || disruption.projectedAt > latestProjectedAt) {
-      latestProjectedAt = disruption.projectedAt;
+    const projectedDate = new Date(disruption.projectedAt);
+    if (!latestProjectedAt || projectedDate > latestProjectedAt) {
+      latestProjectedAt = projectedDate;
     }
   }
 
@@ -116,8 +105,12 @@ export async function fetchWeekendStatus(
       const mappedDisruptions = matched.map(mapDbDisruptionToContract);
       const allNotices = mappedDisruptions.flatMap((d) => d.notices ?? []);
       const combinedNotices = Array.from(
-        new Map(allNotices.map((n) => [`${n.headline}|${n.timeframe ?? ''}`, n])).values(),
+        new Map(
+          allNotices.map((n) => [`${n.headline}|${n.timeframe ?? ''}|${n.corridor ?? ''}`, n]),
+        ).values(),
       );
+
+      const uniqueCorridors = Array.from(new Set(matched.map((m) => m.corridorDescription)));
 
       return {
         lineId: line.id,
@@ -126,7 +119,7 @@ export async function fetchWeekendStatus(
         color: line.color,
         ...(line.contrastBorder !== undefined ? { contrastBorder: line.contrastBorder } : {}),
         statusSeverityDescription: pickHighestSeverityDescription(matched),
-        corridorDescription: matched.map((m) => m.corridorDescription).join('; '),
+        corridorDescription: uniqueCorridors.join('; '),
         ...(combinedNotices.length > 0 ? { notices: combinedNotices } : {}),
         hasDisruption: true,
         disruptions: mappedDisruptions,
@@ -157,6 +150,6 @@ export async function fetchWeekendStatus(
     windowStart: targetWindow.windowStart.toISOString(),
     windowEnd: targetWindow.windowEnd.toISOString(),
     lines: items,
-    lastUpdated: (latestProjectedAt ?? new Date()).toISOString(),
+    lastUpdated: (latestProjectedAt ?? targetWindow.windowStart).toISOString(),
   };
 }

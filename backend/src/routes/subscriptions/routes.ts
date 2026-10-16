@@ -1,13 +1,14 @@
 import type { PrismaClient } from '@prisma/client';
-import type {
-  CreateSubscriptionRequest,
-  UnsubscribeParams,
-  UnsubscribeQuery,
+import {
+  type CreateSubscriptionRequest,
+  isValidLineId,
+  type UnsubscribeParams,
+  type UnsubscribeQuery,
 } from '@railsignal/shared';
 import type { FastifyPluginAsync } from 'fastify';
+import { prisma as defaultPrisma } from '../../db.js';
 import { RFC_9457_TYPE } from '../../errorHandler.js';
 import { createSubscriptionSchema, deleteSubscriptionSchema } from './schema.js';
-import { createOrUpdateSubscription, deleteSubscription, InvalidLineIdError } from './service.js';
 
 export interface SubscriptionsRoutesOptions {
   prisma?: PrismaClient | undefined;
@@ -17,41 +18,79 @@ export const subscriptionsRoutes: FastifyPluginAsync<SubscriptionsRoutesOptions>
   fastify,
   options,
 ) => {
+  const db = options?.prisma ?? defaultPrisma;
+
   fastify.post<{ Body: CreateSubscriptionRequest }>(
     '/api/subscriptions',
     {
       schema: createSubscriptionSchema,
     },
     async (request, reply) => {
-      try {
-        const result = await createOrUpdateSubscription({
-          prisma: options?.prisma,
-          email: request.body.email,
-          lineIds: request.body.lineIds,
-        });
+      const normalizedEmail = request.body.email.trim().toLowerCase();
+      const uniqueLineIds = Array.from(new Set(request.body.lineIds));
 
-        const statusCode = result.isNew ? 201 : 200;
-        return reply.status(statusCode).send(result.subscription);
-      } catch (error) {
-        if (error instanceof InvalidLineIdError) {
-          const instance = request.url.split('?')[0] || request.url;
-          return reply
-            .type('application/problem+json')
-            .status(400)
-            .send({
-              type: RFC_9457_TYPE,
-              title: 'Bad Request',
-              status: 400,
-              detail: error.message,
-              instance,
-              invalidParams: error.invalidLineIds.map((id) => ({
-                name: 'lineIds',
-                reason: `Unknown TfL line ID: "${id}"`,
-              })),
-            });
-        }
-        throw error;
+      const invalidLineIds = uniqueLineIds.filter((id) => !isValidLineId(id));
+      if (invalidLineIds.length > 0) {
+        const instance = request.url.split('?')[0] || request.url;
+        return reply
+          .type('application/problem+json')
+          .status(400)
+          .send({
+            type: RFC_9457_TYPE,
+            title: 'Bad Request',
+            status: 400,
+            detail: `Invalid TfL line IDs: ${invalidLineIds.join(', ')}`,
+            instance,
+            invalidParams: invalidLineIds.map((id) => ({
+              name: 'lineIds',
+              reason: `Unknown TfL line ID: "${id}"`,
+            })),
+          });
       }
+
+      const existing = await db.subscription.findUnique({
+        where: { email: normalizedEmail },
+        include: { lines: true },
+      });
+
+      if (existing) {
+        // Atomic synchronization: remove obsolete lines and insert new line selection
+        await db.$transaction([
+          db.subscriptionLine.deleteMany({
+            where: { subscriptionId: existing.id },
+          }),
+          db.subscriptionLine.createMany({
+            data: uniqueLineIds.map((lineId) => ({
+              subscriptionId: existing.id,
+              lineId,
+            })),
+          }),
+        ]);
+
+        return reply.status(200).send({
+          id: existing.id,
+          email: existing.email,
+          subscribedLineIds: uniqueLineIds,
+          createdAt: existing.createdAt.toISOString(),
+        });
+      }
+
+      const created = await db.subscription.create({
+        data: {
+          email: normalizedEmail,
+          lines: {
+            create: uniqueLineIds.map((lineId) => ({ lineId })),
+          },
+        },
+        include: { lines: true },
+      });
+
+      return reply.status(201).send({
+        id: created.id,
+        email: created.email,
+        subscribedLineIds: uniqueLineIds,
+        createdAt: created.createdAt.toISOString(),
+      });
     },
   );
 
@@ -62,13 +101,14 @@ export const subscriptionsRoutes: FastifyPluginAsync<SubscriptionsRoutesOptions>
     },
     async (request, reply) => {
       const instance = request.url.split('?')[0] || request.url;
-      const result = await deleteSubscription({
-        prisma: options?.prisma,
-        id: request.params.id,
-        token: request.query.token,
+      const { id } = request.params;
+      const { token } = request.query;
+
+      const subscription = await db.subscription.findUnique({
+        where: { id },
       });
 
-      if (result.status === 'not_found') {
+      if (!subscription) {
         return reply
           .type('application/problem+json')
           .status(404)
@@ -76,12 +116,12 @@ export const subscriptionsRoutes: FastifyPluginAsync<SubscriptionsRoutesOptions>
             type: RFC_9457_TYPE,
             title: 'Not Found',
             status: 404,
-            detail: `Subscription ${request.params.id} not found`,
+            detail: `Subscription ${id} not found`,
             instance,
           });
       }
 
-      if (result.status === 'forbidden') {
+      if (subscription.unsubscribeToken !== token) {
         return reply.type('application/problem+json').status(403).send({
           type: RFC_9457_TYPE,
           title: 'Forbidden',
@@ -91,10 +131,14 @@ export const subscriptionsRoutes: FastifyPluginAsync<SubscriptionsRoutesOptions>
         });
       }
 
+      // Schema foreign key defines onDelete: Cascade, purging SubscriptionLine records automatically
+      await db.subscription.delete({
+        where: { id },
+      });
+
       return reply.status(204).send();
     },
   );
 };
 
 export * from './schema.js';
-export * from './service.js';
