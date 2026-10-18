@@ -10,6 +10,7 @@
 [![Azure](https://img.shields.io/badge/Azure-Container%20Apps-0089d6?style=flat-square&logo=microsoftazure)](https://azure.microsoft.com/)
 [![Database](https://img.shields.io/badge/Database-Neon%20Postgres%20%7C%20SQLite-00e599?style=flat-square&logo=postgresql)](https://neon.tech/)
 [![Queue](https://img.shields.io/badge/Queue-BullMQ%20%7C%20Upstash%20Redis-ff4438?style=flat-square&logo=redis)](https://upstash.com/)
+[![Email](https://img.shields.io/badge/Email-Resend-000000?style=flat-square&logo=resend)](https://resend.com/)
 [![Cloud Cost](https://img.shields.io/badge/Hosting-%C2%A30%2Fmo%20Forever-emerald?style=flat-square)]()
 [![Tests](https://img.shields.io/badge/Tests-226%20Passing-brightgreen?style=flat-square&logo=vitest)](https://vitest.dev/)
 
@@ -119,14 +120,12 @@ flowchart TD
 
 | Domain | Technologies & Libraries | Rationale |
 | :--- | :--- | :--- |
-| **Backend & Routing** | Node.js 22 LTS, Fastify 5.x, `@sinclair/typebox` | Ultra-low overhead HTTP engine with native JSON Schema validation and end-to-end typed contracts. |
-| **Persistence & ORM** | Prisma ORM 6.x, Neon PostgreSQL (Cloud), SQLite (Local) | Dual-persistence strategy maintaining 1NF relational models across both engines without schema duplication. |
-| **Queue & Messaging** | BullMQ 6.x, `ioredis`, Upstash Serverless Redis (TLS) | Robust background job pipelines with tuned 60s idle drain backoff to preserve serverless command quotas. |
-| **External Resilience** | `cockatiel`, Transport for London Unified API | Composite retry with decorrelated jitter, timeout abort signals, and circuit breaking mirroring .NET Polly. |
-| **Transactional Email** | Resend API, `@react-email/components`, `@react-email/render` | Responsive JSX email component templates with local live preview and RFC 8058 one-click unsubscribe headers. |
+| **Backend API & Server** | Node.js 22 LTS, Fastify 5.x, `@sinclair/typebox`, `cockatiel` | Low-overhead HTTP engine with native JSON Schema validation, resilient TfL client policies, and shared contracts. |
+| **Persistence & Data** | Prisma ORM 6.x, Neon PostgreSQL (Cloud), SQLite (Local) | Dual-persistence strategy maintaining 1NF relational models across both engines without schema duplication. |
+| **Background Workers & Queues** | BullMQ 6.x, `ioredis`, Upstash Serverless Redis (TLS), Resend API, `@react-email` | Asynchronous worker pipelines tuned with 60s idle backoff, transactional email delivery, and RFC 8058 headers. |
 | **Frontend Client** | React 19, TypeScript 5 (Strict), Vite 6, Tailwind CSS 3.4, TanStack Query v5, Radix UI Dialog | Accessible single-page radar dashboard with server-state caching, loading skeletons, and accessible modals. |
-| **Testing Suite** | Vitest v4, React Testing Library, Mock Service Worker (MSW) | In-memory HTTP pipeline tests (`app.inject()`), pure domain calculation tests, and realistic network mocking. |
-| **DevOps & Cloud** | Azure Container Apps, Docker Multi-Stage Alpine, GitHub Actions | Zero-cost serverless container hosting with scale-to-zero compute and automated CI/CD workflows. |
+| **Testing Suite** | Vitest v4, React Testing Library, Mock Service Worker (MSW), Biome | In-memory HTTP pipeline tests (`app.inject()`), pure domain calculation tests, and realistic network mocking. |
+| **Cloud Infrastructure & DevOps** | Azure Container Apps, Docker Multi-Stage Alpine, GitHub Actions | Zero-cost serverless container hosting with scale-to-zero compute and automated CI/CD workflows. |
 
 ---
 
@@ -166,27 +165,27 @@ RailSignal/
 
 ## ⚙️ Engineering Decisions & Trade-offs
 
-### 1. Write-Path Ingestion Parsing & Materialized 1NF Child Table `([ADR 0008](docs/adr/0008-materialized-disruption-notices.md))`
+### 1. Write-Path Ingestion Parsing & Materialized 1NF Child Table ([ADR 0008](docs/adr/0008-materialized-disruption-notices.md))
 * **Problem**: TfL disruption descriptions are dense run-on text paragraphs combining multiple closures and dates. Parsing these with regular expressions at query time introduced latency variance and duplicated CPU overhead on every status query and email render.
 * **Decision**: Decomposed parsing to the write-path at ingestion time. Introduced a normalized relational child table `DisruptionNotice` (`headline`, `corridor`, `timeframe`, `busRouteJson`, `detailsJson`) linked to `WeekendDisruption` via cascade deletion. Nested arrays are stored as serialized JSON strings to maintain identical SQLite and PostgreSQL schema representations.
 * **Outcome**: Read-path queries (`GET /api/lines/weekend-status`) execute instant pass-through transformations with zero runtime regex scanning, consistently returning in under 5ms while maintaining 100% dialect parity.
 
-### 2. Unified Process Host with Scale-to-Zero vs. Dedicated Worker Containers `([ADR 0003](docs/adr/0003-bullmq-upstash-quota-and-scale-to-zero.md))`
+### 2. Unified Process Host with Scale-to-Zero vs. Dedicated Worker Containers ([ADR 0003](docs/adr/0003-bullmq-upstash-quota-and-scale-to-zero.md))
 * **Problem**: Running separate cloud containers for the Fastify Web API and BullMQ queue workers would double compute allocations and exceed Azure Container Apps' free consumption allowance.
 * **Decision**: Hosted both Fastify HTTP routes and BullMQ queue workers within a single unified Node.js process (`backend/src/index.ts`), deployed to Azure Container Apps with `minReplicas = 0`.
 * **Outcome**: Compute scales to zero when traffic is idle, consuming 0 vCPU-seconds and dropping Redis polling commands to zero, while still waking up instantly on demand when visitors invoke demo alerts.
 
-### 3. Dual-Persistence Database Strategy: Zero-Docker Local Dev vs. Cloud Postgres `([ADR 0002](docs/adr/0002-prisma-dual-persistence.md))`
+### 3. Dual-Persistence Database Strategy: Zero-Docker Local Dev vs. Cloud Postgres ([ADR 0002](docs/adr/0002-prisma-dual-persistence.md))
 * **Problem**: Prisma fixes its database provider statically in `schema.prisma`. Unlike EF Core in .NET, pointing a SQLite schema to PostgreSQL fails at runtime, yet forcing contributors to run local Docker PostgreSQL adds unnecessary friction.
 * **Decision**: Maintained a single canonical `schema.prisma` targeting `provider = "sqlite"` for local development. Introduced an automated build-time swap script (`prisma:prep-prod`) that substitutes `provider = "postgresql"` during Docker and CI pipelines before running migrations.
 * **Outcome**: Developers clone and run the app immediately using local SQLite with zero Docker dependencies, while production deploys seamlessly to Neon Serverless PostgreSQL.
 
-### 4. Deep Email Architecture & RFC 8058 Bulk-Sender Deliverability `([ADR 0007](docs/adr/0007-deep-email-delivery-client.md))`
+### 4. Deep Email Architecture & RFC 8058 Bulk-Sender Deliverability ([ADR 0007](docs/adr/0007-deep-email-delivery-client.md))
 * **Problem**: Raw HTML string email templates break across email clients (Outlook Word engine, mobile viewports), and multi-layer glue pipelines created shallow modules where callers had to understand intermediate payload transformations.
 * **Decision**: Consolidated transport, React-to-HTML rendering, and Cockatiel retry policies into a deep `EmailClient` class. Isolated domain coordination in `sendDisruptionDigest` and extracted a pure RFC 8058 header utility (`buildUnsubscribeHeaders`) enforcing `List-Unsubscribe` and `List-Unsubscribe-Post`.
 * **Outcome**: Bulletproof Outlook and mobile email rendering via `@react-email`, zero third-party API quota consumed during local styling via `email:dev`, and strict compliance with Gmail and Yahoo 2024 deliverability standards.
 
-### 5. End-to-End Type Safety with TypeBox across Monorepo `([ADR 0005](docs/adr/0005-typebox-validation-and-shared-contracts.md))`
+### 5. End-to-End Type Safety with TypeBox across Monorepo ([ADR 0005](docs/adr/0005-typebox-validation-and-shared-contracts.md))
 * **Problem**: TypeScript types are erased at compile time, requiring separate runtime validation libraries that frequently lead to duplicate type declarations and schema drift between backend and frontend.
 * **Decision**: Adopted TypeBox (`@sinclair/typebox`) in `packages/shared` as the single source of truth for all DTOs and API contracts.
 * **Outcome**: Fastify routes natively validate incoming request payloads with Ajv, serialization errors transform into standardized RFC 9457 Problem Details, and the React client imports static TypeScript types (`Static<typeof ...>`) directly without code generators.
@@ -201,7 +200,7 @@ RailSignal/
 | `GET` | `/api/lines/weekend-status` | Materialized London transit status and structured closure notices. | Public (`<5ms`) |
 | `POST` | `/api/subscriptions` | Create or update weekly Friday email alert subscription. | Public (TypeBox validated) |
 | `DELETE` | `/api/subscriptions/:id?token=...` | Unsubscribe from alerts using immutable security token. | Token validated |
-| `POST` | `/api/demo/send-test-digest` | Instant on-demand sample email digest for portfolio evaluators. | Public (Rate limited) |
+| `POST` | `/api/demo/send-test-digest` | Instant on-demand sample email digest for portfolio evaluators. | Public |
 | `POST` | `/api/jobs/sync-weekend-disruptions` | Trigger on-demand TfL status synchronization. | `X-Job-Secret` header |
 
 ### Sample: Get Weekend Line Status
@@ -213,8 +212,8 @@ curl -s http://localhost:3000/api/lines/weekend-status | jq .
 ```json
 {
   "weekendDate": "2026-10-16",
-  "windowStart": "2026-10-16T19:00:00.000+01:00",
-  "windowEnd": "2026-10-19T04:30:00.000+01:00",
+  "windowStart": "2026-10-16T18:00:00.000Z",
+  "windowEnd": "2026-10-19T03:30:00.000Z",
   "lines": [
     {
       "lineId": "mildmay",
@@ -224,13 +223,29 @@ curl -s http://localhost:3000/api/lines/weekend-status | jq .
       "statusSeverityDescription": "Part Closure",
       "corridorDescription": "No service between Camden Road and Willesden Junction.",
       "hasDisruption": true,
+      "disruptions": [
+        {
+          "id": "e9b21a84-7c38-4b72-9e12-32b49c0d1101",
+          "lineId": "mildmay",
+          "lineName": "Mildmay line",
+          "mode": "overground",
+          "statusSeverityDescription": "Part Closure",
+          "corridorDescription": "No service between Camden Road and Willesden Junction.",
+          "weekendDate": "2026-10-16",
+          "validFrom": "2026-10-16T19:00:00.000Z",
+          "validTo": "2026-10-19T04:30:00.000Z",
+          "sourceLastUpdated": "2026-10-16T08:30:00.000Z",
+          "projectedAt": "2026-10-16T09:00:00.000Z"
+        }
+      ],
       "notices": [
         {
           "headline": "Camden Road ↔ Willesden Junction: No service",
           "corridor": "Camden Road to Willesden Junction",
           "timeframe": "Saturday 17 and Sunday 18 October",
           "busRoute": {
-            "title": "Replacement buses operate",
+            "serviceName": "Replacement bus service",
+            "summary": "Buses operate between Camden Road and Willesden Junction",
             "stops": ["Camden Road", "Kentish Town West", "Gospel Oak", "Hampstead Heath", "Finchley Road & Frognal", "West Hampstead", "Brondesbury", "Brondesbury Park", "Kensal Rise", "Willesden Junction"]
           }
         }
@@ -243,7 +258,7 @@ curl -s http://localhost:3000/api/lines/weekend-status | jq .
       "color": "#0098D4",
       "statusSeverityDescription": "No Planned Closures",
       "hasDisruption": false,
-      "notices": []
+      "disruptions": []
     }
   ],
   "lastUpdated": "2026-10-16T09:00:00.000Z"
@@ -271,11 +286,17 @@ All validation and route errors return RFC 9457 `application/problem+json` envel
 
 ```json
 {
-  "type": "https://railsignal.dev/errors/validation-error",
+  "type": "https://datatracker.ietf.org/doc/html/rfc9457",
   "title": "Bad Request",
   "status": 400,
-  "detail": "Body must have required property 'lineIds'",
-  "instance": "/api/subscriptions"
+  "detail": "body must have required property 'lineIds'",
+  "instance": "/api/subscriptions",
+  "invalidParams": [
+    {
+      "name": "lineIds",
+      "reason": "must have required property 'lineIds'"
+    }
+  ]
 }
 ```
 
@@ -296,23 +317,26 @@ The repository is built for **frictionless zero-Docker onboarding**: you do not 
 git clone https://github.com/Foysal94/RailSignal.git
 cd RailSignal
 
-# 2. Install dependencies across all npm workspaces
+# 2. Install dependencies across all workspaces
 npm install
 
-# 3. Initialize the local SQLite database
-npx prisma db push --schema=backend/prisma/schema.prisma
+# 3. Copy environment configuration and apply migrations to local SQLite
+cp backend/.env.example backend/.env
+npm run build:shared
+npx prisma migrate dev --schema=backend/prisma/schema.prisma
 
-# 4. Start backend API and React client concurrently
+# 4. Start the backend API server and React client
+# Terminal 1: Fastify backend API (http://localhost:3000)
 npm run dev
+
+# Terminal 2: Vite React client (http://localhost:5173)
+npm run dev --workspace=@railsignal/client
 ```
 
-* **Backend API**: `http://localhost:3000` (Fastify server with automatic reload via `tsx`)
-* **React Web App**: `http://localhost:5173` (Vite dev server with hot module replacement)
-
 ### Development Ergonomics & Fallbacks
-* **Database**: Automatically creates a local SQLite file (`railsignal.db`) when `DATABASE_URL` is omitted.
+* **Database**: Automatically points to local SQLite (`DATABASE_URL="file:./railsignal.db"` in `backend/.env`).
 * **Email Preview**: If `RESEND_API_KEY` is not supplied, the backend automatically logs formatted email notifications to the console instead of failing.
-* **Interactive Email Designer**: Run `npm run email:dev` to launch the React Email visual preview server on `http://localhost:3002` for styling templates without sending real emails.
+* **Interactive Email Designer**: Run `npm run email:dev` to launch the React Email visual preview server for styling templates without sending real emails.
 * **Standalone Job Runner**: Manually execute the scheduled TfL sync job locally:
   ```bash
   npm run job:sync-disruptions:dev --workspace=@railsignal/backend
@@ -364,9 +388,3 @@ RailSignal is designed with deliberate resource frugality to maintain a strict *
 | **Queue** | Upstash Serverless Redis | 10,000 commands / day | BullMQ workers tuned with `drainDelay: 60s` idle backoff caps daily empty-queue polling commands to <1,500/day. |
 | **Email Delivery** | Resend Transactional Email | 3,000 emails / month | Consolidated weekly Friday digest with database deduplication (`lastNotifiedWeekendDate`). |
 | **CI/CD** | GitHub Actions | 2,000 min / month (free for public repos) | Isolated workflows for backend container builds and client deployments. |
-
----
-
-## 📄 License
-
-This project is open-source and available under the [MIT License](LICENSE).
