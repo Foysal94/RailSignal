@@ -109,6 +109,25 @@ flowchart TD
 
 ---
 
+## 📂 Repository Structure
+
+```text
+RailSignal/
+├── packages/shared/   # Shared contracts, TypeBox schemas & London transit lines
+├── backend/
+│   ├── src/routes/    # Fastify API route plugins (health, lines, subscriptions, demo)
+│   ├── src/workers/   # BullMQ background workers (ingestion, notifications, demo alerts)
+│   ├── src/domain/    # Pure domain calculation (status board ranking, London weekend window)
+│   ├── src/clients/   # Sealed TfL client facade with Cockatiel resilience
+│   ├── src/email/     # Deep EmailClient, RFC 8058 deliverability headers, and React Email
+│   └── prisma/        # Schema & migrations (SQLite local / PostgreSQL cloud)
+├── client/
+│   └── src/           # React 19 single-page app (Clean Transit Radar, Radix UI dialogs)
+└── docs/adr/          # Architectural Decision Records (ADRs 0001–0008)
+```
+
+---
+
 ## ⚙️ Engineering Decisions & Trade-offs
 
 * **Pre-Parsing Notices on Ingestion ([ADR 0008](docs/adr/0008-materialized-disruption-notices.md))**: TfL disruption text is a wall of messy sentences. Instead of parsing it on every page load with slow regular expressions, we parse it once when saving to the database. Status queries respond in under 5ms.
