@@ -9,6 +9,7 @@
 .husky
 graphify-out
 coverage
+infra
 
 # Local databases and runtime state
 *.db

@@ -1,0 +1,17 @@
+# Azure Resource Configuration
+location    = "uksouth"
+environment = "prod"
+app_name    = "railsignal"
+
+# Container Specs
+cpu          = 0.25
+memory       = "0.5Gi"
+min_replicas = 0
+max_replicas = 1
+
+# Production Secrets
+db_connection_string = "postgresql://user:password@ep-xyz.neon.tech/railsignal?sslmode=require"
+redis_url            = "rediss://default:password@upstash-host:6379"
+resend_api_key       = "re_123456789"
+email_from           = "RailSignal Alerts <alerts@railsignal.co.uk>"
+job_secret           = "super-secret-random-token"
