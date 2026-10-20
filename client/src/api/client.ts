@@ -13,6 +13,11 @@ export interface ApiClientOptions {
   signal?: AbortSignal;
 }
 
+function getBaseUrl(options?: ApiClientOptions): string {
+  const rawBase = options?.baseUrl ?? import.meta.env?.VITE_API_URL ?? '';
+  return rawBase.replace(/\/+$/, '');
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let detail = `Request failed with status ${response.status}`;
@@ -37,7 +42,7 @@ export async function fetchWeekendStatus(
   options?: ApiClientOptions,
 ): Promise<WeekendStatusResponse> {
   const fetcher = options?.fetchFn ?? fetch;
-  const base = options?.baseUrl ?? '';
+  const base = getBaseUrl(options);
   const search = referenceDate ? `?referenceDate=${encodeURIComponent(referenceDate)}` : '';
   const url = `${base}/api/lines/weekend-status${search}`;
 
@@ -61,7 +66,7 @@ async function postJson<TReq, TRes>(
   options?: ApiClientOptions,
 ): Promise<TRes> {
   const fetcher = options?.fetchFn ?? fetch;
-  const base = options?.baseUrl ?? '';
+  const base = getBaseUrl(options);
   const url = `${base}${path}`;
 
   const requestInit: RequestInit = {
