@@ -1,7 +1,7 @@
 import type { WeekendStatusResponse } from '@railsignal/shared';
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createSubscription, fetchWeekendStatus, sendTestDigest } from './client';
 
 const mockResponse: WeekendStatusResponse = {
@@ -204,5 +204,82 @@ describe('API Client: createSubscription', () => {
     await expect(createSubscription({ email: 'sub@example.com', lineIds: [] })).rejects.toThrow(
       'At least one line must be selected',
     );
+  });
+});
+
+describe('API Client: Base URL resolution', () => {
+  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+  afterEach(() => {
+    server.resetHandlers();
+    vi.unstubAllEnvs();
+  });
+  afterAll(() => server.close());
+
+  it('Should_resolve_endpoints_against_VITE_API_URL_when_configured', async () => {
+    vi.stubEnv('VITE_API_URL', 'https://api.railsignal.example.com');
+    const capturedUrls: string[] = [];
+
+    server.use(
+      http.get('https://api.railsignal.example.com/api/lines/weekend-status', ({ request }) => {
+        capturedUrls.push(request.url);
+        return HttpResponse.json(mockResponse);
+      }),
+      http.post('https://api.railsignal.example.com/api/demo/send-test-digest', ({ request }) => {
+        capturedUrls.push(request.url);
+        return HttpResponse.json({ status: 'queued', email: 'test@example.com' }, { status: 202 });
+      }),
+      http.post('https://api.railsignal.example.com/api/subscriptions', ({ request }) => {
+        capturedUrls.push(request.url);
+        return HttpResponse.json(
+          {
+            id: 'sub-1',
+            email: 'test@example.com',
+            subscribedLineIds: ['central'],
+            createdAt: '2026-10-15T12:00:00Z',
+          },
+          { status: 201 },
+        );
+      }),
+    );
+
+    await fetchWeekendStatus();
+    await sendTestDigest({ email: 'test@example.com', lineIds: ['central'] });
+    await createSubscription({ email: 'test@example.com', lineIds: ['central'] });
+
+    expect(capturedUrls).toEqual([
+      'https://api.railsignal.example.com/api/lines/weekend-status',
+      'https://api.railsignal.example.com/api/demo/send-test-digest',
+      'https://api.railsignal.example.com/api/subscriptions',
+    ]);
+  });
+
+  it('Should_strip_trailing_slash_from_VITE_API_URL', async () => {
+    vi.stubEnv('VITE_API_URL', 'https://api.railsignal.example.com/');
+    let capturedUrl: string | undefined;
+
+    server.use(
+      http.get('https://api.railsignal.example.com/api/lines/weekend-status', ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json(mockResponse);
+      }),
+    );
+
+    await fetchWeekendStatus();
+    expect(capturedUrl).toBe('https://api.railsignal.example.com/api/lines/weekend-status');
+  });
+
+  it('Should_prefer_explicit_baseUrl_option_over_VITE_API_URL', async () => {
+    vi.stubEnv('VITE_API_URL', 'https://api.railsignal.example.com');
+    let capturedUrl: string | undefined;
+
+    server.use(
+      http.get('https://override.example.com/api/lines/weekend-status', ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json(mockResponse);
+      }),
+    );
+
+    await fetchWeekendStatus(undefined, { baseUrl: 'https://override.example.com' });
+    expect(capturedUrl).toBe('https://override.example.com/api/lines/weekend-status');
   });
 });

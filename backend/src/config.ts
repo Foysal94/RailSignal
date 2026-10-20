@@ -12,6 +12,7 @@ export const DevelopmentConfigSchema = Type.Object({
   resendApiKey: Type.Optional(Type.String({ minLength: 1 })),
   emailFrom: Type.Optional(Type.String()),
   jobSecret: Type.Optional(Type.String({ minLength: 1 })),
+  clientOrigin: Type.Optional(Type.String()),
 });
 
 export const ProductionConfigSchema = Type.Object({
@@ -29,6 +30,7 @@ export const ProductionConfigSchema = Type.Object({
   resendApiKey: Type.String({ minLength: 1 }),
   emailFrom: Type.Optional(Type.String()),
   jobSecret: Type.String({ minLength: 1 }),
+  clientOrigin: Type.Optional(Type.String()),
 });
 
 export const ConfigSchema = Type.Union([DevelopmentConfigSchema, ProductionConfigSchema]);
@@ -44,6 +46,7 @@ const ENV_VAR_MAPPINGS: Record<string, string> = {
   '/host': 'HOST',
   '/nodeEnv': 'NODE_ENV',
   '/emailFrom': 'EMAIL_FROM',
+  '/clientOrigin': 'CLIENT_ORIGIN',
 };
 
 function deepFreeze<T extends object>(obj: T): Readonly<T> {
@@ -81,6 +84,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       : {}),
     ...(env.EMAIL_FROM && env.EMAIL_FROM.trim() !== '' ? { emailFrom: env.EMAIL_FROM } : {}),
     ...(env.JOB_SECRET && env.JOB_SECRET.trim() !== '' ? { jobSecret: env.JOB_SECRET } : {}),
+    ...(env.CLIENT_ORIGIN && env.CLIENT_ORIGIN.trim() !== ''
+      ? { clientOrigin: env.CLIENT_ORIGIN }
+      : {}),
   };
 
   const targetSchema =

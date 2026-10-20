@@ -1,3 +1,4 @@
+import fastifyCors from '@fastify/cors';
 import type { PrismaClient } from '@prisma/client';
 import type { Queue } from 'bullmq';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
@@ -24,6 +25,26 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
   app.setErrorHandler(errorHandler);
   app.setNotFoundHandler(notFoundHandler);
+
+  const allowedOrigins: (string | RegExp)[] = [
+    /^https:\/\/([a-z0-9-]+\.)*azurestaticapps\.net$/,
+    'http://localhost:5173',
+  ];
+
+  const configuredOrigin = options.config?.clientOrigin ?? process.env.CLIENT_ORIGIN;
+  if (configuredOrigin) {
+    for (const origin of configuredOrigin
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean)) {
+      allowedOrigins.push(origin);
+    }
+  }
+
+  app.register(fastifyCors, {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  });
 
   app.register(healthRoutes);
   app.register(linesRoutes, { prisma: options.prisma });
