@@ -1,0 +1,25 @@
+# Monorepo Docker ignore rules
+**/node_modules
+**/dist
+
+# Version control and tooling
+.git
+.github
+.agents
+.husky
+graphify-out
+coverage
+infra
+
+# Local databases and runtime state
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.log
+npm-debug.log*
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
