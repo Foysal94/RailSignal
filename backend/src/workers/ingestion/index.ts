@@ -1,2 +1,1 @@
-export * from './processor.js';
-export * from './projection.js';
+export * from './pipeline.js';

@@ -1,4 +1,8 @@
+import Fastify from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import type { IngestJobData, IngestJobResult } from '../../src/queues/queues.js';
+import { jobsRoutes } from '../../src/routes/jobs/routes.js';
+import { InMemoryQueueDouble } from '../support/inMemoryQueueDouble.js';
 import { createTestContext, type TestContext } from '../support/testContext.js';
 
 describe('POST /api/jobs/sync-weekend-disruptions', () => {
@@ -81,5 +85,62 @@ describe('POST /api/jobs/sync-weekend-disruptions', () => {
       referenceDate: '2026-10-16',
       force: true,
     });
+  });
+
+  it('Should_return_401_problem_details_when_server_job_secret_is_not_configured', async () => {
+    const unconfiguredContext = await createTestContext({
+      config: { jobSecret: undefined },
+    });
+    try {
+      const response = await unconfiguredContext.app.inject({
+        method: 'POST',
+        url: '/api/jobs/sync-weekend-disruptions',
+        headers: {
+          'x-job-secret': 'any-secret',
+        },
+        payload: {},
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.headers['content-type']).toContain('application/problem+json');
+      const body = response.json();
+      expect(body.title).toBe('Unauthorized');
+      expect(body.status).toBe(401);
+    } finally {
+      await unconfiguredContext.close();
+    }
+  });
+
+  it('Should_register_with_default_options_when_options_are_omitted', async () => {
+    const plainApp = Fastify();
+    await plainApp.register(jobsRoutes);
+    await plainApp.ready();
+    await plainApp.close();
+  });
+
+  it('Should_handle_job_without_id_gracefully', async () => {
+    const customQueue = new InMemoryQueueDouble<IngestJobData, IngestJobResult>();
+    customQueue.add = async (name, data) => {
+      const job = await InMemoryQueueDouble.prototype.add.call(customQueue, name, data);
+      return { ...job, id: undefined as unknown as string };
+    };
+    const customContext = await createTestContext({
+      config: { jobSecret: validSecret },
+      ingestQueue: customQueue,
+    });
+    try {
+      const response = await customContext.app.inject({
+        method: 'POST',
+        url: '/api/jobs/sync-weekend-disruptions',
+        headers: { 'x-job-secret': validSecret },
+        payload: {},
+      });
+      expect(response.statusCode).toBe(202);
+      const body = response.json();
+      expect(body.status).toBe('queued');
+      expect(body.jobId).toBeUndefined();
+    } finally {
+      await customContext.close();
+    }
   });
 });

@@ -9,7 +9,7 @@ RailSignal utilizes BullMQ backed by Upstash Serverless Redis over TLS (`rediss:
 Additionally, in Node.js there is no native transactional outbox spanning both PostgreSQL and Redis (unlike MassTransit EF Core Outbox in .NET).
 
 ## Decision
-1. **Queue Connection & Tuning**: Configure BullMQ workers with an extended idle poll backoff (`drainDelay: 60000` ms) to minimize empty-queue polling commands.
+1. **Queue Connection & Worker Host**: Configure BullMQ workers via a centralized managed host (`createManagedWorker` in `src/workers/host.ts`) enforcing extended idle poll backoff (`drainDelay: 60` seconds), relaxed stall checks (`stalledInterval: 60_000` ms, `lockDuration: 60_000` ms, `maxStalledCount: 2`), and standardized lifecycle observability to preserve Upstash quotas.
 2. **Compute Topology**: Host Fastify and BullMQ workers within a unified single Node.js process (`backend/src/index.ts`). Deploy to Azure Container Apps with `minReplicas = 0`. When no HTTP traffic is present, the container scales to zero, dropping Redis commands to zero.
 3. **On-Demand Demos**: When portfolio visitors invoke `POST /api/demo/send-test-digest`, ACA wakes the unified container, processes the job immediately, and sends the demo alert without waiting for scheduled jobs.
 4. **Pipeline Idempotency**: In lieu of a transactional outbox, enforce idempotency at the database layer. Subscriptions track `lastNotifiedWeekendDate`. Notification workers verify that an alert has not already been dispatched for the target weekend before firing Resend calls, ensuring safe and duplicate-free re-runs.

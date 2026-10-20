@@ -30,7 +30,9 @@ RailSignal/
 │   │   ├── 0003-bullmq-upstash-quota-and-scale-to-zero.md
 │   │   ├── 0004-cockatiel-resilience-and-react-email.md
 │   │   ├── 0005-typebox-validation-and-shared-contracts.md
-│   │   └── 0006-frontend-design-system-and-ui-architecture.md
+│   │   ├── 0006-frontend-design-system-and-ui-architecture.md
+│   │   ├── 0007-deep-email-delivery-client.md
+│   │   └── 0008-materialized-disruption-notices.md
 │   └── technical-specification.md
 ├── infra/                              # Terraform (Zero-cost Azure resources)
 │   ├── main.tf
@@ -79,7 +81,8 @@ RailSignal/
 │   │   │       ├── types.ts            # Internal TfL DTOs (RawTflDisruption) & ParsedDisruption
 │   │   │       └── index.ts            # Sealed public barrel (TflClient, ParsedDisruption, TflHttpError)
 │   │   ├── domain/                     # Core domain business rules
-│   │   │   └── temporal.ts             # Europe/London weekend operational window calculator
+│   │   │   ├── temporal.ts             # Europe/London weekend operational window calculator
+│   │   │   └── disruptionNotices.ts    # Materialized disruption notice serialization & domain mapping
 │   │   ├── email/                      # Email notifications
 │   │   │   ├── client.ts               # Deep EmailClient module (Resend SDK, retries, console mock)
 │   │   │   ├── digest.ts               # Domain email dispatcher (DisruptionDigest coordination)
@@ -157,21 +160,36 @@ model SubscriptionLine {
 }
 
 model WeekendDisruption {
-  id                        String   @id @default(uuid())
+  id                        String             @id @default(uuid())
   lineId                    String
   lineName                  String
-  mode                      String   // "tube", "elizabeth-line", "overground", "dlr"
-  statusSeverityDescription String   // "Part Closure", "Planned Closure", etc.
-  corridorDescription       String   // E.g. "No service between Camden Town and High Barnet"
-  weekendDate               String   // ISO Date "YYYY-MM-DD"
+  mode                      String             // "tube", "elizabeth-line", "overground", "dlr"
+  statusSeverityDescription String             // "Part Closure", "Planned Closure", etc.
+  corridorDescription       String             // E.g. "No service between Camden Town and High Barnet"
+  weekendDate               String             // ISO Date "YYYY-MM-DD"
   validFrom                 DateTime
   validTo                   DateTime
   sourceLastUpdated         DateTime
-  projectedAt               DateTime @default(now())
+  projectedAt               DateTime           @default(now())
+  notices                   DisruptionNotice[]
 
   @@index([lineId])
   @@index([weekendDate])
   @@unique([lineId, weekendDate, corridorDescription])
+}
+
+model DisruptionNotice {
+  id           String            @id @default(uuid())
+  disruptionId String
+  headline     String
+  corridor     String
+  timeframe    String?
+  busRouteJson String?           // Serialized ReplacementBusRoute JSON or null
+  detailsJson  String?           // Serialized string[] of secondary bullet points
+  rawFallback  String?
+  disruption   WeekendDisruption @relation(fields: [disruptionId], references: [id], onDelete: Cascade)
+
+  @@index([disruptionId])
 }
 ```
 
@@ -181,13 +199,15 @@ model WeekendDisruption {
 
 ### 4.1 Connection & Free-Tier Quota Protection
 * **Engine**: BullMQ powered by **Upstash Serverless Redis** over TLS (`rediss://...`) via `ioredis`.
-* **Quota Management**: Upstash free tier allows 10,000 commands/day. Workers are configured with `drainDelay: 60000` (1 minute empty-queue polling backoff).
+* **Worker Host (`src/workers/host.ts`)**: Centralized `createManagedWorker` encapsulates Upstash quota defaults (`drainDelay: 60` seconds, `stalledInterval: 60_000` ms, `lockDuration: 60_000` ms, `maxStalledCount: 2`), structured lifecycle hooks (`completed`, `failed`, `error`), and coordinated graceful shutdown.
+* **Quota Management**: Upstash free tier allows 10,000 commands/day. Workers enforce extended idle polling (`drainDelay: 60`) and relaxed lock/stall timers to stay well under quota limits.
+* **Unified Ingestion Pipeline (`src/workers/ingestion/pipeline.ts`)**: A single shared pipeline (`syncWeekendDisruptionsPipeline`) coordinates TfL disruption fetching, projection, database upsertion, and downstream digest enqueuing. It is reused identically by both the scheduled BullMQ worker and the standalone CLI runner (`syncDisruptionsRunner.ts`).
 * **Scale-to-Zero**: Azure Container Apps runs with `minReplicas = 0`. When no web traffic is active, ACA stops the container, reducing Redis command consumption to 0.
 
 ### 4.2 Queues & Job Flow
 1. **`ingest-disruptions-queue`**:
    - Triggered every Friday at 09:00 UK time (via ACA Scheduled Job or manual API trigger).
-   - Worker fetches TfL disruptions via `tflClient`, normalizes against the upcoming weekend window (Friday 19:00 to Monday 04:30 London local time), upserts `WeekendDisruption` records in Prisma, and enqueues jobs to `notification-dispatch-queue`.
+   - Worker fetches TfL disruptions via `tflClient`, normalizes against the upcoming weekend window (Friday 19:00 to Monday 04:30 London local time), parses and materializes structured `DisruptionNotice` child records alongside `WeekendDisruption` in Prisma via atomic transactions (ADR 0008), and enqueues jobs to `notification-dispatch-queue`. Downstream read paths query pre-materialized notices directly without runtime regex parsing.
 2. **`notification-dispatch-queue`**:
    - Consumes disruption events per affected subscriber.
    - Enforces idempotency: verifies `lastNotifiedWeekendDate !== currentWeekendDate` before sending email.

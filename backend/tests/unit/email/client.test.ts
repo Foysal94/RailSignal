@@ -159,6 +159,119 @@ describe('EmailClient', () => {
     expect(mockSend).toHaveBeenCalledTimes(2);
   });
 
+  it('Should_retry_transient_network_fetch_failures_and_succeed_on_subsequent_request', async () => {
+    const mockSend = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockResolvedValueOnce({
+        data: { id: 'email_recovered_789' },
+        error: null,
+      });
+
+    const client = createMockClient(mockSend, {
+      retryPolicy: createResendRetryPolicy(3, 0),
+    });
+
+    const result = await client.sendEmail({
+      to: 'commuter@example.com',
+      subject: 'Network retry alert',
+      html: '<p>Recovered</p>',
+    });
+
+    expect(result.delivered).toBe(true);
+    expect(result.id).toBe('email_recovered_789');
+    expect(mockSend).toHaveBeenCalledTimes(2);
+  });
+
+  it('Should_not_retry_fatal_non_transient_errors_and_throw_immediately', async () => {
+    const mockSend = vi.fn().mockRejectedValue(new Error('Unauthorized: 401'));
+
+    const client = createMockClient(mockSend, {
+      retryPolicy: createResendRetryPolicy(3, 0),
+    });
+
+    await expect(
+      client.sendEmail({
+        to: 'commuter@example.com',
+        subject: 'Fatal error alert',
+        html: '<p>Fatal</p>',
+      }),
+    ).rejects.toThrow('Unauthorized: 401');
+
+    expect(mockSend).toHaveBeenCalledOnce();
+  });
+
+  it('Should_not_retry_deterministic_coding_errors_and_throw_immediately', async () => {
+    const deterministicErrors = [
+      new TypeError('Cannot read properties of undefined'),
+      new SyntaxError('Unexpected token'),
+      new RangeError('Invalid array length'),
+      'raw string fatal rejection',
+    ];
+
+    for (const error of deterministicErrors) {
+      const mockSend = vi.fn().mockRejectedValue(error);
+      const client = createMockClient(mockSend, {
+        retryPolicy: createResendRetryPolicy(3, 0),
+      });
+
+      await expect(
+        client.sendEmail({
+          to: 'commuter@example.com',
+          subject: 'Deterministic error alert',
+          html: '<p>Fatal</p>',
+        }),
+      ).rejects.toThrow();
+
+      expect(mockSend).toHaveBeenCalledOnce();
+    }
+  });
+
+  it('Should_retry_when_resend_api_returns_transient_error_payload_and_recover', async () => {
+    const mockSend = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: { name: 'rate_limit_error', message: 'Rate limit exceeded: 429' },
+      })
+      .mockResolvedValueOnce({
+        data: { id: 'email_recovered_payload_123' },
+        error: null,
+      });
+
+    const client = createMockClient(mockSend, {
+      retryPolicy: createResendRetryPolicy(3, 0),
+    });
+
+    const result = await client.sendEmail({
+      to: 'commuter@example.com',
+      subject: 'Payload retry alert',
+      html: '<p>Payload</p>',
+    });
+
+    expect(result.delivered).toBe(true);
+    expect(result.id).toBe('email_recovered_payload_123');
+    expect(mockSend).toHaveBeenCalledTimes(2);
+  });
+
+  it('Should_exhaust_retries_and_throw_terminal_error_when_transient_errors_persist', async () => {
+    const mockSend = vi.fn().mockRejectedValue(new Error('503 Service Unavailable'));
+
+    const client = createMockClient(mockSend, {
+      retryPolicy: createResendRetryPolicy(3, 0),
+    });
+
+    await expect(
+      client.sendEmail({
+        to: 'commuter@example.com',
+        subject: 'Exhaustion alert',
+        html: '<p>Exhausted</p>',
+      }),
+    ).rejects.toThrow('503 Service Unavailable');
+
+    expect(mockSend).toHaveBeenCalledTimes(4);
+  });
+
   it('Should_accept_custom_retry_policy_in_constructor_options_for_test_isolation', async () => {
     const mockSend = vi.fn().mockResolvedValue({
       data: { id: 'email_custom_policy_111' },

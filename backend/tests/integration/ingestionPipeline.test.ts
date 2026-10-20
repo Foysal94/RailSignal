@@ -2,13 +2,8 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TflClient } from '../../src/clients/tfl/client.js';
 import type { ParsedDisruption } from '../../src/clients/tfl/types.js';
 import { prisma } from '../../src/db.js';
-import type {
-  IngestJobData,
-  IngestJobResult,
-  NotificationJobData,
-} from '../../src/queues/queues.js';
-import { processIngestionJob } from '../../src/workers/ingestion/processor.js';
-import { createIngestionWorkerHandler } from '../../src/workers/ingestionWorker.js';
+import type { NotificationJobData } from '../../src/queues/queues.js';
+import { syncWeekendDisruptionsPipeline } from '../../src/workers/ingestion/pipeline.js';
 import { InMemoryQueueDouble } from '../support/inMemoryQueueDouble.js';
 
 describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma SQLite)', () => {
@@ -34,6 +29,13 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       validFrom: '2026-10-16T19:00:00.000Z',
       validTo: '2026-10-19T03:30:00.000Z',
       sourceLastUpdated: '2026-10-16T08:00:00.000Z',
+      notices: [
+        {
+          headline: 'White City ↔ Ealing Broadway: No service',
+          corridor: 'White City ↔ Ealing Broadway: No service',
+          rawFallback: 'No service between White City and Ealing Broadway',
+        },
+      ],
     },
     {
       lineId: 'pipeline-northern',
@@ -45,6 +47,13 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       validFrom: '2026-10-16T19:00:00.000Z',
       validTo: '2026-10-19T03:30:00.000Z',
       sourceLastUpdated: '2026-10-16T08:30:00.000Z',
+      notices: [
+        {
+          headline: 'Camden Town ↔ High Barnet: No service',
+          corridor: 'Camden Town ↔ High Barnet: No service',
+          rawFallback: 'No service between Camden Town and High Barnet',
+        },
+      ],
     },
   ];
 
@@ -53,23 +62,12 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       getWeekendDisruptions: vi.fn().mockResolvedValue(sampleDisruptions),
     };
 
-    const handler = createIngestionWorkerHandler({
+    const result = await syncWeekendDisruptionsPipeline({
+      referenceDate: '2026-10-15T12:00:00Z',
       notificationQueue: notificationQueueDouble,
-      processor: async (opts) =>
-        processIngestionJob({
-          ...opts,
-          tflClient: mockTflClient,
-          prisma,
-          referenceDate: new Date('2026-10-15T12:00:00Z'),
-        }),
+      tflClient: mockTflClient,
+      prisma,
     });
-
-    const mockJob = {
-      id: 'ingest-run-1',
-      data: { referenceDate: '2026-10-15T12:00:00Z' } as IngestJobData,
-    };
-
-    const result = (await handler(mockJob as never)) as IngestJobResult;
 
     // Verify ingestion execution result
     expect(result.weekendDate).toBe('2026-10-16');
@@ -79,6 +77,7 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     // Verify observable Prisma SQLite persistence
     const persisted = await prisma.weekendDisruption.findMany({
       where: { lineId: { startsWith: 'pipeline-' } },
+      include: { notices: true },
       orderBy: { lineId: 'asc' },
     });
     expect(persisted).toHaveLength(2);
@@ -86,8 +85,12 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     expect(persisted[0].corridorDescription).toBe(
       'No service between White City and Ealing Broadway',
     );
+    expect(persisted[0].notices).toHaveLength(1);
+    expect(persisted[0].notices[0].headline).toBe('White City ↔ Ealing Broadway: No service');
     expect(persisted[1].lineId).toBe('pipeline-northern');
     expect(persisted[1].statusSeverityDescription).toBe('Planned Closure');
+    expect(persisted[1].notices).toHaveLength(1);
+    expect(persisted[1].notices[0].headline).toBe('Camden Town ↔ High Barnet: No service');
 
     expect(notificationQueueDouble.jobs).toHaveLength(1);
     const downstreamJob = notificationQueueDouble.jobs[0];
@@ -100,30 +103,22 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       getWeekendDisruptions: vi.fn().mockResolvedValue(sampleDisruptions),
     };
 
-    const handler = createIngestionWorkerHandler({
-      notificationQueue: notificationQueueDouble,
-      processor: async (opts) =>
-        processIngestionJob({
-          ...opts,
-          tflClient: mockTflClient,
-          prisma,
-          referenceDate: new Date('2026-10-15T12:00:00Z'),
-        }),
-    });
+    const runPipeline = () =>
+      syncWeekendDisruptionsPipeline({
+        referenceDate: '2026-10-15T12:00:00Z',
+        notificationQueue: notificationQueueDouble,
+        tflClient: mockTflClient,
+        prisma,
+      });
 
-    const mockJob = {
-      id: 'ingest-run-idempotency',
-      data: { referenceDate: '2026-10-15T12:00:00Z' } as IngestJobData,
-    };
-
-    await handler(mockJob as never);
+    await runPipeline();
     expect(
       await prisma.weekendDisruption.count({
         where: { lineId: { startsWith: 'pipeline-' } },
       }),
     ).toBe(2);
 
-    await handler(mockJob as never);
+    await runPipeline();
     expect(
       await prisma.weekendDisruption.count({
         where: { lineId: { startsWith: 'pipeline-' } },
@@ -138,7 +133,7 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     ];
     mockTflClient.getWeekendDisruptions = vi.fn().mockResolvedValue(modifiedDisruptions);
 
-    await handler(mockJob as never);
+    await runPipeline();
 
     const central = await prisma.weekendDisruption.findFirst({
       where: { lineId: 'pipeline-central' },
@@ -157,23 +152,12 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
       getWeekendDisruptions: vi.fn().mockResolvedValue([]),
     };
 
-    const handler = createIngestionWorkerHandler({
+    const result = await syncWeekendDisruptionsPipeline({
+      referenceDate: '2026-10-15T12:00:00Z',
       notificationQueue: notificationQueueDouble,
-      processor: async (opts) =>
-        processIngestionJob({
-          ...opts,
-          tflClient: mockTflClient,
-          prisma,
-          referenceDate: new Date('2026-10-15T12:00:00Z'),
-        }),
+      tflClient: mockTflClient,
+      prisma,
     });
-
-    const mockJob = {
-      id: 'ingest-run-empty',
-      data: { referenceDate: '2026-10-15T12:00:00Z' } as IngestJobData,
-    };
-
-    const result = (await handler(mockJob as never)) as IngestJobResult;
 
     expect(result.totalFetched).toBe(0);
     expect(result.totalUpserted).toBe(0);
@@ -186,5 +170,22 @@ describe('Ingestion Pipeline Integration Tests (In-Memory Queue Double + Prisma 
     // Downstream notification worker is still notified so subscribers receive normal service status
     expect(notificationQueueDouble.jobs).toHaveLength(1);
     expect(notificationQueueDouble.jobs[0].data.weekendDate).toBe('2026-10-16');
+  });
+
+  it('Should_propagate_tfl_client_errors_without_enqueuing_downstream_notification_jobs', async () => {
+    const mockTflClient: Pick<TflClient, 'getWeekendDisruptions'> = {
+      getWeekendDisruptions: vi.fn().mockRejectedValue(new Error('TfL 503 Service Unavailable')),
+    };
+
+    await expect(
+      syncWeekendDisruptionsPipeline({
+        referenceDate: '2026-10-15T12:00:00Z',
+        notificationQueue: notificationQueueDouble,
+        tflClient: mockTflClient,
+        prisma,
+      }),
+    ).rejects.toThrow('TfL 503 Service Unavailable');
+
+    expect(notificationQueueDouble.jobs).toHaveLength(0);
   });
 });

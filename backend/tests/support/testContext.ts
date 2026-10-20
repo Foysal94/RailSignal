@@ -56,6 +56,7 @@ export async function createTestContext(options: TestContextOptions = {}): Promi
     await prisma.$transaction([
       prisma.subscriptionLine.deleteMany(),
       prisma.subscription.deleteMany(),
+      prisma.disruptionNotice.deleteMany(),
       prisma.weekendDisruption.deleteMany(),
     ]);
     demoAlertQueue.clear();

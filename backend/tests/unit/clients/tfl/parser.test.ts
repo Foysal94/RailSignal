@@ -61,6 +61,15 @@ describe('TfL Parser - Date-Scoped Status Payload Normalization', () => {
       validFrom: '2026-07-11T03:30:00Z',
       validTo: '2026-07-13T02:00:00Z',
       sourceLastUpdated: '2026-07-01T12:00:00Z',
+      notices: [
+        {
+          headline: 'Earls Court ↔ Wimbledon: No service',
+          corridor: 'Earls Court ↔ Wimbledon: No service',
+          timeframe: 'Saturday 11 & Sunday 12 July',
+          rawFallback:
+            'Saturday 11 and Sunday 12 July, no service between Earls Court and Wimbledon.',
+        },
+      ],
     });
   });
 
@@ -395,5 +404,39 @@ describe('TfL Parser - Date-Scoped Status Payload Normalization', () => {
     expect(parsed[0]?.statusSeverityDescription).toBe('Service Closed');
     expect(parsed[1]?.lineId).toBe('bakerloo');
     expect(parsed[1]?.statusSeverityDescription).toBe('Part Closed');
+  });
+
+  it('Should_parse_and_materialize_multiple_structured_notices_with_bus_routes_during_ingestion', () => {
+    const rawStatusResponse: RawTflLineStatus[] = [
+      {
+        id: 'mildmay',
+        name: 'Mildmay line',
+        modeName: 'overground',
+        lineStatuses: [
+          {
+            statusSeverityDescription: 'Part Closure',
+            reason:
+              'Mildmay line: Saturday 11 and Sunday 12 July, no service between Stratford and Richmond. Replacement bus service DL1: Camden Road - Richmond.',
+            validityPeriods: [{ fromDate: '2026-07-11T03:30:00Z', toDate: '2026-07-13T02:00:00Z' }],
+            disruption: { category: 'PlannedWork' },
+          },
+        ],
+      },
+    ];
+
+    const parsed = parseTflDisruptions({
+      disruptions: rawStatusResponse,
+      weekendWindow: mockWeekendWindow,
+    });
+
+    expect(parsed).toHaveLength(1);
+    const notices = parsed[0]?.notices;
+    expect(notices).toBeDefined();
+    expect(notices).toHaveLength(1);
+    expect(notices?.[0]?.headline).toBe('Stratford ↔ Richmond: No service');
+    expect(notices?.[0]?.timeframe).toBe('Saturday 11 & Sunday 12 July');
+    expect(notices?.[0]?.busRoute).toBeDefined();
+    expect(notices?.[0]?.busRoute?.serviceName).toBe('Replacement Bus Service DL1');
+    expect(notices?.[0]?.busRoute?.stops).toEqual(['Camden Road', 'Richmond']);
   });
 });
