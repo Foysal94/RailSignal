@@ -87,4 +87,18 @@ describe('CORS Middleware', () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers['access-control-allow-origin']).toBeUndefined();
   });
+
+  it('Should_not_allow_bare_azurestaticapps_apex_domain_without_subdomain', async () => {
+    const apexOrigin = 'https://azurestaticapps.net';
+    const response = await context.app.inject({
+      method: 'GET',
+      url: '/api/health',
+      headers: {
+        origin: apexOrigin,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
+  });
 });

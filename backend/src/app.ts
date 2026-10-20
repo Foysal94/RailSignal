@@ -26,8 +26,9 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
   app.setErrorHandler(errorHandler);
   app.setNotFoundHandler(notFoundHandler);
 
+  // Azure Static Web Apps hosts production and preview environments on subdomains of azurestaticapps.net
   const allowedOrigins: (string | RegExp)[] = [
-    /^https:\/\/([a-z0-9-]+\.)*azurestaticapps\.net$/,
+    /^https:\/\/([a-z0-9-]+\.)+azurestaticapps\.net$/,
     'http://localhost:5173',
   ];
 

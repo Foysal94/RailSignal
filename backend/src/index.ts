@@ -38,6 +38,7 @@ export async function start(): Promise<void> {
     logger: {
       level: config.nodeEnv === 'test' ? 'silent' : 'info',
     },
+    config,
   });
 
   const signals: readonly NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
