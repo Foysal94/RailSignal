@@ -81,7 +81,7 @@ variable "job_secret" {
 }
 
 variable "static_web_app_location" {
-  description = "The Azure region for the Static Web App host (westeurope, eastus2, centralus)."
+  description = "The Azure region for the Static Web App host (eastus2, centralus, westus2, westeurope)."
   type        = string
-  default     = "westeurope"
+  default     = "eastus2"
 }
