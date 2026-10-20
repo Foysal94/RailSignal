@@ -18,8 +18,10 @@
 
 ## 🌐 Live Application
 
-* **Web Dashboard**: `https://railsignal.calmglacier-47209930.westeurope.azurecontainerapps.io` *(Pending Cloud Deployment — Phase 6B)*
-* **API Health Check**: `https://railsignal.calmglacier-47209930.westeurope.azurecontainerapps.io/api/health`
+* **Web Dashboard**: [wonderful-water-0c5b1fe0f.4.azurestaticapps.net](https://wonderful-water-0c5b1fe0f.4.azurestaticapps.net)
+* **Production API**: [railsignal-api.bravemushroom-16abbce4.uksouth.azurecontainerapps.io](https://railsignal-api.bravemushroom-16abbce4.uksouth.azurecontainerapps.io)
+* **API Health Check**: [`GET /api/health`](https://railsignal-api.bravemushroom-16abbce4.uksouth.azurecontainerapps.io/api/health)
+* **Live Weekend Status**: [`GET /api/lines/weekend-status`](https://railsignal-api.bravemushroom-16abbce4.uksouth.azurecontainerapps.io/api/lines/weekend-status)
 
 > ℹ️ **Cold Starts**: The backend runs on Azure Container Apps with scale-to-zero (`minReplicas = 0`) to keep hosting 100% free. If idle, the first request takes ~10 seconds to spin up; subsequent requests respond in under 5ms.
 
@@ -55,7 +57,7 @@ flowchart TD
     User(["Browser / Portfolio Visitor"])
     Subscriber(["Subscriber Email Inbox"])
 
-    subgraph Azure_Cloud ["Azure Cloud (West Europe)"]
+    subgraph Azure_Cloud ["Azure Cloud (UK South)"]
         subgraph ACA_Host ["Azure Container App (minReplicas = 0)"]
             Fastify["Fastify HTTP API Server\n(/api/lines, /api/subscriptions, /api/demo)"]
             Workers["BullMQ Background Workers\n(Ingestion · Notification · Demo Alert)"]
